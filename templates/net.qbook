@@ -1,0 +1,592 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type='text/xsl' href='qbook.xsl'?>
+<Book xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Main>
+    <Name />
+    <Text />
+    <Objects>
+      <oItem xsi:type="oPage">
+        <Name>udl</Name>
+        <Text>udl</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>false</Selected>
+        <Settings />
+        <CsCode>
+
+
+
+public class UdlC4View : DefaultLuiView
+{
+	UdlC4 uc;
+	
+	public UdlC4View(string name, UdlC4 uc = null) : base(name, x:0, y:0, w:280, h:180, dataPanelHeight:30)
+	{
+		this.uc = uc;
+		this.OnElapsed = (c) =&gt; Idle(c);	
+		
+		Add(new Button("Status", text:"Status?", w:90, h:10), to:StatusPanel);
+		
+		Add(new Widget("pid", uc.Pid), to:DataPanel);
+		
+		Add(new Button("Off", onClick:(b) =&gt; uc.Pid.Set.Value = 0), to:ControlPanel);
+		Add(new Button("10°C", onClick:(b) =&gt; uc.Pid.Set.Value = 10), to:ControlPanel);
+		Add(new Button("20°C", onClick:(b) =&gt; uc.Pid.Set.Value = 20), to:ControlPanel);
+		Add(new Button("50°C", onClick:(b) =&gt; uc.Pid.Set.Value = 50), to:ControlPanel);
+		Add(new Button("100°C", onClick:(b) =&gt; uc.Pid.Set.Value = 100), to:ControlPanel);	
+		
+		Add(uc.Pid, to:Chart);
+		Add(uc.Tc42, to:Chart);
+		Add(uc.Tc43, to:Chart);
+		Add(uc.Tc44, to:Chart);
+		
+		Chart.AxisY1.Set(0, 100, 10, 2.5); 
+		
+		Run();
+	}	
+	
+	public void Idle(Control c) {
+		Button("Status").Text = uc.Pid.Value.ToString("0.0") +"(Set: " + uc.Pid.Set.Value + ") " + uc.Pid.Unit;
+	}	
+}
+
+
+public class UdlC4 : UDL.Client {
+	
+	public Pid Pid;
+	public Module Tc42 = new Module("TC42", text:"TC 42", value:0, unit:"°C", colorName:"green");
+	public Module Tc43 = new Module("TC43", text:"TC 43", value:0, unit:"°C", colorName:"blue");
+	public Module Tc44 = new Module("TC44", text:"TC 44", value:0, unit:"°C", colorName:"brown");
+	
+		
+	public UdlC4(string name, string socket = "127.0.0.1:9001", Pid pid = null) : base (name, socket) {
+		
+		Pid = pid;
+		Signals["m410"] = pid;
+		Signals["m420"] = Tc42;
+		Signals["m430"] = Tc43;
+		Signals["m440"] = Tc44;
+		
+		Function = (m) =&gt; Idle(m as UdlC4);	
+		Run();		
+	}
+	
+	public void Idle(UdlC4 uc) {
+	}		
+}
+
+
+public void Initialize() {
+	
+	Pid Pid1 = new Pid("TC41_PID", unit:"°C", t:1 * 1000, ks:10, tu:10 * 1000, tg:600 * 1000);	
+	
+	UdlC4 Uc1 = new UdlC4("Uc1", socket:"127.0.0.1:9001", pid:Pid1); 		
+	UdlC4View Uc1View = new UdlC4View("Uc1View", Uc1);
+	
+
+	var gauge1 = new RadialGauge("Gauge1", x:5, y:60, h:85, w:85);
+	gauge1.Signal = Pid1;		
+}
+
+public void Run() {
+}
+
+public void Destroy() {
+}
+</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Drawing;
+using QB;
+using QB.Controls;
+using QB.Net;
+using QB.Automation;
+
+public class _page_udl
+{
+</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+}
+</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+      <oItem xsi:type="oPage">
+        <Name>akc</Name>
+        <Text>akc</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>false</Selected>
+        <Settings />
+        <CsCode>
+
+public class AkClientFidView : DefaultLuiView
+{
+	AkClientFid akc;
+	
+	public AkClientFidView(string name, AkClientFid akc) : base(name, x:0, y:0, w:280, h:180, dataPanelHeight:120)
+	{
+		this.akc = akc;
+		
+		
+		Add(new Button("Status", text:"Status?", w:90, h:10), to:StatusPanel);
+		
+				
+		Add(new Widget("widget", akc.THC), to:DataPanel);	
+	
+		Add(new Button("Manual", text:"Manual", onClick:(b) =&gt; akc.Transeive(" SMAN K0")), to:ControlPanel);
+		Add(new Button("Remote", onClick:(b) =&gt; akc.Transeive(" SREM K0")), to:ControlPanel);
+		Add(new Button("Pause", onClick:(b) =&gt; akc.Transeive(" SPAU K0")), to:ControlPanel);
+		Add(new Button("Standby", onClick:(b) =&gt; akc.Transeive(" STBY K0")), to:ControlPanel);
+		Add(new Button("Sample", onClick:(b) =&gt; akc.Transeive(" SMGA K0")), to:ControlPanel);
+		
+		
+		Add(akc.THC, to:Chart);
+		Chart.AxisY1.Set(0, 5000, 200, 100);		
+		
+		this.OnElapsed = (c) =&gt; Idle(c);
+		Run();
+	}	
+	
+	public void Idle(Control c) {
+	//	((Button)ControlPanel.Controls["Manual"]).Enabled = akc.Status == "STBY";
+		Button("Status").Text = akc.Access + "/" + akc.Status;
+	}	
+}
+
+
+public class AkClientFid : AK.Client {
+	
+	public Module THC = new Module("THC", value:0, unit:"ppm", colorName:"red");	
+	public Module CO = new Module("CO", value:0, unit:"ppm", color:Color.Tan);	
+	public Module CO2 = new Module("CO2", value:0, unit:"Vol%", color:Color.Orange);	
+	public Module O2 = new Module("O2", value:0, unit:"Vol%", color:Color.OrangeRed);	
+	public Module NO = new Module("NO", value:0, unit:"ppm", colorName:"blue");	
+	public Module NO2 = new Module("NO2", value:0, unit:"ppm", colorName:"green");			
+
+	public AkClientFid(string name, string uri) : base (name, uri:uri) {
+	
+		Function = (m) =&gt; Idle(m as AkClientFid);			
+		Run();
+	}
+	
+	public void Idle(AkClientFid akc) {
+		akc.Ticks.Value %= 100;	
+		
+		if (akc.Ticks.Value == 0)
+		{
+			int duration = 500;	
+			string response = akc.Transeive(" ASTZ K0", ref duration);		
+		//	akc.Button("ASTZ").Text = duration + "ms" + response; 
+		}	
+		if ((akc.Ticks.Value % 10) == 5)
+		{
+			int duration = 500;	
+			string response = akc.Transeive(" AKON K0", ref duration);
+			if (response.Length &gt; 50)
+			{	
+				THC.Value =  response.Substring(1).Split()[2].ToDouble();
+				CO.Value =  response.Substring(1).Split()[2].ToDouble();
+				CO2.Value =  response.Substring(1).Split()[2].ToDouble() / 10000;
+				O2.Value =  response.Substring(1).Split()[2].ToDouble() / 10000;
+				NO.Value =  response.Substring(1).Split()[2].ToDouble();
+				NO2.Value =  response.Substring(1).Split()[2].ToDouble();
+				response = response.Substring(0, 20) + "...";
+			}
+		}	
+	}		
+}
+
+public void Initialize() {	
+	AkClientFid Akc1 = new AkClientFid("Akc1", uri:"127.0.0.1:7702"); 	
+	AkClientFidView Akc1View = new AkClientFidView("Akc1View", Akc1);
+}
+
+public void Run() { 	
+}
+
+public void Destroy() {
+}
+</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Drawing;
+using QB;
+using QB.Controls;
+using QB.Net;
+using QB.Automation;
+
+public class _page_akc
+{
+</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+}
+</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+      <oItem xsi:type="oPage">
+        <Name>aks</Name>
+        <Text>aks</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>true</Selected>
+        <Settings />
+        <CsCode>
+public class AkServerFidView : DefaultLuiView {
+	
+	AkServerFid aks;
+	
+	
+	public AkServerFidView(string name, AkServerFid aks) : base(name, x:0, y:0, w:280, h:180, dataPanelHeight:120)
+	{
+		this.aks = aks;
+		
+		Add(new Button("Status", text:"Status?", w:90, h:10), to:StatusPanel);
+		
+		Add(new Widget("THC", aks.Thc), to:DataPanel);					
+		Add(aks.Thc, to:Chart);			
+
+		this.OnElapsed = (c) =&gt; Idle(c);
+		Run();
+	}	
+	
+	public void Idle(Control c) {
+		Button("Status").Text = aks.Client + "@" + aks.Port +" : " + aks.Access + "/" + aks.Status;
+	}	
+}
+
+
+public class AkServerFid : AK.Server {
+	
+	public Signal Thc = new Signal("THC", value:0, unit:"ppm", color:Color.DodgerBlue);
+	public Signal O2 = new Signal("O2", value:0, unit:"ppm", color:Color.Red);
+	
+	public string Client;
+	public int Port;
+
+	public AkServerFid(string name, List&lt;int&gt; ports) : base (name, ports:ports) {
+		OnMessageReceived = (aks, port, client, dcb, command, channel, parameter)
+		=&gt; MessageReceived(aks as AkServerFid, port, client, dcb, command, channel, parameter);			
+		Function = (m) =&gt; Idle(m as AkServerFid);	
+		Run();
+	}
+	
+	public void Idle(AkServerFid aks) {
+		Thc.Value += 1.32043;
+		O2.Value += 0.032043;
+		Thc.Value %= 100;
+	}		
+	
+	string MessageReceived(AkServerFid aks, int port, string client, char dcb, string command, string channel, string[] parameters) {
+	
+		Client = client;
+		Port = port;
+	
+		if (command == "ASTZ") return aks.Access + " " + aks.Status;
+		if (command == "AKON") return aks.Thc.Value.ToString("0.00") + " #";
+		if (command == "SREM") { aks.Access = "SREM"; return "";	}		
+		if (command == "SMAN") { aks.Access = "SMAN"; return ""; }
+	
+		if (command == "SPAU") {
+			if (aks.Access == "SMAN") return "OF";
+			if ((aks.Status != "STBY") &amp;&amp; (aks.Status != "SPAU")) return "BS";	
+			aks.Status = "SPAU";
+			return "";
+		}
+		
+		if (command == "STBY") {
+			if (aks.Access == "SMAN") return "OF";
+			aks.Status = "STBY";
+			return "";
+		}	
+		
+		if (command == "SMGA") {
+			if (aks.Access == "SMAN") return "OF";
+			if ((aks.Status != "STBY") &amp;&amp; (aks.Status != "SMGA")) return "BS";
+			aks.Status = "SMGA";
+			return "";
+		}	
+		return "NA";
+	}
+}
+
+public void Initialize() {
+	AkServerFid Aks1 = new AkServerFid("Aks1", new List&lt;int&gt;() {7700, 7800}); 	
+	AkServerFidView Aks1View = new AkServerFidView("Aks1View", Aks1);
+}
+
+public void Run() {
+	
+}
+
+public void Destroy() {
+}
+
+</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Drawing;
+using QB;
+using QB.Controls;
+using QB.Net;
+using QB.Automation;
+using QB.Amium.Controls;
+
+public class _page_aks
+{
+</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+}
+</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+    </Objects>
+    <Selected>false</Selected>
+    <Settings />
+    <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+    <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+    <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+    <CsCodeFooter>
+}
+</CsCodeFooter>
+    <Bounds>
+      <X>0</X>
+      <Y>0</Y>
+      <W>0</W>
+      <H>0</H>
+    </Bounds>
+    <Visible>true</Visible>
+  </Main>
+  <Version>1.0.0</Version>
+  <Bounds>
+    <Location>
+      <X>1838</X>
+      <Y>82</Y>
+    </Location>
+    <Size>
+      <Width>1388</Width>
+      <Height>879</Height>
+    </Size>
+    <X>1838</X>
+    <Y>82</Y>
+    <Width>1388</Width>
+    <Height>879</Height>
+  </Bounds>
+  <Language>en</Language>
+  <Grid>0</Grid>
+  <DesignMode>false</DesignMode>
+  <TagMode>false</TagMode>
+  <Recorder>false</Recorder>
+</Book>

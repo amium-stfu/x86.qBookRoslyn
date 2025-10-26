@@ -1,0 +1,146 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Xml;
+using System.Xml.Serialization;
+using System.Drawing;
+using System.IO;
+
+namespace Main
+{
+    [
+       XmlInclude(typeof(oButton)),
+       XmlInclude(typeof(oDashboard)),
+       XmlInclude(typeof(oGrid)),
+       XmlInclude(typeof(oImage)),
+       XmlInclude(typeof(oLayer)),
+       XmlInclude(typeof(oGauge)),
+       XmlInclude(typeof(oModule)),
+       XmlInclude(typeof(oPage)),
+       XmlInclude(typeof(oPart)),
+       XmlInclude(typeof(oScratch)),
+       XmlInclude(typeof(oTag)),
+       XmlInclude(typeof(oText)),
+       XmlInclude(typeof(oUdlModule)),
+       XmlInclude(typeof(oHtml)),
+   ]
+
+
+
+    public class oControl : oItem
+    {
+        public enum Alignment { TL, T, TR, L, C, R, BL, B, BR };
+
+        public oControl()
+        {
+        }
+        public oControl(string name, string text) : base(name, text)
+        {
+            Visible = true;
+        }
+
+        public Bounds Bounds = new Bounds(0, 0, 0, 0);       
+        public bool Visible = true;
+       // x_UdlModule module = null;
+
+        /*
+        [XmlIgnore]
+       protected x_UdlModule Module
+        {
+            get
+            {
+                if (module == null)
+                {
+                    oItem src = Qb.Book.Main.GetItemByName(SettingsRead("src", null, 0, ""));
+                    string id = SettingsRead("name", null, 0, "");
+                    if (src is oPage)
+                        return (src as oPage).Module(id);
+                    try
+                    {
+                    }
+                    catch
+                    {
+
+                    }
+                    return null;
+                }
+                else
+                {
+                    return module;
+
+                }
+            }
+        }
+        */
+
+        virtual public void Render()
+        {
+            Frame(false, true);
+        }
+
+        virtual public void Frame(bool showHeader, bool showResize)
+        {
+            if (Qb.Book.DesignMode)
+            {
+                if (showHeader)
+                    Draw.Text("[" + Marker + "] " + this.GetType().ToString().Replace("Main.o", "") + " " + Name, Bounds.X, Bounds.Y + Bounds.H - 5, 0, Draw.fontFootnote, Selected ? Color.Orange : Color.LightSlateGray);
+                Draw.Rectangle(Selected ? Draw.DesignBrush : Draw.DesignBrush, Bounds.X, Bounds.Y, Bounds.W, Bounds.H, 0.5f);
+                //      Draw.Rectangle(Selected ? Draw.DesignBrush : Draw.DesignBrush, Bounds.X, Bounds.Y, 5, 5, 0.8f);
+
+                //   Draw.Rectangle(Draw.WhiteBrush, Bounds.X + Bounds.W - 5, Bounds.Y + Bounds.H - 20, 5, 5, 0);
+                Draw.Rectangle(Draw.WhiteBrush, Bounds.X + Bounds.W - 5, Bounds.Y + Bounds.H - 15, 5, 5, 0);
+                Draw.Rectangle(Draw.WhiteBrush, Bounds.X + Bounds.W - 5, Bounds.Y + Bounds.H - 10, 5, 5, 0);
+
+
+
+                //  Draw.Rectangle(Selected ? Draw.DesignBrush : Draw.DesignBrush, Bounds.X + Bounds.W - 5, Bounds.Y + Bounds.H - 20, 5, 5, 0.3f);
+
+
+                Draw.Rectangle(Selected ? Draw.DesignBrush : Draw.DesignBrush, Bounds.X + Bounds.W - 5, Bounds.Y + Bounds.H - 15, 5, 5, 0.3f);
+                Draw.Rectangle(Selected ? Draw.DesignBrush : Draw.DesignBrush, Bounds.X + Bounds.W - 5, Bounds.Y + Bounds.H - 10, 5, 5, 0.3f);
+
+
+
+                float x, y;
+
+                if (showResize)
+                {
+                    Draw.Rectangle(Draw.WhiteBrush, Bounds.X + Bounds.W - 5, Bounds.Y + Bounds.H - 5, 5, 5, 0);
+                    Draw.Rectangle(Selected ? Draw.DesignBrush : Draw.DesignBrush, Bounds.X + Bounds.W - 5, Bounds.Y + Bounds.H - 5, 5, 5, 0.3f);
+                    x = Bounds.X + Bounds.W - 2.5f;
+                    y = Bounds.Y + Bounds.H - 2.5f;
+                    Draw.Arrow(Pens.LightSlateGray, x, y, 2, -45);
+                    Draw.Arrow(Pens.LightSlateGray, x, y, 2, 135);
+                }
+
+                x = Bounds.X + Bounds.W - 2.5f;
+                y = Bounds.Y + Bounds.H - 7.5f;
+                Draw.Arrow(Pens.LightSlateGray, x, y, 1.5f, 0);
+                Draw.Arrow(Pens.LightSlateGray, x, y, 1.5f, 90);
+                Draw.Arrow(Pens.LightSlateGray, x, y, 1.5f, 180);
+                Draw.Arrow(Pens.LightSlateGray, x, y, 1.5f, 270);
+
+                x = Bounds.X + Bounds.W - 2.5f;
+                y = Bounds.Y + Bounds.H - 12.5f;
+                Draw.Circle(Color.WhiteSmoke, x, y, 2, 0);
+                Draw.Circle(Color.LightSlateGray, x, y, 2.5f, 0.7f);
+
+                /*
+                x = Bounds.X + Bounds.W - 2.5f;
+                y = Bounds.Y + Bounds.H - 17.5f;
+                Draw.Line(Pens.LightSlateGray, x - 1.5f, y - 1, x + 1.5f, y - 1);
+                Draw.Line(Pens.LightSlateGray, x - 1.5f, y - 0, x + 1.5f, y - 0);
+                Draw.Line(Pens.LightSlateGray, x - 1.5f, y + 1, x + 0, y + 1);
+                */
+                //                Draw.Rectangle(Selected ? Draw.WhiteBrush : Draw.WhiteBrush, Bounds.X, Bounds.Y, Bounds.W, Bounds.H, 0f);
+            }
+        }
+
+        public override string ToString()
+        {
+            return Name + " " + Bounds.ToString();
+        }
+    }
+}

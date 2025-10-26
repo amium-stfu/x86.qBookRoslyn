@@ -1,0 +1,241 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type='text/xsl' href='qbook.xsl'?>
+<Book xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Main>
+    <Name />
+    <Text />
+    <Objects>
+      <oItem xsi:type="oPage">
+        <Name>main</Name>
+        <Text>UDL.Client</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+          <oItem xsi:type="oLayer">
+            <Name>Tags</Name>
+            <Text />
+            <Objects />
+            <Selected>false</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>true</Selected>
+        <Settings />
+        <CsCode>
+Machine M1 = null;
+
+public void Initialize() {	
+	
+	M1 = new Machine("M1", (m) =&gt; Idle(m));
+	
+	UDL.Client Uc1 = new UDL.Client("Uc1", "192.168.51.151:9001");
+	Uc1.Ui.DefaultPanels(30);
+	
+	Uc1.Module("m3c0").Text = "Channel1";
+	Uc1.Module("m3d0").Text = "Channel2";
+	Uc1.Module("m3c0").Read = new Signal("AI1", 0, "mV", Color.Red);
+	Uc1.Module("m3c0").Set = new Signal("AO1", 0, "mV", Color.Green);
+	Uc1.Module("m3d0").Read = new Signal("AI2", 0, "mV", Color.Blue);
+	Uc1.Module("m3d0").Set = new Signal("AO2", 0, "mV", Color.Tan);		
+	
+	Uc1.Ui.DataPanel.Control("m3c0", new Widget("widget", Uc1.Module("m3c0")));
+	Uc1.Ui.DataPanel.Control("m3d0", new Widget("widget", Uc1.Module("m3d0")));
+	
+	Uc1.Ui.ControlPanel.Control("m3c0", new Button("Off1", (b) =&gt; Uc1.Module("m3c0").Set.Value = 0));
+	Uc1.Ui.ControlPanel.Control("m3d0",  new Button("Off2", (b) =&gt; Uc1.Module("m3d0").Set.Value = 0));
+	
+	Uc1.Ui.Chart.AxisY1.Set(0, 10000, 1000,200);
+	Uc1.Ui.Chart.Signal("m3c0r", Uc1.Module("m3c0").Read);
+	Uc1.Ui.Chart.Signal("m3c0w", Uc1.Module("m3c0").Set);
+	Uc1.Ui.Chart.Signal("m3d0r", Uc1.Module("m3d0").Read);
+	Uc1.Ui.Chart.Signal("m3d0s", Uc1.Module("m3d0").Set);			
+	
+	var gauge = new RadialGauge("Gauge", 10, 50, 90, 80);
+	gauge.Module = Uc1.Module("m3c0");	
+	gauge.Axis.Set(0, 10000, 1000, 200);
+}
+
+public void Run() {
+}
+
+async void Idle(Machine m) {
+	
+}</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Drawing;
+using QB;
+using QB.Controls;
+using QB.Net;
+using QB.Automation;
+
+public class _page_main
+{
+</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+}
+</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+    </Objects>
+    <Selected>false</Selected>
+    <Settings />
+    <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+    <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+    <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+    <CsCodeFooter>
+}
+</CsCodeFooter>
+    <Bounds>
+      <X>0</X>
+      <Y>0</Y>
+      <W>0</W>
+      <H>0</H>
+    </Bounds>
+    <Visible>true</Visible>
+  </Main>
+  <Version>1.0.0</Version>
+  <Bounds>
+    <Location>
+      <X>798</X>
+      <Y>199</Y>
+    </Location>
+    <Size>
+      <Width>1723</Width>
+      <Height>1043</Height>
+    </Size>
+    <X>798</X>
+    <Y>199</Y>
+    <Width>1723</Width>
+    <Height>1043</Height>
+  </Bounds>
+  <Directory>D:\OneDrive - Amium GmbH\Qbook\Main\bin\Debug</Directory>
+  <Filename>analog.to.ak</Filename>
+  <Language>en</Language>
+  <Grid>0</Grid>
+  <DesignMode>false</DesignMode>
+  <TagMode>false</TagMode>
+  <Recorder>false</Recorder>
+</Book>

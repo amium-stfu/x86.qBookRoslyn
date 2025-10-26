@@ -1,0 +1,193 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type='text/xsl' href='qbook.xsl'?>
+<Book xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Main>
+    <Name />
+    <Text />
+    <Objects>
+      <oItem xsi:type="oPage">
+        <Name>main</Name>
+        <Text>Automation.Signalgenerator</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>true</Selected>
+        <Settings />
+        <CsCode>
+Machine M1 = null;
+
+public void Initialize() {	
+
+	M1 = new Machine("M1", (m) =&gt; Idle(m));
+	M1.Ui.DefaultPanels(120);	
+	M1.Ui.Chart.AxisX.Max = 60 * 1000;	
+	
+	SignalGenerator Sg1 = new SignalGenerator("Sin", SignalType.Sin, 1000, 0, 50);
+	SignalGenerator Sg2 = new SignalGenerator("Sawtooth", SignalType.Sawtooth, 5000, 50, 100);				
+	Sg1.Out = new Signal("Sin", 0, "mV", Color.Blue);
+	Sg2.Out = new Signal("Sawtooth", 0, "", Color.OliveDrab);
+	
+	M1.Tag("Sg1", Sg1);
+	M1.Tag("Sg2", Sg2);	
+		
+	M1.Ui.DataPanel.Control(Sg1.Text, new Widget("Sg1", Sg1.Out));
+	M1.Ui.DataPanel.Control(Sg2.Text, new Widget("Sg2", Sg2.Out));
+			
+	M1.Ui.Chart.Signal(Sg1.Text, Sg1.Out);
+	M1.Ui.Chart.Signal(Sg2.Text, Sg2.Out);			
+	
+	M1.Ui.ControlPanel.Control("1", new Button("Periode\n1s", (b) =&gt; Sg1.Period = 1000));
+	M1.Ui.ControlPanel.Control("10", new Button("Periode\n10s", (b) =&gt; Sg1.Period = 10000));
+	M1.Ui.ControlPanel.Control("60", new Button("Periode\n60s", (b) =&gt; Sg1.Period = 60000));
+	
+	M1.Ui.ControlPanel.Control("Sin", new Button("Sin", (b) =&gt; Sg1.SignalType = SignalType.Sin));
+	M1.Ui.ControlPanel.Control("Sawtooth", new Button("Sawtooth",  (b) =&gt; Sg1.SignalType = SignalType.Sawtooth));
+	M1.Ui.ControlPanel.Control("Noise", new Button("Noise", (b) =&gt;  Sg1.SignalType = SignalType.Noise));	
+}
+
+public void Run() {   
+}
+
+async void Idle(Machine m) {   
+}</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Drawing;
+using QB;
+using QB.Controls;
+using QB.Automation;
+
+public class _page_main
+{
+</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+}
+</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+    </Objects>
+    <Selected>false</Selected>
+    <Settings />
+    <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+    <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+    <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+    <CsCodeFooter>
+}
+</CsCodeFooter>
+    <Bounds>
+      <X>0</X>
+      <Y>0</Y>
+      <W>0</W>
+      <H>0</H>
+    </Bounds>
+    <Visible>true</Visible>
+  </Main>
+  <Version>1.0.0</Version>
+  <Bounds>
+    <Location>
+      <X>643</X>
+      <Y>73</Y>
+    </Location>
+    <Size>
+      <Width>953</Width>
+      <Height>731</Height>
+    </Size>
+    <X>643</X>
+    <Y>73</Y>
+    <Width>953</Width>
+    <Height>731</Height>
+  </Bounds>
+  <Directory>D:\OneDrive - Amium GmbH\Qbook\Main\bin\Debug</Directory>
+  <Filename>automation.signalgenerator</Filename>
+  <Language>en</Language>
+  <Grid>5</Grid>
+  <DesignMode>false</DesignMode>
+  <TagMode>false</TagMode>
+  <Recorder>false</Recorder>
+</Book>

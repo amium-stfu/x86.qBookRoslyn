@@ -1,0 +1,188 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type='text/xsl' href='qbook.xsl'?>
+<Book xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Main>
+    <Name />
+    <Text />
+    <Objects>
+      <oItem xsi:type="oPage">
+        <Name>main</Name>
+        <Text>Automation.Counter</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>true</Selected>
+        <Settings />
+        <CsCode>
+
+Machine M1 = null;
+
+public void Initialize() {
+	
+	M1 = new Machine("M");
+	M1.Ui.DefaultPanels(120);
+	
+	Timer t1 = new Timer("Timer", 1000);	
+	t1.Min = 0;
+	t1.Max = 100;
+	t1.Step = 1;
+	
+	M1.Ui.DataView.Control("1", new Widget("widget", M1.Ticks));
+	//M.DataView.Control(new Widget("widget", counter1.Read));
+	
+	M1.Ui.ControlPanel.Control("1", new Button("Timer\n10ms", (b) =&gt; M1.Interval = 10));
+	M1.Ui.ControlPanel.Control("2", new Button("Timer\n100ms", (b) =&gt; M1.Interval = 100));	
+	M1.Ui.ControlPanel.Control("3", new Button("Timer\n1000ms", (b) =&gt; M1.Interval = 1000));	
+	
+	M1.Ui.Chart.Signal("1", M1.Ticks);
+	
+	M1.Ticks.Color = Color.Blue.Name;	
+	
+	M1.Run();
+}
+
+public void Run() {   
+}
+</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Drawing;
+using QB;
+using QB.Controls;
+using QB.Automation;
+
+
+public class _page_main
+{
+</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+}
+</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+    </Objects>
+    <Selected>false</Selected>
+    <Settings />
+    <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+    <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+    <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+    <CsCodeFooter>
+}
+</CsCodeFooter>
+    <Bounds>
+      <X>0</X>
+      <Y>0</Y>
+      <W>0</W>
+      <H>0</H>
+    </Bounds>
+    <Visible>true</Visible>
+  </Main>
+  <Version>1.0.0</Version>
+  <Bounds>
+    <Location>
+      <X>14</X>
+      <Y>84</Y>
+    </Location>
+    <Size>
+      <Width>1471</Width>
+      <Height>762</Height>
+    </Size>
+    <X>14</X>
+    <Y>84</Y>
+    <Width>1471</Width>
+    <Height>762</Height>
+  </Bounds>
+  <Directory>D:\OneDrive - Amium GmbH\Qbook\Main\bin\Debug</Directory>
+  <Filename>automation.counter</Filename>
+  <Language>en</Language>
+  <Grid>5</Grid>
+  <DesignMode>false</DesignMode>
+  <TagMode>false</TagMode>
+  <Recorder>false</Recorder>
+</Book>

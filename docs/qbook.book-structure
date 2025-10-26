@@ -1,0 +1,49 @@
+Book
+  Version :string
+  Bounds :Bounds
+  Language :string
+  Grid :int
+  DesignMode :bool
+  TagMode :bool
+  Recorder :bool ???
+  Main (:oControl :oItem)
+    :oControl
+      Bounds :Bounds //X,Y,W,H
+      Visible :bool
+    :oItem
+      Name :string
+      FullName? //get-only -> not serialized?!
+      Settings :string
+      CsCode :string
+      CsCodeExtra :SerializableDictionary<string, string>
+      x CsCodeHeader
+      x CsCodeFooter
+      PyCode :string
+      PyCodeExtra :SerializableDictionary<string, string>
+      x PyCodeHeader
+      x PyCodeFooter
+      TextDE //remove?
+      TextES //remove?
+      Text :string //-> :SerializableDictionary<string, string> !?
+      Selected :bool
+      Objects :List<oItem>
+        <oItem xsi:type="oPage">
+          Objects :List<
+        <oItem xsi:type="oLayer">
+                  
+  
+  
+  oPage
+    :oControl :oItem
+    HtmlItems :List<oHtml>
+    Section :string
+    rItemWidth :double
+    lItemWidth :double
+    Url :string
+    Code :string
+    
+    
+ oLayer
+    :oControl :oItem
+    
+    

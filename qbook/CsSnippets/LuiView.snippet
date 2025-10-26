@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<CodeSnippets  xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
+	<CodeSnippet Format="1.0.0">
+		<Header>
+			<Title>LuiView</Title>
+			<Shortcut>LuiView</Shortcut>
+			<Description>Creates a class View : DefaultLuiView</Description>
+			<Author>Amium GmbH</Author>
+			<SnippetTypes>
+				<SnippetType>Expansion</SnippetType>
+				<SnippetType>SurroundsWith</SnippetType>
+			</SnippetTypes>
+		</Header>
+		<Snippet>
+			<Declarations>
+				<Literal>
+					<ID>timerName</ID>
+					<Default>timer</Default>
+					<ToolTip>The name of the view's update-timer</ToolTip>
+				</Literal>
+			</Declarations>
+			<Code Language="csharp">
+<![CDATA[public class View : DefaultLuiView {
+	private Timer timer = new Timer("$timerName$", 500);
+	public View(string name) : base (name) {
+		timer.OnElapsed = (t, ea) => UpdateDisplay(t, ea);
+		timer.Run();
+	}
+	
+	void UpdateDisplay(Timer t, TimerEventArgs ea) {
+		string selectBgColor = "#b0e2ff";
+		string defaultColor = "#e6e6e6";
+	}
+	
+	public void Start(string sender) {
+		QB.Logger.Info($"{sender}: {Name}");
+		timer.Run();
+	}
+}
+]]>
+			</Code>
+		</Snippet>
+	</CodeSnippet>
+</CodeSnippets>

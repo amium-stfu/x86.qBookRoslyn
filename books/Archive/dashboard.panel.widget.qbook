@@ -1,0 +1,194 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type='text/xsl' href='qbook.xsl'?>
+<Book xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Main>
+    <Name />
+    <Text />
+    <Objects>
+      <oItem xsi:type="oPage">
+        <Name>main</Name>
+        <Text>Panel.Widget</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>true</Selected>
+        <Settings />
+        <CsCode>
+Machine M1 = null;
+
+public void Initialize() {
+
+	M1 = new Machine("M1");
+	M1.Ui.DefaultPanels(120);
+	
+	SignalGenerator Sg1 = new SignalGenerator("sin", SignalType.Sin, 10000, 0, 10);	
+	M1.Tag("Sg1", Sg1);
+	
+	M1.Ui.DataPanel.Control(Sg1.Text, new Widget("Sg1", Sg1));
+	
+	M1.Ui.ControlPanel.Control("1", new Button("Tu was ..", (b) =&gt; Tue(b as Button)));
+	M1.Ui.ControlPanel.Control("2", new Button("B", (b) =&gt; Test(b as Button, 1)));
+	M1.Ui.ControlPanel.Control("3", new Button("C", (b) =&gt; Test(b as Button, 2)));
+	M1.Ui.ControlPanel.Control("4", new Button("D", (b) =&gt; Test(b as Button, 2)));
+	M1.Ui.ControlPanel.Control("5", new Button("E", (b) =&gt; Test(b as Button, 1)));
+	M1.Ui.ControlPanel.Control("6", new Button("F", (b) =&gt; Test(b as Button, 1)));	
+
+	M1.Ui.Chart.Signal(Sg1.Text, Sg1.Out);
+	M1.Ui.Chart.AxisY1.Set(0, 10, 1, 0.25); 
+}
+
+public void Run() {
+}
+
+public void Tue(Button b) {	
+	b.Text = "... hab ich!";
+}
+
+public void Test(Button b, int i) {	
+	if (b.Text == "F")
+	{
+		return;
+	}	
+	b.Text += i + " :-)";
+	b.BackColor = "red";
+}</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+using QB.Automation;
+
+public class _page_main
+{
+</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+}
+</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+    </Objects>
+    <Selected>false</Selected>
+    <Settings />
+    <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+    <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+    <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+    <CsCodeFooter>
+}
+</CsCodeFooter>
+    <Bounds>
+      <X>0</X>
+      <Y>0</Y>
+      <W>0</W>
+      <H>0</H>
+    </Bounds>
+    <Visible>true</Visible>
+  </Main>
+  <Version>1.0.0</Version>
+  <Bounds>
+    <Location>
+      <X>445</X>
+      <Y>84</Y>
+    </Location>
+    <Size>
+      <Width>1463</Width>
+      <Height>975</Height>
+    </Size>
+    <X>445</X>
+    <Y>84</Y>
+    <Width>1463</Width>
+    <Height>975</Height>
+  </Bounds>
+  <Directory>D:\OneDrive - Amium GmbH\Qbook\Main\bin\Debug</Directory>
+  <Filename>dashboard.panel.widget</Filename>
+  <Language>en</Language>
+  <Grid>0</Grid>
+  <DesignMode>false</DesignMode>
+  <TagMode>false</TagMode>
+  <Recorder>false</Recorder>
+</Book>

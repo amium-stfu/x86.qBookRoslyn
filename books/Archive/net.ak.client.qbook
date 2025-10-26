@@ -1,0 +1,277 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type='text/xsl' href='qbook.xsl'?>
+<Book xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Main>
+    <Name />
+    <Text />
+    <Objects>
+      <oItem xsi:type="oPage">
+        <Name>akclient</Name>
+        <Text>Net.AK.Client</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+          <oItem xsi:type="oLayer">
+            <Name>Tags</Name>
+            <Text />
+            <Objects />
+            <Selected>false</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>true</Selected>
+        <Settings />
+        <CsCode>
+
+public void Initialize() {	
+	
+	AK.Client Akc1 = new AK.Client("Client", "127.0.0.1:7702");
+	Akc1.Ui.DefaultPanels(120);
+	Akc1.Function = (s) =&gt; Idle(s as AK.Client);
+	Akc1.Run();	
+	
+	Akc1.Module("THC").Read = new Signal("THC", 0, "ppm", "red");	
+	Akc1.Module("CO").Read = new Signal("CO", 0, "ppm", Color.Tan);	
+	Akc1.Module("CO2").Read = new Signal("CO2", 0, "Vol%", Color.Orange);	
+	Akc1.Module("O2").Read = new Signal("O2", 0, "Vol%", Color.OrangeRed);	
+	Akc1.Module("NO").Read = new Signal("NO", 0, "ppm", "blue");	
+	Akc1.Module("NO2").Read = new Signal("NO2", 0, "ppm", "green");		
+	
+	foreach(Module module in Akc1.Modules.Values)
+		Akc1.Ui.DataPanel.Control(module.Text, new Widget("widget", module));
+	
+	Akc1.Ui.ControlPanel.Control("Manual", new Button("Manual", (b) =&gt; Akc1.Transeive(" SMAN K0")));
+	Akc1.Ui.ControlPanel.Control("Remote", new Button("Remote", (b) =&gt; Akc1.Transeive(" SREM K0")));
+	Akc1.Ui.ControlPanel.Control("Pause", new Button("Pause", (b) =&gt; Akc1.Transeive(" SPAU K0")));
+	Akc1.Ui.ControlPanel.Control("Standby", new Button("Standby", (b) =&gt; Akc1.Transeive(" STBY K0")));
+	Akc1.Ui.ControlPanel.Control("Sample", new Button("Sample", (b) =&gt; Akc1.Transeive(" SMGA K0")));
+	
+	foreach(Module module in Akc1.Modules.Values)
+		Akc1.Ui.Chart.Signal(module.Text, module.Read);
+	
+	Akc1.Ui.Chart.AxisY1.Set(0, 4000, 200, 100);
+		
+	//akc.Control.Button("ASTZ", new Button("*", 10, 110, 90, 7));	
+	//akc.Button("AKON", new Button("*", 10, 120, 90, 7));	
+}
+
+public void Run() { 	
+}
+
+async void Idle(AK.Client akc) {
+	akc.Ticks.Value %= 100;
+	if (akc.Ticks.Value == 0)
+	{
+		int duration = 500;	
+		string response = akc.Transeive(" ASTZ K0", ref duration);		
+	//	akc.Button("ASTZ").Text = duration + "ms" + response; 
+	}	
+	if ((akc.Ticks.Value % 10) == 5)
+	{
+		int duration = 500;	
+		string response = akc.Transeive(" AKON K0", ref duration);
+		if (response.Length &gt; 50)
+		{			
+			for(int i = 0; i &lt; akc.Modules.Count; i ++)
+			{
+				if (response.Substring(1).Split().Length &gt; i + 2)
+				{
+					Signal signal = akc.Modules.Values.ElementAt(i).Read;
+					if (signal.Unit.Contains("%"))
+						signal.Value = response.Substring(1).Split()[i + 2].ToDouble() / 10000;
+					else 
+						signal.Value = response.Substring(1).Split()[i + 2].ToDouble();
+				}
+			}
+			/*
+			s.Module("THC").Read.Value = response.Substring(1).Split()[2].ToDouble() / 1;
+			s.Module("CO").Read.Value = response.Substring(1).Split()[2].ToDouble() / 1;
+			s.Module("CO2").Read.Value = response.Substring(1).Split()[2].ToDouble() / 10000;
+			s.Module("O2").Read.Value = response.Substring(1).Split()[2].ToDouble() / 10000;
+			s.Module("NO").Read.Value = response.Substring(1).Split()[2].ToDouble() / 1;
+			s.Module("NO2").Read.Value = response.Substring(1).Split()[2].ToDouble() / 1;
+			*/
+			response = response.Substring(0, 20) + "...";
+		}
+	//	akc.Button("AKON").Text = duration + "ms" + response;		
+	}	
+}
+</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Drawing;
+using QB;
+using QB.Controls;
+using QB.Automation;
+using QB.Net;
+
+public class _page_akclient
+{
+</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+}
+</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+    </Objects>
+    <Selected>false</Selected>
+    <Settings />
+    <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+    <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+    <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+    <CsCodeFooter>
+}
+</CsCodeFooter>
+    <Bounds>
+      <X>0</X>
+      <Y>0</Y>
+      <W>0</W>
+      <H>0</H>
+    </Bounds>
+    <Visible>true</Visible>
+  </Main>
+  <Version>1.0.0</Version>
+  <Bounds>
+    <Location>
+      <X>152</X>
+      <Y>119</Y>
+    </Location>
+    <Size>
+      <Width>1471</Width>
+      <Height>762</Height>
+    </Size>
+    <X>152</X>
+    <Y>119</Y>
+    <Width>1471</Width>
+    <Height>762</Height>
+  </Bounds>
+  <Directory>D:\OneDrive - Amium GmbH\Qbook\Main\bin\Debug</Directory>
+  <Filename>net.ak.client</Filename>
+  <Language>en</Language>
+  <Grid>5</Grid>
+  <DesignMode>false</DesignMode>
+  <TagMode>false</TagMode>
+  <Recorder>false</Recorder>
+</Book>

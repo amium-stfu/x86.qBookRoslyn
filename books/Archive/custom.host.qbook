@@ -1,0 +1,238 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type='text/xsl' href='qbook.xsl'?>
+<Book xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Main>
+    <Name />
+    <Text />
+    <Objects>
+      <oItem xsi:type="oPage">
+        <Name>akhost</Name>
+        <Text>.</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>true</Selected>
+        <Settings />
+        <CsCode>
+
+ReaAkHost host = new ReaAkHost("rea7700", 7700);
+
+class ReaAkHost : AK.Server {
+	
+	public delegate void OnCommandDelegate(object s, string command);
+    public OnCommandDelegate OnCommand;
+	
+	public ReaAkHost(string text, int port) : base (text, port) {
+		
+		Signal("THC", new Signal("THC", 1, "ppm", Color.Green));
+		Signal("CO", new Signal("CO", 3, "ppm", Color.Green));
+		Signal("CO2", new Signal("CO2", 4, "ppm", Color.Green));
+		
+		this.OnMessageReceived += MessageReceived;		
+		Interval = 100;		
+		this.OnElapsed += Elapsed;		
+		Run();
+	}	
+	~ReaAkHost() { this.OnMessageReceived -= MessageReceived; }	
+	override public void Abort() { base.Abort(); }	
+	public void Elapsed(Timer timer) {	Signal("THC").Value ++;	}	
+	void Command(string command) { if (OnCommand != null) OnCommand(this, command);	}
+	
+	string MessageReceived(AK.Server s, int port, string client, char dcb, string command, string channel, string[] parameters) {
+		
+		if (command == "AKON")
+		{
+			string valueString = "";
+			foreach(Signal signal in Signals.Values) valueString += signal.Text + " " + signal.Value + " ";			
+			return valueString.Trim();
+		}
+
+		if (command == "ASTZ") return Access + " " + Status;			
+		if (command == "AKEN") return "REA1";					
+		if (command == "SREM")
+		{
+		    Access = "SREM";
+		    return "";
+		}		
+		if (command == "SMAN")
+		{
+		    Access = "SMAN";
+		    return "";
+		}		
+		if (command == "SPAU")
+		{
+		    if (Access == "SMAN") return "OF";
+			if ((Status != "STBY") &amp;&amp; (Status != "SPAU")) return "BS";			
+			Status = "SPAU";
+		    return "";
+		}		
+		if (command == "STBY")
+		{
+		    if (Access == "SMAN") return "OF";			
+			Status = "STBY";
+			Command("Ready");
+		    return "";
+		}		
+		if (command == "SMGA")
+		{
+		    if (Access == "SMAN") return "OF";
+		    if ((Status != "STBY") &amp;&amp; (Status != "SMGA")) return "BS";		   
+			Status = "SMGA";
+			Command("Sample");
+		    return "";
+		}		
+		return "NA";
+	}	
+}
+
+public void Initialize() {	
+	host.OnCommand += ReaHostCommand;
+}
+
+public void ReaHostCommand(object s, string command) {
+}
+	
+
+public void Run() {
+}
+
+</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Drawing;
+using QB;
+using QB.Controls;
+using QB.Net;
+
+public class _page_akhost
+{
+</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+}
+</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+    </Objects>
+    <Selected>false</Selected>
+    <Settings />
+    <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+    <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader>
+    <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+    <CsCodeFooter>
+}
+</CsCodeFooter>
+    <Bounds>
+      <X>0</X>
+      <Y>0</Y>
+      <W>0</W>
+      <H>0</H>
+    </Bounds>
+    <Visible>true</Visible>
+  </Main>
+  <Version>1.0.0</Version>
+  <Bounds>
+    <Location>
+      <X>201</X>
+      <Y>47</Y>
+    </Location>
+    <Size>
+      <Width>1090</Width>
+      <Height>608</Height>
+    </Size>
+    <X>201</X>
+    <Y>47</Y>
+    <Width>1090</Width>
+    <Height>608</Height>
+  </Bounds>
+  <Directory>D:\OneDrive - Amium GmbH\Qbook\Main\bin\Debug</Directory>
+  <Filename>custom.host</Filename>
+  <Language>en</Language>
+  <Grid>0</Grid>
+  <DesignMode>false</DesignMode>
+  <TagMode>false</TagMode>
+  <Recorder>false</Recorder>
+</Book>

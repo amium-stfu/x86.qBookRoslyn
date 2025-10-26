@@ -1,0 +1,192 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type='text/xsl' href='qbook.xsl'?>
+<Book xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Main>
+    <Name />
+    <Text />
+    <Objects>
+      <oItem xsi:type="oPage">
+        <Name>main</Name>
+        <Text>Automation.Pid</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>true</Selected>
+        <Settings />
+        <CsCode>Machine M1 = null;
+
+public void Initialize() {
+
+	M1 = new Machine("M1", (m) =&gt; Idle(m));
+	M1.Ui.DefaultPanels(30);
+
+	var Pid1 = new Pid("Pid1", "°C", 1 * 1000, 1.5, 450, 500);
+	M1.Tags[Pid1.Name] = Pid1;
+
+	var Sim1 = new Simulation("Sim1", "%", 10);
+	M1.Tags[Sim1.Name] = Sim1;
+	Sim1.Out = Pid1;
+	Pid1.Out = Sim1;
+
+	M1.Ui.DataPanel.Controls[Sim1.Name] = new Widget("Sim1", Sim1);
+	M1.Ui.DataPanel.Controls[Pid1.Name] = new Widget("Pid1", Pid1);
+
+	M1.Ui.ControlPanel.Controls["Off"] = new Button("Off", (b) =&gt; Pid1.Set.Value = 0);
+	M1.Ui.ControlPanel.Controls["10"] = new Button("10°C", (b) =&gt; Pid1.Set.Value = 10);
+	M1.Ui.ControlPanel.Controls["20"] = new Button("20°C", (b) =&gt; Pid1.Set.Value = 20);
+	M1.Ui.ControlPanel.Controls["50"] = new Button("50°C", (b) =&gt; Pid1.Set.Value = 50);
+	M1.Ui.ControlPanel.Controls["100"] = new Button("100°C", (b) =&gt; Pid1.Set.Value = 100);
+
+	M1.Ui.Chart.Signals[Pid1.Name] = Pid1;
+	M1.Ui.Chart.Signals[Pid1.Set.Name] = Pid1.Set;
+	M1.Ui.Chart.Signals[Pid1.Out.Name] = Pid1.Out;
+
+	var gauge1 = new RadialGauge("Gauge1", 10, 50, 90, 80);
+	gauge1.Signal = Pid1;
+}
+
+public void Run() {
+}
+
+async public void Idle(Machine m) {
+}
+</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Drawing;
+using QB;
+using QB.Controls;
+using QB.Automation;
+
+public class _page_main
+{
+</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+}
+</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+    </Objects>
+    <Selected>false</Selected>
+    <Settings />
+    <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+    <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+    <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+    <CsCodeFooter>
+}
+</CsCodeFooter>
+    <Bounds>
+      <X>0</X>
+      <Y>0</Y>
+      <W>0</W>
+      <H>0</H>
+    </Bounds>
+    <Visible>true</Visible>
+  </Main>
+  <Version>1.0.0</Version>
+  <Bounds>
+    <Location>
+      <X>1720</X>
+      <Y>76</Y>
+    </Location>
+    <Size>
+      <Width>1201</Width>
+      <Height>757</Height>
+    </Size>
+    <X>1720</X>
+    <Y>76</Y>
+    <Width>1201</Width>
+    <Height>757</Height>
+  </Bounds>
+  <Language>en</Language>
+  <Grid>0</Grid>
+  <DesignMode>false</DesignMode>
+  <TagMode>false</TagMode>
+  <Recorder>false</Recorder>
+</Book>

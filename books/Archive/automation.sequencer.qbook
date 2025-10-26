@@ -1,0 +1,214 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type='text/xsl' href='qbook.xsl'?>
+<Book xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Main>
+    <Name />
+    <Text />
+    <Objects>
+      <oItem xsi:type="oPage">
+        <Name>main</Name>
+        <Text>Automation.Sequencer</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>true</Selected>
+        <Settings />
+        <CsCode>
+Machine M1 = null;
+
+Sequencer Sequencer1 = new Sequencer("Sequencer1");
+
+public void Initialize() {
+	
+	M1 = new Machine("M1", (m) =&gt; Idle(m));
+	M1.Ui.DefaultPanels(30);	
+	
+	M1.Signal("State", new Signal("State", 0, "", Color.Brown));
+	
+	M1.Ui.ControlPanel.Control("abort", new Button("Abort", (b) =&gt; Sequencer1.Abort()));
+	M1.Ui.ControlPanel.Control("run", new Button("Run", (b) =&gt; Check()));
+	
+	var Gauge1 = new RadialGauge("Gauge1", 10, 50, 90, 80);
+	Gauge1.Signal = M1.Signal("State");
+	
+	M1.Ui.Chart.Signal("State", M1.Signal("State"));	
+}
+
+public void Run() {   
+
+}
+
+async void Idle(Machine m) {
+	
+}
+
+public void Check() {
+	Sequencer1.Init(); 
+	Sequencer1.Add("S1", 1000, (s) =&gt; Step1(s), "");
+	Sequencer1.Add("S2", 1000, (s) =&gt; Step2(s), "");
+	Sequencer1.Add("S3", 1000, (s) =&gt; Step3(s), "");	
+	Sequencer1.Run();
+}
+
+public void Step1(Step s) {  
+	if (s.StepState == State.Runnning)
+		M1.Signal("State").Value = 10;
+	else
+		M1.Signal("State").Value = 18;
+}
+
+public void Step2(Step s) {   
+	if (s.StepState == State.Runnning)
+		M1.Signal("State").Value = 20;
+	else
+		M1.Signal("State").Value = 28;
+}
+
+public void Step3(Step s) {   
+	if (s.StepState == State.Runnning)
+		M1.Signal("State").Value = 30;
+	else
+		M1.Signal("State").Value = 38;
+}
+</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Drawing;
+using QB;
+using QB.Controls;
+using QB.Automation;
+
+public class _page_main
+{
+</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+}
+</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+    </Objects>
+    <Selected>false</Selected>
+    <Settings />
+    <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+    <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+    <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+    <CsCodeFooter>
+}
+</CsCodeFooter>
+    <Bounds>
+      <X>0</X>
+      <Y>0</Y>
+      <W>0</W>
+      <H>0</H>
+    </Bounds>
+    <Visible>true</Visible>
+  </Main>
+  <Version>1.0.0</Version>
+  <Bounds>
+    <Location>
+      <X>643</X>
+      <Y>73</Y>
+    </Location>
+    <Size>
+      <Width>953</Width>
+      <Height>731</Height>
+    </Size>
+    <X>643</X>
+    <Y>73</Y>
+    <Width>953</Width>
+    <Height>731</Height>
+  </Bounds>
+  <Directory>D:\OneDrive - Amium GmbH\Qbook\Main\bin\Debug</Directory>
+  <Filename>automation.sequencer</Filename>
+  <Language>en</Language>
+  <Grid>0</Grid>
+  <DesignMode>false</DesignMode>
+  <TagMode>false</TagMode>
+  <Recorder>false</Recorder>
+</Book>

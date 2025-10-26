@@ -1,0 +1,249 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type='text/xsl' href='qbook.xsl'?>
+<Book xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Main>
+    <Name />
+    <Text />
+    <Objects>
+      <oItem xsi:type="oPage">
+        <Name>akserver</Name>
+        <Text>Net.AK.Server</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>true</Selected>
+        <Settings />
+        <CsCode>
+AK.Server Aks1 = new AK.Server("Aks1", new List&lt;int&gt;() {7700, 7800});
+
+public void Initialize() {	
+
+	Aks1.OnMessageReceived = (aks, port, client, dcb, command, channel, parameter) 
+		=&gt; MessageReceived(aks, port, client, dcb, command, channel, parameter);		
+	
+	Aks1.Function = (m) =&gt; Idle(m as AK.Server);
+	Aks1.Ui.DefaultPanels(120);
+	Aks1.Run();
+	
+	Aks1.Signal("THC", new Signal("THC", 0, "ppm", Color.DodgerBlue));		
+	Aks1.Ui.ControlPanel.Control("IP", new Button("?"));
+	Aks1.Ui.ControlPanel.Control("Port", new Button("?"));
+	Aks1.Ui.ControlPanel.Control("ASTZ", new Button("?"));
+	
+	//Aks.ControlPanel = controlPanel;
+	//Akc.ControlPanel.Controls("Port", new Button("?"));
+	//Akc.ControlPanel.Controls("ASTZ", new Button("?"));
+	//Akc.Button("IP", new Button("IP?"));	
+	//Akc.Button("ASTZ", new Button("ASTZ?"));			
+	Aks1.Ui.DataPanel.Controls.Add("THC", new Widget("THC", Aks1.Signal("THC")));
+//	foreach(Button button in Akc.Buttons.Values)
+//		controlCenter.Controls.Add(button.Text, button);	
+//	controlCenter.Controls.Add(machine.Button("Port"));
+//	controlCenter.Controls.Add(machine.Button("IP"));	
+//	controlCenter.Controls.Add(machine.Button("ASTZ"));
+	Aks1.Ui.Chart.Signals.Add("THC", Aks1.Signal("THC"));			
+}
+
+public void Run() { 
+}
+
+public void Idle(AK.Server aks) { 
+	aks.Signal("THC").Value += 1.32043;
+	aks.Signal("THC").Value %= 100;
+}
+
+string MessageReceived(AK.Server aks, int port, string client, char dcb, string command, string channel, string[] parameters) {
+	
+	((Button)aks.Ui.ControlPanel.Controls["IP"]).Text = client;
+	((Button)aks.Ui.ControlPanel.Controls["Port"]).Text = ""+ port;	
+	((Button)aks.Ui.ControlPanel.Controls["ASTZ"]).Text = aks.Access + "/" + aks.Status;
+
+	//if (main.Status == "Pause")
+	//	server1.Status = "SPAU";
+	
+	//if (main.Status == "Ready")
+	//	server1.Status = "STBY";
+	
+	//if (main.Status == "Sample")
+	//	server1.Status = "SMGA";
+	
+	if (command == "ASTZ")	return aks.Access + " " + aks.Status;	
+	if (command == "AKON")	return aks.Signal("THC").Value.ToString("0.00") + " #";
+	if (command == "SREM") { aks.Access = "SREM"; return "";  }
+    if (command == "SMAN") { aks.Access = "SMAN"; return ""; }
+
+    if (command == "SPAU")
+    {
+        if (aks.Access == "SMAN")
+            return "OF";
+        if ((aks.Status != "STBY") &amp;&amp;
+            (aks.Status != "SPAU"))
+            return "BS";
+		
+		aks.Status = "SPAU";
+        //main.Pause();
+        return "";
+    }
+
+    if (command == "STBY")
+    {
+        if (aks.Access == "SMAN") return "OF";		
+		aks.Status = "STBY";
+        //main.Ready();
+        return "";
+    }
+
+    if (command == "SMGA")
+    {
+        if (aks.Access == "SMAN") return "OF";
+        if ((aks.Status != "STBY") &amp;&amp; (aks.Status != "SMGA")) return "BS";       
+		aks.Status = "SMGA";
+		//main.Sample();
+        return "";
+    }
+	
+    return "NA";
+}
+</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Drawing;
+using QB;
+using QB.Controls;
+using QB.Automation;
+using QB.Net;
+
+public class _page_akserver
+{
+</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+}
+</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+    </Objects>
+    <Selected>false</Selected>
+    <Settings />
+    <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+    <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+    <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+    <CsCodeFooter>
+}
+</CsCodeFooter>
+    <Bounds>
+      <X>0</X>
+      <Y>0</Y>
+      <W>0</W>
+      <H>0</H>
+    </Bounds>
+    <Visible>true</Visible>
+  </Main>
+  <Version>1.0.0</Version>
+  <Bounds>
+    <Location>
+      <X>2142</X>
+      <Y>146</Y>
+    </Location>
+    <Size>
+      <Width>800</Width>
+      <Height>600</Height>
+    </Size>
+    <X>2142</X>
+    <Y>146</Y>
+    <Width>800</Width>
+    <Height>600</Height>
+  </Bounds>
+  <Directory>D:\OneDrive - Amium GmbH\Qbook\Main\bin\Debug</Directory>
+  <Filename>net.ak.server</Filename>
+  <Language>en</Language>
+  <Grid>5</Grid>
+  <DesignMode>false</DesignMode>
+  <TagMode>false</TagMode>
+  <Recorder>false</Recorder>
+</Book>

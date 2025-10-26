@@ -1,0 +1,429 @@
+﻿
+namespace Main
+{
+    partial class NewObjectForm
+    {
+        /// <summary>
+        /// Required designer variable.
+        /// </summary>
+        private System.ComponentModel.IContainer components = null;
+
+        /// <summary>
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        #region Windows Form Designer generated code
+
+        /// <summary>
+        /// Required method for Designer support - do not modify
+        /// the contents of this method with the code editor.
+        /// </summary>
+        private void InitializeComponent()
+        {
+            this.buttonClear = new System.Windows.Forms.Button();
+            this.buttonTag = new System.Windows.Forms.Button();
+            this.buttonText = new System.Windows.Forms.Button();
+            this.buttonValve = new System.Windows.Forms.Button();
+            this.buttonPump = new System.Windows.Forms.Button();
+            this.buttonFilter = new System.Windows.Forms.Button();
+            this.panelObjects = new System.Windows.Forms.Panel();
+<<<<<<< HEAD
+            this.buttonPanel = new System.Windows.Forms.Button();
+=======
+            this.buttonDashboard = new System.Windows.Forms.Button();
+            this.buttonPanel = new System.Windows.Forms.Button();
+            this.buttonControl = new System.Windows.Forms.Button();
+>>>>>>> ff8787bb511bf142949b4f7f11ebd5ae1817fd93
+            this.buttonGauge = new System.Windows.Forms.Button();
+            this.buttonValue = new System.Windows.Forms.Button();
+            this.buttonAkc = new System.Windows.Forms.Button();
+            this.buttonButton = new System.Windows.Forms.Button();
+            this.buttonPc = new System.Windows.Forms.Button();
+            this.buttonScratch = new System.Windows.Forms.Button();
+            this.buttonGrid = new System.Windows.Forms.Button();
+            this.buttonUdl = new System.Windows.Forms.Button();
+            this.buttonModule = new System.Windows.Forms.Button();
+<<<<<<< HEAD
+            this.buttonHtml = new System.Windows.Forms.Button();
+=======
+>>>>>>> ff8787bb511bf142949b4f7f11ebd5ae1817fd93
+            this.panelObjects.SuspendLayout();
+            this.SuspendLayout();
+            // 
+            // buttonClear
+            // 
+            this.buttonClear.Font = new System.Drawing.Font("Calibri", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonClear.Location = new System.Drawing.Point(1, 147);
+            this.buttonClear.Name = "buttonClear";
+            this.buttonClear.Size = new System.Drawing.Size(235, 29);
+            this.buttonClear.TabIndex = 3;
+            this.buttonClear.Text = "Cancel";
+            this.buttonClear.UseVisualStyleBackColor = true;
+            this.buttonClear.Click += new System.EventHandler(this.buttonClear_Click);
+            // 
+            // buttonTag
+            // 
+            this.buttonTag.BackColor = System.Drawing.SystemColors.Control;
+            this.buttonTag.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonTag.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonTag.Location = new System.Drawing.Point(2, 2);
+            this.buttonTag.Margin = new System.Windows.Forms.Padding(2);
+            this.buttonTag.Name = "buttonTag";
+            this.buttonTag.Size = new System.Drawing.Size(54, 23);
+            this.buttonTag.TabIndex = 21;
+            this.buttonTag.Text = "Tag";
+            this.buttonTag.UseVisualStyleBackColor = false;
+            this.buttonTag.Click += new System.EventHandler(this.buttonTag_Click);
+            // 
+            // buttonText
+            // 
+            this.buttonText.BackColor = System.Drawing.SystemColors.Control;
+            this.buttonText.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonText.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonText.Location = new System.Drawing.Point(60, 2);
+            this.buttonText.Margin = new System.Windows.Forms.Padding(2);
+            this.buttonText.Name = "buttonText";
+            this.buttonText.Size = new System.Drawing.Size(54, 23);
+            this.buttonText.TabIndex = 21;
+            this.buttonText.Text = "Text";
+            this.buttonText.UseVisualStyleBackColor = false;
+            this.buttonText.Click += new System.EventHandler(this.buttonText_Click);
+            // 
+            // buttonValve
+            // 
+            this.buttonValve.BackColor = System.Drawing.SystemColors.Control;
+            this.buttonValve.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonValve.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonValve.Location = new System.Drawing.Point(2, 70);
+            this.buttonValve.Margin = new System.Windows.Forms.Padding(2);
+            this.buttonValve.Name = "buttonValve";
+            this.buttonValve.Size = new System.Drawing.Size(54, 23);
+            this.buttonValve.TabIndex = 21;
+            this.buttonValve.Text = "Valve";
+            this.buttonValve.UseVisualStyleBackColor = true;
+            this.buttonValve.Visible = false;
+            this.buttonValve.Click += new System.EventHandler(this.buttonValve_Click);
+            // 
+            // buttonPump
+            // 
+            this.buttonPump.BackColor = System.Drawing.SystemColors.Control;
+            this.buttonPump.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonPump.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonPump.Location = new System.Drawing.Point(60, 70);
+            this.buttonPump.Margin = new System.Windows.Forms.Padding(2);
+            this.buttonPump.Name = "buttonPump";
+            this.buttonPump.Size = new System.Drawing.Size(54, 23);
+            this.buttonPump.TabIndex = 21;
+            this.buttonPump.Text = "Pump";
+            this.buttonPump.UseVisualStyleBackColor = true;
+            this.buttonPump.Visible = false;
+            this.buttonPump.Click += new System.EventHandler(this.buttonPump_Click);
+            // 
+            // buttonFilter
+            // 
+            this.buttonFilter.BackColor = System.Drawing.SystemColors.Control;
+            this.buttonFilter.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonFilter.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonFilter.Location = new System.Drawing.Point(118, 70);
+            this.buttonFilter.Margin = new System.Windows.Forms.Padding(2);
+            this.buttonFilter.Name = "buttonFilter";
+            this.buttonFilter.Size = new System.Drawing.Size(54, 23);
+            this.buttonFilter.TabIndex = 21;
+            this.buttonFilter.Text = "Filter";
+            this.buttonFilter.UseVisualStyleBackColor = true;
+            this.buttonFilter.Visible = false;
+            this.buttonFilter.Click += new System.EventHandler(this.buttonFilter_Click);
+            // 
+            // panelObjects
+            // 
+<<<<<<< HEAD
+            this.panelObjects.Controls.Add(this.buttonHtml);
+=======
+            this.panelObjects.Controls.Add(this.buttonDashboard);
+>>>>>>> ff8787bb511bf142949b4f7f11ebd5ae1817fd93
+            this.panelObjects.Controls.Add(this.buttonPanel);
+            this.panelObjects.Controls.Add(this.buttonControl);
+            this.panelObjects.Controls.Add(this.buttonGauge);
+            this.panelObjects.Controls.Add(this.buttonValue);
+            this.panelObjects.Controls.Add(this.buttonAkc);
+            this.panelObjects.Controls.Add(this.buttonButton);
+            this.panelObjects.Controls.Add(this.buttonTag);
+            this.panelObjects.Controls.Add(this.buttonPc);
+            this.panelObjects.Controls.Add(this.buttonScratch);
+            this.panelObjects.Controls.Add(this.buttonGrid);
+            this.panelObjects.Controls.Add(this.buttonText);
+            this.panelObjects.Controls.Add(this.buttonUdl);
+            this.panelObjects.Controls.Add(this.buttonModule);
+            this.panelObjects.Controls.Add(this.buttonValve);
+            this.panelObjects.Controls.Add(this.buttonFilter);
+            this.panelObjects.Controls.Add(this.buttonPump);
+            this.panelObjects.Location = new System.Drawing.Point(1, 3);
+            this.panelObjects.Name = "panelObjects";
+            this.panelObjects.Size = new System.Drawing.Size(237, 148);
+            this.panelObjects.TabIndex = 25;
+            // 
+<<<<<<< HEAD
+=======
+            // buttonDashboard
+            // 
+            this.buttonDashboard.BackColor = System.Drawing.SystemColors.Control;
+            this.buttonDashboard.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonDashboard.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonDashboard.Location = new System.Drawing.Point(118, 123);
+            this.buttonDashboard.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.buttonDashboard.Name = "buttonDashboard";
+            this.buttonDashboard.Size = new System.Drawing.Size(54, 23);
+            this.buttonDashboard.TabIndex = 26;
+            this.buttonDashboard.Text = "Dashboard";
+            this.buttonDashboard.UseVisualStyleBackColor = true;
+            this.buttonDashboard.Click += new System.EventHandler(this.buttonDashboard_Click);
+            // 
+>>>>>>> ff8787bb511bf142949b4f7f11ebd5ae1817fd93
+            // buttonPanel
+            // 
+            this.buttonPanel.BackColor = System.Drawing.SystemColors.Control;
+            this.buttonPanel.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonPanel.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+<<<<<<< HEAD
+            this.buttonPanel.Location = new System.Drawing.Point(118, 123);
+            this.buttonPanel.Margin = new System.Windows.Forms.Padding(2);
+=======
+            this.buttonPanel.Location = new System.Drawing.Point(176, 122);
+            this.buttonPanel.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+>>>>>>> ff8787bb511bf142949b4f7f11ebd5ae1817fd93
+            this.buttonPanel.Name = "buttonPanel";
+            this.buttonPanel.Size = new System.Drawing.Size(54, 23);
+            this.buttonPanel.TabIndex = 25;
+            this.buttonPanel.Text = "Panel";
+            this.buttonPanel.UseVisualStyleBackColor = true;
+<<<<<<< HEAD
+            this.buttonPanel.Visible = false;
+=======
+            // 
+            // buttonControl
+            // 
+            this.buttonControl.BackColor = System.Drawing.SystemColors.Control;
+            this.buttonControl.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonControl.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonControl.Location = new System.Drawing.Point(60, 123);
+            this.buttonControl.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.buttonControl.Name = "buttonControl";
+            this.buttonControl.Size = new System.Drawing.Size(54, 23);
+            this.buttonControl.TabIndex = 24;
+            this.buttonControl.Text = "Control";
+            this.buttonControl.UseVisualStyleBackColor = true;
+            this.buttonControl.Click += new System.EventHandler(this.buttonControl_Click);
+>>>>>>> ff8787bb511bf142949b4f7f11ebd5ae1817fd93
+            // 
+            // buttonGauge
+            // 
+            this.buttonGauge.BackColor = System.Drawing.SystemColors.Control;
+            this.buttonGauge.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonGauge.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+<<<<<<< HEAD
+            this.buttonGauge.Location = new System.Drawing.Point(60, 123);
+            this.buttonGauge.Margin = new System.Windows.Forms.Padding(2);
+=======
+            this.buttonGauge.Location = new System.Drawing.Point(2, 123);
+            this.buttonGauge.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+>>>>>>> ff8787bb511bf142949b4f7f11ebd5ae1817fd93
+            this.buttonGauge.Name = "buttonGauge";
+            this.buttonGauge.Size = new System.Drawing.Size(54, 23);
+            this.buttonGauge.TabIndex = 24;
+            this.buttonGauge.Text = "Gauge";
+            this.buttonGauge.UseVisualStyleBackColor = true;
+            this.buttonGauge.Visible = false;
+            this.buttonGauge.Click += new System.EventHandler(this.buttonGauge_Click);
+            // 
+            // buttonValue
+            // 
+            this.buttonValue.BackColor = System.Drawing.SystemColors.Control;
+            this.buttonValue.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonValue.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+<<<<<<< HEAD
+            this.buttonValue.Location = new System.Drawing.Point(0, 122);
+            this.buttonValue.Margin = new System.Windows.Forms.Padding(2);
+=======
+            this.buttonValue.Location = new System.Drawing.Point(60, 44);
+            this.buttonValue.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+>>>>>>> ff8787bb511bf142949b4f7f11ebd5ae1817fd93
+            this.buttonValue.Name = "buttonValue";
+            this.buttonValue.Size = new System.Drawing.Size(54, 23);
+            this.buttonValue.TabIndex = 23;
+            this.buttonValue.Text = "Value";
+            this.buttonValue.UseVisualStyleBackColor = true;
+            this.buttonValue.Visible = false;
+            // 
+            // buttonAkc
+            // 
+            this.buttonAkc.BackColor = System.Drawing.SystemColors.Control;
+            this.buttonAkc.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonAkc.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonAkc.Location = new System.Drawing.Point(176, 96);
+            this.buttonAkc.Margin = new System.Windows.Forms.Padding(2);
+            this.buttonAkc.Name = "buttonAkc";
+            this.buttonAkc.Size = new System.Drawing.Size(54, 23);
+            this.buttonAkc.TabIndex = 22;
+            this.buttonAkc.Text = "AKC";
+            this.buttonAkc.UseVisualStyleBackColor = true;
+            this.buttonAkc.Visible = false;
+            this.buttonAkc.Click += new System.EventHandler(this.buttonAkc_Click);
+            // 
+            // buttonButton
+            // 
+            this.buttonButton.BackColor = System.Drawing.SystemColors.Control;
+            this.buttonButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonButton.Location = new System.Drawing.Point(60, 96);
+            this.buttonButton.Margin = new System.Windows.Forms.Padding(2);
+            this.buttonButton.Name = "buttonButton";
+            this.buttonButton.Size = new System.Drawing.Size(54, 23);
+            this.buttonButton.TabIndex = 21;
+            this.buttonButton.Text = "Button";
+            this.buttonButton.UseVisualStyleBackColor = false;
+            this.buttonButton.Visible = false;
+            this.buttonButton.Click += new System.EventHandler(this.buttonButton_Click);
+            // 
+            // buttonPc
+            // 
+            this.buttonPc.BackColor = System.Drawing.SystemColors.Control;
+            this.buttonPc.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonPc.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonPc.Location = new System.Drawing.Point(176, 70);
+            this.buttonPc.Margin = new System.Windows.Forms.Padding(2);
+            this.buttonPc.Name = "buttonPc";
+            this.buttonPc.Size = new System.Drawing.Size(54, 23);
+            this.buttonPc.TabIndex = 21;
+            this.buttonPc.Text = "PC";
+            this.buttonPc.UseVisualStyleBackColor = false;
+            this.buttonPc.Visible = false;
+            // 
+            // buttonScratch
+            // 
+            this.buttonScratch.BackColor = System.Drawing.SystemColors.Control;
+            this.buttonScratch.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonScratch.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonScratch.Location = new System.Drawing.Point(2, 29);
+            this.buttonScratch.Margin = new System.Windows.Forms.Padding(2);
+            this.buttonScratch.Name = "buttonScratch";
+            this.buttonScratch.Size = new System.Drawing.Size(54, 23);
+            this.buttonScratch.TabIndex = 21;
+            this.buttonScratch.Text = "Scratch";
+            this.buttonScratch.UseVisualStyleBackColor = false;
+            this.buttonScratch.Click += new System.EventHandler(this.buttonScratch_Click);
+            // 
+            // buttonGrid
+            // 
+            this.buttonGrid.BackColor = System.Drawing.SystemColors.Control;
+            this.buttonGrid.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonGrid.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonGrid.Location = new System.Drawing.Point(118, 2);
+            this.buttonGrid.Margin = new System.Windows.Forms.Padding(2);
+            this.buttonGrid.Name = "buttonGrid";
+            this.buttonGrid.Size = new System.Drawing.Size(54, 23);
+            this.buttonGrid.TabIndex = 21;
+            this.buttonGrid.Text = "Grid";
+            this.buttonGrid.UseVisualStyleBackColor = false;
+            this.buttonGrid.Click += new System.EventHandler(this.buttonGrid_Click);
+            // 
+            // buttonUdl
+            // 
+            this.buttonUdl.BackColor = System.Drawing.SystemColors.Control;
+            this.buttonUdl.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonUdl.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonUdl.Location = new System.Drawing.Point(118, 96);
+            this.buttonUdl.Margin = new System.Windows.Forms.Padding(2);
+            this.buttonUdl.Name = "buttonUdl";
+            this.buttonUdl.Size = new System.Drawing.Size(54, 23);
+            this.buttonUdl.TabIndex = 21;
+            this.buttonUdl.Text = "Udl";
+            this.buttonUdl.UseVisualStyleBackColor = true;
+            this.buttonUdl.Visible = false;
+            this.buttonUdl.Click += new System.EventHandler(this.buttonUdl_Click);
+            // 
+            // buttonModule
+            // 
+            this.buttonModule.BackColor = System.Drawing.SystemColors.Control;
+            this.buttonModule.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonModule.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonModule.Location = new System.Drawing.Point(2, 96);
+            this.buttonModule.Margin = new System.Windows.Forms.Padding(2);
+            this.buttonModule.Name = "buttonModule";
+            this.buttonModule.Size = new System.Drawing.Size(54, 23);
+            this.buttonModule.TabIndex = 21;
+            this.buttonModule.Text = "Module";
+            this.buttonModule.UseVisualStyleBackColor = true;
+            this.buttonModule.Visible = false;
+            this.buttonModule.Click += new System.EventHandler(this.buttonModule_Click);
+            // 
+<<<<<<< HEAD
+            // buttonHtml
+            // 
+            this.buttonHtml.BackColor = System.Drawing.SystemColors.Control;
+            this.buttonHtml.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonHtml.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonHtml.Location = new System.Drawing.Point(176, 123);
+            this.buttonHtml.Margin = new System.Windows.Forms.Padding(2);
+            this.buttonHtml.Name = "buttonHtml";
+            this.buttonHtml.Size = new System.Drawing.Size(54, 23);
+            this.buttonHtml.TabIndex = 26;
+            this.buttonHtml.Text = "HTML";
+            this.buttonHtml.UseVisualStyleBackColor = false;
+            this.buttonHtml.Click += new System.EventHandler(this.buttonHtml_Click);
+            // 
+=======
+>>>>>>> ff8787bb511bf142949b4f7f11ebd5ae1817fd93
+            // NewObjectForm
+            // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.AutoSize = true;
+            this.BackColor = System.Drawing.Color.LightSlateGray;
+            this.ClientSize = new System.Drawing.Size(241, 185);
+            this.Controls.Add(this.panelObjects);
+            this.Controls.Add(this.buttonClear);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.SizableToolWindow;
+            this.Margin = new System.Windows.Forms.Padding(2);
+            this.Name = "NewObjectForm";
+            this.Opacity = 0.9D;
+            this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
+            this.panelObjects.ResumeLayout(false);
+            this.ResumeLayout(false);
+
+        }
+
+        #endregion
+        private System.Windows.Forms.Button buttonClear;
+        private System.Windows.Forms.Button buttonTag;
+        private System.Windows.Forms.Button buttonText;
+        private System.Windows.Forms.Button buttonValve;
+        private System.Windows.Forms.Button buttonPump;
+        private System.Windows.Forms.Button buttonFilter;
+        private System.Windows.Forms.Panel panelObjects;
+        private System.Windows.Forms.Button buttonPc;
+        private System.Windows.Forms.Button buttonModule;
+        private System.Windows.Forms.Button buttonGrid;
+        private System.Windows.Forms.Button buttonScratch;
+        private System.Windows.Forms.Button buttonButton;
+        private System.Windows.Forms.Button buttonUdl;
+        private System.Windows.Forms.Button buttonAkc;
+        private System.Windows.Forms.Button buttonValue;
+        private System.Windows.Forms.Button buttonGauge;
+        private System.Windows.Forms.Button buttonPanel;
+<<<<<<< HEAD
+        private System.Windows.Forms.Button buttonHtml;
+=======
+        private System.Windows.Forms.Button buttonControl;
+        private System.Windows.Forms.Button buttonDashboard;
+>>>>>>> ff8787bb511bf142949b4f7f11ebd5ae1817fd93
+    }
+}

@@ -1,0 +1,483 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type='text/xsl' href='qbook.xsl'?>
+<Book xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Main>
+    <Name />
+    <Text />
+    <Objects>
+      <oItem xsi:type="oPage">
+        <Name>sm</Name>
+        <Text>statemachine</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>false</Selected>
+        <Settings />
+        <CsCode>Machine M1 = null;
+
+public void Initialize() {		
+	
+	M1 = new Machine("M1", (m) =&gt; Standby(m));	
+	M1.Ui.DefaultPanels(30);
+	
+	
+	
+	M1.Signals["s1"] = new Signal("s1", 0, "", "red");
+	M1.Signals["s2"] = new Signal("s2", 0, "", "green");	
+	M1.Signals["s3"] = new Signal("s3", 0, "", "blue");	
+	
+	
+	M1.Ui.DataPanel.Controls["s1"] = new Widget("widget", M1.Signals["s1"]);
+	M1.Ui.DataPanel.Controls["s2"] = new Widget("widget", M1.Signals["s2"]);
+	M1.Ui.DataPanel.Controls["s3"] = new Widget("widget", M1.Signals["s3"]);
+	
+	//M1.Ui.ControlPanel += new Button("Reset", (b) =&gt; M1.Reset());
+	
+	M1.Ui.ControlPanel.Controls["Run"] = new Button("Run", (b) =&gt; M1.Run());
+	
+	M1.Ui.ControlPanel.Controls["Pause"] = new Button("Pause", (b) =&gt; M1.Pause());
+	
+	M1.Ui.ControlPanel.Controls["Finish"] = new Button("Finish", (b) =&gt; M1.Finish());
+	M1.Ui.ControlPanel.Controls["Abort"] = new Button("Abort", (b) =&gt; M1.Abort());	
+	
+	//M1.Ui.Chart += M1.Signals["s1");
+	
+	M1.Ui.Chart.Signals["s2"] = M1.Signals["s2"];
+	
+	
+	
+	M1.Ui.Chart.Signals["s3"] = M1.Signals["s3"];		
+	
+	var Gauge1 = new RadialGauge("Gauge1", 10, 50, 90, 80);
+	Gauge1.Signal = M1.Signals["s3"];		
+	
+	M1.Function = (s) =&gt; Standby(s);
+}
+
+public void Run() {   
+}
+
+public void Pause(Machine m) {	
+}
+
+public void Standby(Machine m) {
+	if (DateTime.Now &gt; m.FunctionStart.AddSeconds(1))
+		m.Function = (m) =&gt; Sample(m);	
+	
+	((Button)m.Ui.ControlPanel.Controls["Run"]).BackColor = "green";
+
+	m.Signals["s1"].Value = 0;
+	m.Signals["s2"].Value = 20;
+	m.Signals["s3"].Value = 50;
+}
+
+public void Sample(Machine m) {
+	if (DateTime.Now &gt; m.FunctionStart.AddSeconds(30))
+		m.Function = (m) =&gt; Standby(m);	
+	
+	if (m.State == State.Runnning) {
+		m.Signals["s1"].Value = 10;	
+		m.Signals["s2"].Value ++;
+		if (m.Signals["s2"].Value &gt; 40)
+			m.Signals["s2"].Value = 20;
+		if (m.Signals["s2"].Value == 40)
+			m.Signals["s3"].Value += 0.5;
+	}
+}</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Drawing;
+using QB;
+using QB.Controls;
+using QB.Net;
+using QB.Automation;
+
+public class _page_sm
+{
+</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+}
+</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+      <oItem xsi:type="oPage">
+        <Name>seq</Name>
+        <Text>sequencer</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>true</Selected>
+        <Settings />
+        <CsCode>Machine M1 = null;
+
+Sequencer Sequencer1 = new Sequencer("Sequencer1");
+
+public void Initialize() {
+	
+	M1 = new Machine("M1", (m) =&gt; Idle(m));
+	M1.Ui.DefaultPanels(30);	
+	
+	M1.Signals["State"] = new Signal("State", 0, "", Color.Brown);
+	
+	M1.Ui.ControlPanel.Controls["abort"] = new Button("Abort", (b) =&gt; Sequencer1.Abort());
+	M1.Ui.ControlPanel.Controls["run"] = new Button("Run", (b) =&gt; Check());
+	
+	var Gauge1 = new RadialGauge("Gauge1", 10, 50, 90, 80);
+	Gauge1.Signal = M1.Signals["State"];
+	
+	M1.Ui.Chart.Signals["State"] = M1.Signals["State"];	
+}
+
+public void Run() {   
+
+}
+
+async void Idle(Machine m) {
+	
+}
+
+public void Check() {
+	Sequencer1.Init(); 
+	Sequencer1.Add("S1", 1000, (s) =&gt; Step1(s), "");
+	Sequencer1.Add("S2", 1000, (s) =&gt; Step2(s), "");
+	Sequencer1.Add("S3", 1000, (s) =&gt; Step3(s), "");	
+	Sequencer1.Run();
+}
+
+public void Step1(Step s) {  
+	if (s.StepState == State.Runnning)
+		M1.Signals["State"].Value = 10;
+	else
+		M1.Signals["State"].Value = 18;
+}
+
+public void Step2(Step s) {   
+	if (s.StepState == State.Runnning)
+		M1.Signals["State"].Value = 20;
+	else
+		M1.Signals["State"].Value = 28;
+}
+
+public void Step3(Step s) {   
+	if (s.StepState == State.Runnning)
+		M1.Signals["State"].Value = 30;
+	else
+		M1.Signals["State"].Value = 38;
+}</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Drawing;
+using QB;
+using QB.Controls;
+using QB.Net;
+using QB.Automation;
+
+public class _page_seq
+{
+</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+}
+</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+      <oItem xsi:type="oPage">
+        <Name>cnt</Name>
+        <Text>counter</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>false</Selected>
+        <Settings />
+        <CsCode>Machine M1 = null;
+
+public void Initialize() {
+	
+	M1 = new Machine("M");
+	M1.Ui.DefaultPanels(120);
+	
+	Timer t1 = new Timer("Timer", 1000);	
+	t1.Min = 0;
+	t1.Max = 100;
+	t1.Step = 1;
+	
+	M1.Ui.DataPanel.Controls["1"] = new Widget("widget", M1.Ticks);
+	//M.DataPanel.Controls[new Widget("widget", counter1.Read));
+	
+	M1.Ui.ControlPanel.Controls["1"] = new Button("Timer\n10ms", (b) =&gt; M1.Interval = 10);
+	M1.Ui.ControlPanel.Controls["2"] = new Button("Timer\n100ms", (b) =&gt; M1.Interval = 100);	
+	M1.Ui.ControlPanel.Controls["3"] = new Button("Timer\n1000ms", (b) =&gt; M1.Interval = 1000);	
+	
+	M1.Ui.Chart.Signals["1"] = M1.Ticks;
+	
+	M1.Ticks.Color = Color.Blue.Name;	
+	
+	M1.Run();
+}
+
+public void Run() {   
+}
+</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Drawing;
+using QB;
+using QB.Controls;
+using QB.Net;
+using QB.Automation;
+
+public class _page_cnt
+{
+</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+}
+</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+    </Objects>
+    <Selected>false</Selected>
+    <Settings />
+    <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+    <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+    <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+    <CsCodeFooter>
+}
+</CsCodeFooter>
+    <Bounds>
+      <X>0</X>
+      <Y>0</Y>
+      <W>0</W>
+      <H>0</H>
+    </Bounds>
+    <Visible>true</Visible>
+  </Main>
+  <Version>1.0.0</Version>
+  <Bounds>
+    <Location>
+      <X>0</X>
+      <Y>0</Y>
+    </Location>
+    <Size>
+      <Width>800</Width>
+      <Height>600</Height>
+    </Size>
+    <X>0</X>
+    <Y>0</Y>
+    <Width>800</Width>
+    <Height>600</Height>
+  </Bounds>
+  <Language>en</Language>
+  <Grid>0</Grid>
+  <DesignMode>false</DesignMode>
+  <TagMode>false</TagMode>
+  <Recorder>false</Recorder>
+</Book>
