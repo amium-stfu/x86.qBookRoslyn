@@ -1,4 +1,6 @@
-﻿namespace qbook.ScintillaEditor
+﻿using qbook.ScintillaEditor.InputControls;
+
+namespace qbook.ScintillaEditor
 {
     partial class FormScintillaEditor
     {
@@ -32,12 +34,6 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormScintillaEditor));
             this.panelSplitter4 = new System.Windows.Forms.Panel();
             this.btnShowFindReplaceOutput = new System.Windows.Forms.Button();
-            this.panelControl = new DevExpress.XtraEditors.PanelControl();
-            this.btnToggleTheme = new System.Windows.Forms.Button();
-            this.btnReload = new System.Windows.Forms.Button();
-            this.btnSave = new System.Windows.Forms.Button();
-            this.btnRebuild = new System.Windows.Forms.Button();
-            this.btnRun = new System.Windows.Forms.Button();
             this.panelStatus = new System.Windows.Forms.Panel();
             this.labelStatus = new System.Windows.Forms.Label();
             this.imageList1 = new System.Windows.Forms.ImageList(this.components);
@@ -70,7 +66,7 @@
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.splitContainer3 = new System.Windows.Forms.SplitContainer();
             this.tableLayoutPanel4 = new System.Windows.Forms.TableLayoutPanel();
-            this.ProjectTree = new System.Windows.Forms.TreeView();
+            this.ProjectTree = new qbook.ScintillaEditor.CustomTreeView();
             this.vBarProjectTree = new qbook.CodeEditor.TreeViewVerticalBar();
             this.panelSplttter1 = new System.Windows.Forms.Panel();
             this.tblViewMethodes = new System.Windows.Forms.TableLayoutPanel();
@@ -80,22 +76,29 @@
             this.tbMethodeFilter = new System.Windows.Forms.TextBox();
             this.lblMethodes = new System.Windows.Forms.Label();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
-            this.tableLayoutPanel2 = new System.Windows.Forms.TableLayoutPanel();
+            this.EditorLayoutPanel = new System.Windows.Forms.TableLayoutPanel();
             this.panelFunctions = new System.Windows.Forms.Panel();
             this.btnShowHidden = new System.Windows.Forms.Button();
             this.vBarEditor = new qbook.CodeEditor.ScintillaVerticalBar();
             this.hBarEditor = new qbook.CodeEditor.ScintillaHorizontalBar();
             this.panelSplitter3 = new System.Windows.Forms.Panel();
-            this.PanelTabs = new System.Windows.Forms.Panel();
             this.panelEditor = new System.Windows.Forms.Panel();
+            this.PanelTabs = new qbook.ScintillaEditor.DoubleBufferedPanel();
             this.TablePanelOutputs = new System.Windows.Forms.TableLayoutPanel();
             this.panelOutputs = new System.Windows.Forms.Panel();
             this.panelSplitter2 = new System.Windows.Forms.Panel();
             this.vBarOutputs = new qbook.CodeEditor.GridViewVerticalBar();
             this.panelOutput = new System.Windows.Forms.Panel();
+            this.tableLayoutPanel3 = new System.Windows.Forms.TableLayoutPanel();
+            this.flowLayoutPageData = new System.Windows.Forms.FlowLayoutPanel();
+            this.panelControl = new System.Windows.Forms.Panel();
+            this.btnToggleTheme = new System.Windows.Forms.Button();
+            this.btnSave = new System.Windows.Forms.Button();
+            this.btnReload = new System.Windows.Forms.Button();
+            this.btnRebuild = new System.Windows.Forms.Button();
+            this.btnRun = new System.Windows.Forms.Button();
             this.dataGridViewBuildOutput = new System.Windows.Forms.DataGridView();
-            ((System.ComponentModel.ISupportInitialize)(this.panelControl)).BeginInit();
-            this.panelControl.SuspendLayout();
+            this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
             this.panelStatus.SuspendLayout();
             this.contextMenuTreeView.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridViewFindReplace)).BeginInit();
@@ -116,11 +119,13 @@
             this.splitContainer2.Panel1.SuspendLayout();
             this.splitContainer2.Panel2.SuspendLayout();
             this.splitContainer2.SuspendLayout();
-            this.tableLayoutPanel2.SuspendLayout();
+            this.EditorLayoutPanel.SuspendLayout();
             this.panelFunctions.SuspendLayout();
             this.TablePanelOutputs.SuspendLayout();
             this.panelOutputs.SuspendLayout();
             this.panelOutput.SuspendLayout();
+            this.tableLayoutPanel3.SuspendLayout();
+            this.panelControl.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridViewBuildOutput)).BeginInit();
             this.SuspendLayout();
             // 
@@ -132,7 +137,7 @@
             this.panelSplitter4.Margin = new System.Windows.Forms.Padding(0, 0, 44, 0);
             this.panelSplitter4.Name = "panelSplitter4";
             this.TablePanelOutputs.SetRowSpan(this.panelSplitter4, 2);
-            this.panelSplitter4.Size = new System.Drawing.Size(2, 143);
+            this.panelSplitter4.Size = new System.Drawing.Size(2, 134);
             this.panelSplitter4.TabIndex = 4;
             // 
             // btnShowFindReplaceOutput
@@ -150,102 +155,6 @@
             this.btnShowFindReplaceOutput.Text = "Find/Replace Output";
             this.btnShowFindReplaceOutput.UseVisualStyleBackColor = false;
             this.btnShowFindReplaceOutput.Click += new System.EventHandler(this.btnShowFindReplaceOutput_Click);
-            // 
-            // panelControl
-            // 
-            this.panelControl.Appearance.BackColor = System.Drawing.Color.White;
-            this.panelControl.Appearance.Options.UseBackColor = true;
-            this.panelControl.BorderStyle = DevExpress.XtraEditors.Controls.BorderStyles.NoBorder;
-            this.panelControl.Controls.Add(this.btnToggleTheme);
-            this.panelControl.Controls.Add(this.btnReload);
-            this.panelControl.Controls.Add(this.btnSave);
-            this.panelControl.Controls.Add(this.btnRebuild);
-            this.panelControl.Controls.Add(this.btnRun);
-            this.panelControl.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panelControl.Location = new System.Drawing.Point(3, 3);
-            this.panelControl.Name = "panelControl";
-            this.panelControl.Size = new System.Drawing.Size(1610, 41);
-            this.panelControl.TabIndex = 5;
-            // 
-            // btnToggleTheme
-            // 
-            this.btnToggleTheme.Dock = System.Windows.Forms.DockStyle.Left;
-            this.btnToggleTheme.FlatAppearance.BorderColor = System.Drawing.Color.White;
-            this.btnToggleTheme.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnToggleTheme.Image = global::qbook.Properties.Resources.dark_theme_64p;
-            this.btnToggleTheme.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.btnToggleTheme.Location = new System.Drawing.Point(314, 0);
-            this.btnToggleTheme.Name = "btnToggleTheme";
-            this.btnToggleTheme.Size = new System.Drawing.Size(91, 41);
-            this.btnToggleTheme.TabIndex = 0;
-            this.btnToggleTheme.Text = "Theme";
-            this.btnToggleTheme.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-            this.btnToggleTheme.UseVisualStyleBackColor = true;
-            this.btnToggleTheme.Click += new System.EventHandler(this.btnToggleTheme_Click);
-            // 
-            // btnReload
-            // 
-            this.btnReload.Dock = System.Windows.Forms.DockStyle.Left;
-            this.btnReload.FlatAppearance.BorderColor = System.Drawing.Color.White;
-            this.btnReload.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnReload.Image = global::qbook.Properties.Resources.arrow_load_24p;
-            this.btnReload.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.btnReload.Location = new System.Drawing.Point(233, 0);
-            this.btnReload.Name = "btnReload";
-            this.btnReload.Size = new System.Drawing.Size(81, 41);
-            this.btnReload.TabIndex = 3;
-            this.btnReload.Text = "Reload";
-            this.btnReload.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-            this.btnReload.UseVisualStyleBackColor = true;
-            this.btnReload.Click += new System.EventHandler(this.btnReload_Click);
-            // 
-            // btnSave
-            // 
-            this.btnSave.Dock = System.Windows.Forms.DockStyle.Left;
-            this.btnSave.FlatAppearance.BorderColor = System.Drawing.Color.White;
-            this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnSave.Image = global::qbook.Properties.Resources.save_24p;
-            this.btnSave.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.btnSave.Location = new System.Drawing.Point(159, 0);
-            this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(74, 41);
-            this.btnSave.TabIndex = 2;
-            this.btnSave.Text = "Save\r\n";
-            this.btnSave.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-            this.btnSave.UseVisualStyleBackColor = true;
-            this.btnSave.Click += new System.EventHandler(this.btnSave_Click);
-            // 
-            // btnRebuild
-            // 
-            this.btnRebuild.Dock = System.Windows.Forms.DockStyle.Left;
-            this.btnRebuild.FlatAppearance.BorderColor = System.Drawing.Color.White;
-            this.btnRebuild.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnRebuild.Image = global::qbook.Properties.Resources.cogBig_48p;
-            this.btnRebuild.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.btnRebuild.Location = new System.Drawing.Point(70, 0);
-            this.btnRebuild.Name = "btnRebuild";
-            this.btnRebuild.Size = new System.Drawing.Size(89, 41);
-            this.btnRebuild.TabIndex = 1;
-            this.btnRebuild.Text = "Save\r\nRebuild";
-            this.btnRebuild.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-            this.btnRebuild.UseVisualStyleBackColor = true;
-            this.btnRebuild.Click += new System.EventHandler(this.btnRebuild_Click);
-            // 
-            // btnRun
-            // 
-            this.btnRun.Dock = System.Windows.Forms.DockStyle.Left;
-            this.btnRun.FlatAppearance.BorderColor = System.Drawing.Color.White;
-            this.btnRun.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnRun.Image = global::qbook.Properties.Resources.play_black_triangle48p;
-            this.btnRun.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.btnRun.Location = new System.Drawing.Point(0, 0);
-            this.btnRun.Name = "btnRun";
-            this.btnRun.Size = new System.Drawing.Size(70, 41);
-            this.btnRun.TabIndex = 0;
-            this.btnRun.Text = "Run";
-            this.btnRun.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-            this.btnRun.UseVisualStyleBackColor = true;
-            this.btnRun.Click += new System.EventHandler(this.btnRun_Click);
             // 
             // panelStatus
             // 
@@ -292,7 +201,7 @@
             this.btnParagraph.FlatAppearance.BorderSize = 2;
             this.btnParagraph.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnParagraph.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.btnParagraph.Image = global::qbook.Properties.Resources.paragraph_icon_icons_com_72298;
+            this.btnParagraph.Image = ((System.Drawing.Image)(resources.GetObject("btnParagraph.Image")));
             this.btnParagraph.Location = new System.Drawing.Point(0, 156);
             this.btnParagraph.Margin = new System.Windows.Forms.Padding(9);
             this.btnParagraph.Name = "btnParagraph";
@@ -310,7 +219,7 @@
             this.btnSnippets.FlatAppearance.BorderSize = 2;
             this.btnSnippets.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnSnippets.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.btnSnippets.Image = global::qbook.Properties.Resources.snippets_icon_237382;
+            this.btnSnippets.Image = ((System.Drawing.Image)(resources.GetObject("btnSnippets.Image")));
             this.btnSnippets.Location = new System.Drawing.Point(0, 117);
             this.btnSnippets.Name = "btnSnippets";
             this.btnSnippets.Size = new System.Drawing.Size(40, 39);
@@ -326,7 +235,7 @@
             this.btnFindReplace.FlatAppearance.BorderSize = 2;
             this.btnFindReplace.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnFindReplace.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.btnFindReplace.Image = global::qbook.Properties.Resources._find_replace_89967;
+            this.btnFindReplace.Image = ((System.Drawing.Image)(resources.GetObject("btnFindReplace.Image")));
             this.btnFindReplace.Location = new System.Drawing.Point(0, 78);
             this.btnFindReplace.Name = "btnFindReplace";
             this.btnFindReplace.Size = new System.Drawing.Size(40, 39);
@@ -343,7 +252,7 @@
             this.btnFind.FlatAppearance.BorderSize = 2;
             this.btnFind.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnFind.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.btnFind.Image = global::qbook.Properties.Resources.seo_social_web_network_internet_340_icon_icons_com_61497;
+            this.btnFind.Image = ((System.Drawing.Image)(resources.GetObject("btnFind.Image")));
             this.btnFind.Location = new System.Drawing.Point(0, 39);
             this.btnFind.Name = "btnFind";
             this.btnFind.Size = new System.Drawing.Size(40, 39);
@@ -360,7 +269,7 @@
             this.btnFormat.FlatAppearance.BorderSize = 2;
             this.btnFormat.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnFormat.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.btnFormat.Image = global::qbook.Properties.Resources._format_indent_increase_89789;
+            this.btnFormat.Image = ((System.Drawing.Image)(resources.GetObject("btnFormat.Image")));
             this.btnFormat.Location = new System.Drawing.Point(0, 0);
             this.btnFormat.Name = "btnFormat";
             this.btnFormat.Size = new System.Drawing.Size(40, 39);
@@ -514,7 +423,7 @@
             this.dataGridViewFindReplace.Dock = System.Windows.Forms.DockStyle.Fill;
             this.dataGridViewFindReplace.Location = new System.Drawing.Point(0, 0);
             this.dataGridViewFindReplace.Name = "dataGridViewFindReplace";
-            this.dataGridViewFindReplace.Size = new System.Drawing.Size(1156, 118);
+            this.dataGridViewFindReplace.Size = new System.Drawing.Size(1156, 109);
             this.dataGridViewFindReplace.TabIndex = 8;
             // 
             // btnEditorOutput
@@ -537,16 +446,15 @@
             // 
             this.tableLayoutPanel1.ColumnCount = 1;
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 17F));
             this.tableLayoutPanel1.Controls.Add(this.splitContainer1, 0, 2);
-            this.tableLayoutPanel1.Controls.Add(this.panelControl, 0, 0);
             this.tableLayoutPanel1.Controls.Add(this.panelStatus, 0, 3);
+            this.tableLayoutPanel1.Controls.Add(this.tableLayoutPanel3, 0, 0);
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
             this.tableLayoutPanel1.RowCount = 4;
-            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 47F));
-            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 4F));
+            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 78F));
+            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 12F));
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 56F));
             this.tableLayoutPanel1.Size = new System.Drawing.Size(1616, 698);
@@ -555,7 +463,7 @@
             // splitContainer1
             // 
             this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitContainer1.Location = new System.Drawing.Point(3, 54);
+            this.splitContainer1.Location = new System.Drawing.Point(3, 93);
             this.splitContainer1.Name = "splitContainer1";
             // 
             // splitContainer1.Panel1
@@ -565,7 +473,7 @@
             // splitContainer1.Panel2
             // 
             this.splitContainer1.Panel2.Controls.Add(this.splitContainer2);
-            this.splitContainer1.Size = new System.Drawing.Size(1610, 585);
+            this.splitContainer1.Size = new System.Drawing.Size(1610, 546);
             this.splitContainer1.SplitterDistance = 382;
             this.splitContainer1.SplitterWidth = 6;
             this.splitContainer1.TabIndex = 4;
@@ -584,8 +492,8 @@
             // splitContainer3.Panel2
             // 
             this.splitContainer3.Panel2.Controls.Add(this.tblViewMethodes);
-            this.splitContainer3.Size = new System.Drawing.Size(382, 585);
-            this.splitContainer3.SplitterDistance = 303;
+            this.splitContainer3.Size = new System.Drawing.Size(382, 546);
+            this.splitContainer3.SplitterDistance = 282;
             this.splitContainer3.SplitterWidth = 6;
             this.splitContainer3.TabIndex = 0;
             // 
@@ -603,19 +511,22 @@
             this.tableLayoutPanel4.RowCount = 2;
             this.tableLayoutPanel4.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel4.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 2F));
-            this.tableLayoutPanel4.Size = new System.Drawing.Size(382, 303);
+            this.tableLayoutPanel4.Size = new System.Drawing.Size(382, 282);
             this.tableLayoutPanel4.TabIndex = 0;
             // 
             // ProjectTree
             // 
+            this.ProjectTree.AllowDrop = true;
             this.ProjectTree.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.ProjectTree.InsertLineY = -1;
             this.ProjectTree.Location = new System.Drawing.Point(3, 3);
             this.ProjectTree.Name = "ProjectTree";
             this.ProjectTree.Scrollable = false;
             this.ProjectTree.ShowLines = false;
-            this.ProjectTree.Size = new System.Drawing.Size(356, 295);
+            this.ProjectTree.Size = new System.Drawing.Size(356, 274);
             this.ProjectTree.TabIndex = 0;
             this.ProjectTree.NodeMouseClick += new System.Windows.Forms.TreeNodeMouseClickEventHandler(this.ProjectTree_NodeMouseClick);
+            this.ProjectTree.DragDrop += new System.Windows.Forms.DragEventHandler(this.ProjectTree_DragDrop);
             // 
             // vBarProjectTree
             // 
@@ -624,7 +535,7 @@
             this.vBarProjectTree.Name = "vBarProjectTree";
             this.vBarProjectTree.SetBackColor = System.Drawing.Color.LightGray;
             this.vBarProjectTree.SetForeColor = System.Drawing.Color.DodgerBlue;
-            this.vBarProjectTree.Size = new System.Drawing.Size(14, 295);
+            this.vBarProjectTree.Size = new System.Drawing.Size(14, 274);
             this.vBarProjectTree.TabIndex = 1;
             // 
             // panelSplttter1
@@ -632,7 +543,7 @@
             this.panelSplttter1.BackColor = System.Drawing.Color.DarkGray;
             this.tableLayoutPanel4.SetColumnSpan(this.panelSplttter1, 2);
             this.panelSplttter1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panelSplttter1.Location = new System.Drawing.Point(0, 301);
+            this.panelSplttter1.Location = new System.Drawing.Point(0, 280);
             this.panelSplttter1.Margin = new System.Windows.Forms.Padding(0);
             this.panelSplttter1.Name = "panelSplttter1";
             this.panelSplttter1.Size = new System.Drawing.Size(382, 2);
@@ -653,7 +564,7 @@
             this.tblViewMethodes.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 22F));
             this.tblViewMethodes.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tblViewMethodes.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 20F));
-            this.tblViewMethodes.Size = new System.Drawing.Size(382, 276);
+            this.tblViewMethodes.Size = new System.Drawing.Size(382, 258);
             this.tblViewMethodes.TabIndex = 0;
             // 
             // gridViewMethodes
@@ -665,7 +576,7 @@
             this.gridViewMethodes.Name = "gridViewMethodes";
             this.gridViewMethodes.RowTemplate.DefaultCellStyle.Font = new System.Drawing.Font("Calibri", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.gridViewMethodes.ScrollBars = System.Windows.Forms.ScrollBars.None;
-            this.gridViewMethodes.Size = new System.Drawing.Size(332, 251);
+            this.gridViewMethodes.Size = new System.Drawing.Size(332, 233);
             this.gridViewMethodes.TabIndex = 0;
             // 
             // vBarMethodes
@@ -676,7 +587,7 @@
             this.vBarMethodes.Name = "vBarMethodes";
             this.vBarMethodes.SetBackColor = System.Drawing.Color.LightGray;
             this.vBarMethodes.SetForeColor = System.Drawing.Color.DodgerBlue;
-            this.vBarMethodes.Size = new System.Drawing.Size(20, 254);
+            this.vBarMethodes.Size = new System.Drawing.Size(20, 236);
             this.vBarMethodes.TabIndex = 2;
             // 
             // panel1
@@ -725,40 +636,40 @@
             // 
             // splitContainer2.Panel1
             // 
-            this.splitContainer2.Panel1.Controls.Add(this.tableLayoutPanel2);
+            this.splitContainer2.Panel1.Controls.Add(this.EditorLayoutPanel);
             // 
             // splitContainer2.Panel2
             // 
             this.splitContainer2.Panel2.Controls.Add(this.TablePanelOutputs);
-            this.splitContainer2.Size = new System.Drawing.Size(1222, 585);
-            this.splitContainer2.SplitterDistance = 436;
+            this.splitContainer2.Size = new System.Drawing.Size(1222, 546);
+            this.splitContainer2.SplitterDistance = 406;
             this.splitContainer2.SplitterWidth = 2;
             this.splitContainer2.TabIndex = 0;
             // 
-            // tableLayoutPanel2
+            // EditorLayoutPanel
             // 
-            this.tableLayoutPanel2.ColumnCount = 5;
-            this.tableLayoutPanel2.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 2F));
-            this.tableLayoutPanel2.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 46F));
-            this.tableLayoutPanel2.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel2.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 20F));
-            this.tableLayoutPanel2.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 20F));
-            this.tableLayoutPanel2.Controls.Add(this.panelFunctions, 1, 1);
-            this.tableLayoutPanel2.Controls.Add(this.vBarEditor, 3, 1);
-            this.tableLayoutPanel2.Controls.Add(this.hBarEditor, 2, 2);
-            this.tableLayoutPanel2.Controls.Add(this.panelSplitter3, 0, 1);
-            this.tableLayoutPanel2.Controls.Add(this.PanelTabs, 2, 0);
-            this.tableLayoutPanel2.Controls.Add(this.panelEditor, 2, 1);
-            this.tableLayoutPanel2.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tableLayoutPanel2.Location = new System.Drawing.Point(0, 0);
-            this.tableLayoutPanel2.Name = "tableLayoutPanel2";
-            this.tableLayoutPanel2.RowCount = 3;
-            this.tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 25F));
-            this.tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 20F));
-            this.tableLayoutPanel2.Size = new System.Drawing.Size(1222, 436);
-            this.tableLayoutPanel2.TabIndex = 0;
-            this.tableLayoutPanel2.Paint += new System.Windows.Forms.PaintEventHandler(this.tableLayoutPanel2_Paint);
+            this.EditorLayoutPanel.ColumnCount = 5;
+            this.EditorLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 2F));
+            this.EditorLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 46F));
+            this.EditorLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.EditorLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 20F));
+            this.EditorLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 20F));
+            this.EditorLayoutPanel.Controls.Add(this.panelFunctions, 1, 1);
+            this.EditorLayoutPanel.Controls.Add(this.vBarEditor, 3, 1);
+            this.EditorLayoutPanel.Controls.Add(this.hBarEditor, 2, 2);
+            this.EditorLayoutPanel.Controls.Add(this.panelSplitter3, 0, 1);
+            this.EditorLayoutPanel.Controls.Add(this.panelEditor, 2, 1);
+            this.EditorLayoutPanel.Controls.Add(this.PanelTabs, 2, 0);
+            this.EditorLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.EditorLayoutPanel.Location = new System.Drawing.Point(0, 0);
+            this.EditorLayoutPanel.Name = "EditorLayoutPanel";
+            this.EditorLayoutPanel.RowCount = 3;
+            this.EditorLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 36F));
+            this.EditorLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.EditorLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 20F));
+            this.EditorLayoutPanel.Size = new System.Drawing.Size(1222, 406);
+            this.EditorLayoutPanel.TabIndex = 0;
+            this.EditorLayoutPanel.Paint += new System.Windows.Forms.PaintEventHandler(this.tableLayoutPanel2_Paint);
             // 
             // panelFunctions
             // 
@@ -769,9 +680,9 @@
             this.panelFunctions.Controls.Add(this.btnFind);
             this.panelFunctions.Controls.Add(this.btnFormat);
             this.panelFunctions.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panelFunctions.Location = new System.Drawing.Point(5, 28);
+            this.panelFunctions.Location = new System.Drawing.Point(5, 39);
             this.panelFunctions.Name = "panelFunctions";
-            this.panelFunctions.Size = new System.Drawing.Size(40, 385);
+            this.panelFunctions.Size = new System.Drawing.Size(40, 344);
             this.panelFunctions.TabIndex = 2;
             // 
             // btnShowHidden
@@ -782,7 +693,7 @@
             this.btnShowHidden.FlatAppearance.BorderSize = 2;
             this.btnShowHidden.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnShowHidden.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.btnShowHidden.Image = global::qbook.Properties.Resources.HiddenCode_p48;
+            this.btnShowHidden.Image = ((System.Drawing.Image)(resources.GetObject("btnShowHidden.Image")));
             this.btnShowHidden.Location = new System.Drawing.Point(0, 195);
             this.btnShowHidden.Margin = new System.Windows.Forms.Padding(9);
             this.btnShowHidden.Name = "btnShowHidden";
@@ -794,18 +705,18 @@
             // vBarEditor
             // 
             this.vBarEditor.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.vBarEditor.Location = new System.Drawing.Point(1182, 25);
+            this.vBarEditor.Location = new System.Drawing.Point(1182, 36);
             this.vBarEditor.Margin = new System.Windows.Forms.Padding(0);
             this.vBarEditor.Name = "vBarEditor";
             this.vBarEditor.SetBackColor = System.Drawing.Color.White;
             this.vBarEditor.SetForeColor = System.Drawing.Color.Black;
-            this.vBarEditor.Size = new System.Drawing.Size(20, 391);
+            this.vBarEditor.Size = new System.Drawing.Size(20, 350);
             this.vBarEditor.TabIndex = 3;
             // 
             // hBarEditor
             // 
             this.hBarEditor.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.hBarEditor.Location = new System.Drawing.Point(48, 416);
+            this.hBarEditor.Location = new System.Drawing.Point(48, 386);
             this.hBarEditor.Margin = new System.Windows.Forms.Padding(0, 0, 0, 3);
             this.hBarEditor.Name = "hBarEditor";
             this.hBarEditor.SetBackColor = System.Drawing.Color.White;
@@ -817,30 +728,32 @@
             // 
             this.panelSplitter3.BackColor = System.Drawing.Color.Silver;
             this.panelSplitter3.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panelSplitter3.Location = new System.Drawing.Point(0, 25);
+            this.panelSplitter3.Location = new System.Drawing.Point(0, 36);
             this.panelSplitter3.Margin = new System.Windows.Forms.Padding(0);
             this.panelSplitter3.Name = "panelSplitter3";
-            this.tableLayoutPanel2.SetRowSpan(this.panelSplitter3, 2);
-            this.panelSplitter3.Size = new System.Drawing.Size(2, 411);
+            this.EditorLayoutPanel.SetRowSpan(this.panelSplitter3, 2);
+            this.panelSplitter3.Size = new System.Drawing.Size(2, 370);
             this.panelSplitter3.TabIndex = 5;
-            // 
-            // PanelTabs
-            // 
-            this.PanelTabs.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.PanelTabs.Location = new System.Drawing.Point(48, 0);
-            this.PanelTabs.Margin = new System.Windows.Forms.Padding(0);
-            this.PanelTabs.Name = "PanelTabs";
-            this.PanelTabs.Size = new System.Drawing.Size(1134, 25);
-            this.PanelTabs.TabIndex = 6;
             // 
             // panelEditor
             // 
             this.panelEditor.BackColor = System.Drawing.Color.White;
             this.panelEditor.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panelEditor.Location = new System.Drawing.Point(51, 28);
+            this.panelEditor.Location = new System.Drawing.Point(51, 36);
+            this.panelEditor.Margin = new System.Windows.Forms.Padding(3, 0, 3, 3);
             this.panelEditor.Name = "panelEditor";
-            this.panelEditor.Size = new System.Drawing.Size(1128, 385);
+            this.panelEditor.Size = new System.Drawing.Size(1128, 347);
             this.panelEditor.TabIndex = 7;
+            // 
+            // PanelTabs
+            // 
+            this.PanelTabs.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.PanelTabs.Location = new System.Drawing.Point(51, 0);
+            this.PanelTabs.Margin = new System.Windows.Forms.Padding(3, 0, 0, 0);
+            this.PanelTabs.Name = "PanelTabs";
+            this.PanelTabs.Size = new System.Drawing.Size(1131, 36);
+            this.PanelTabs.TabIndex = 8;
+            this.PanelTabs.Resize += new System.EventHandler(this.PanelTabs_Resize);
             // 
             // TablePanelOutputs
             // 
@@ -860,7 +773,7 @@
             this.TablePanelOutputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 4F));
             this.TablePanelOutputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 25F));
             this.TablePanelOutputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.TablePanelOutputs.Size = new System.Drawing.Size(1222, 147);
+            this.TablePanelOutputs.Size = new System.Drawing.Size(1222, 138);
             this.TablePanelOutputs.TabIndex = 1;
             // 
             // panelOutputs
@@ -894,7 +807,7 @@
             this.vBarOutputs.Name = "vBarOutputs";
             this.vBarOutputs.SetBackColor = System.Drawing.Color.LightGray;
             this.vBarOutputs.SetForeColor = System.Drawing.Color.DodgerBlue;
-            this.vBarOutputs.Size = new System.Drawing.Size(14, 112);
+            this.vBarOutputs.Size = new System.Drawing.Size(14, 103);
             this.vBarOutputs.TabIndex = 6;
             // 
             // panelOutput
@@ -904,8 +817,127 @@
             this.panelOutput.Location = new System.Drawing.Point(46, 29);
             this.panelOutput.Margin = new System.Windows.Forms.Padding(0);
             this.panelOutput.Name = "panelOutput";
-            this.panelOutput.Size = new System.Drawing.Size(1156, 118);
+            this.panelOutput.Size = new System.Drawing.Size(1156, 109);
             this.panelOutput.TabIndex = 7;
+            // 
+            // tableLayoutPanel3
+            // 
+            this.tableLayoutPanel3.ColumnCount = 2;
+            this.tableLayoutPanel3.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 407F));
+            this.tableLayoutPanel3.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tableLayoutPanel3.Controls.Add(this.flowLayoutPageData, 1, 0);
+            this.tableLayoutPanel3.Controls.Add(this.panelControl, 0, 0);
+            this.tableLayoutPanel3.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tableLayoutPanel3.Location = new System.Drawing.Point(3, 3);
+            this.tableLayoutPanel3.Name = "tableLayoutPanel3";
+            this.tableLayoutPanel3.RowCount = 1;
+            this.tableLayoutPanel3.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tableLayoutPanel3.Size = new System.Drawing.Size(1610, 72);
+            this.tableLayoutPanel3.TabIndex = 8;
+            // 
+            // flowLayoutPageData
+            // 
+            this.flowLayoutPageData.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPageData.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
+            this.flowLayoutPageData.Location = new System.Drawing.Point(407, 0);
+            this.flowLayoutPageData.Margin = new System.Windows.Forms.Padding(0);
+            this.flowLayoutPageData.Name = "flowLayoutPageData";
+            this.flowLayoutPageData.Size = new System.Drawing.Size(1203, 72);
+            this.flowLayoutPageData.TabIndex = 8;
+            // 
+            // panelControl
+            // 
+            this.panelControl.Controls.Add(this.btnToggleTheme);
+            this.panelControl.Controls.Add(this.btnSave);
+            this.panelControl.Controls.Add(this.btnReload);
+            this.panelControl.Controls.Add(this.btnRebuild);
+            this.panelControl.Controls.Add(this.btnRun);
+            this.panelControl.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panelControl.Location = new System.Drawing.Point(0, 0);
+            this.panelControl.Margin = new System.Windows.Forms.Padding(0, 0, 2, 0);
+            this.panelControl.Name = "panelControl";
+            this.panelControl.Size = new System.Drawing.Size(405, 72);
+            this.panelControl.TabIndex = 7;
+            // 
+            // btnToggleTheme
+            // 
+            this.btnToggleTheme.Dock = System.Windows.Forms.DockStyle.Left;
+            this.btnToggleTheme.FlatAppearance.BorderColor = System.Drawing.Color.White;
+            this.btnToggleTheme.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnToggleTheme.Image = ((System.Drawing.Image)(resources.GetObject("btnToggleTheme.Image")));
+            this.btnToggleTheme.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.btnToggleTheme.Location = new System.Drawing.Point(314, 0);
+            this.btnToggleTheme.Name = "btnToggleTheme";
+            this.btnToggleTheme.Size = new System.Drawing.Size(91, 72);
+            this.btnToggleTheme.TabIndex = 0;
+            this.btnToggleTheme.Text = "Theme";
+            this.btnToggleTheme.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.btnToggleTheme.UseVisualStyleBackColor = true;
+            this.btnToggleTheme.Click += new System.EventHandler(this.btnToggleTheme_Click);
+            // 
+            // btnSave
+            // 
+            this.btnSave.Dock = System.Windows.Forms.DockStyle.Left;
+            this.btnSave.FlatAppearance.BorderColor = System.Drawing.Color.White;
+            this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnSave.Image = ((System.Drawing.Image)(resources.GetObject("btnSave.Image")));
+            this.btnSave.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.btnSave.Location = new System.Drawing.Point(240, 0);
+            this.btnSave.Name = "btnSave";
+            this.btnSave.Size = new System.Drawing.Size(74, 72);
+            this.btnSave.TabIndex = 2;
+            this.btnSave.Text = "Save\r\n";
+            this.btnSave.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.btnSave.UseVisualStyleBackColor = true;
+            this.btnSave.Click += new System.EventHandler(this.btnSave_Click);
+            // 
+            // btnReload
+            // 
+            this.btnReload.Dock = System.Windows.Forms.DockStyle.Left;
+            this.btnReload.FlatAppearance.BorderColor = System.Drawing.Color.White;
+            this.btnReload.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnReload.Image = ((System.Drawing.Image)(resources.GetObject("btnReload.Image")));
+            this.btnReload.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.btnReload.Location = new System.Drawing.Point(159, 0);
+            this.btnReload.Name = "btnReload";
+            this.btnReload.Size = new System.Drawing.Size(81, 72);
+            this.btnReload.TabIndex = 3;
+            this.btnReload.Text = "Reload";
+            this.btnReload.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.btnReload.UseVisualStyleBackColor = true;
+            this.btnReload.Click += new System.EventHandler(this.btnReload_Click);
+            // 
+            // btnRebuild
+            // 
+            this.btnRebuild.Dock = System.Windows.Forms.DockStyle.Left;
+            this.btnRebuild.FlatAppearance.BorderColor = System.Drawing.Color.White;
+            this.btnRebuild.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnRebuild.Image = ((System.Drawing.Image)(resources.GetObject("btnRebuild.Image")));
+            this.btnRebuild.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.btnRebuild.Location = new System.Drawing.Point(70, 0);
+            this.btnRebuild.Name = "btnRebuild";
+            this.btnRebuild.Size = new System.Drawing.Size(89, 72);
+            this.btnRebuild.TabIndex = 1;
+            this.btnRebuild.Text = "Rebuild";
+            this.btnRebuild.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.btnRebuild.UseVisualStyleBackColor = true;
+            this.btnRebuild.Click += new System.EventHandler(this.btnRebuild_Click);
+            // 
+            // btnRun
+            // 
+            this.btnRun.Dock = System.Windows.Forms.DockStyle.Left;
+            this.btnRun.FlatAppearance.BorderColor = System.Drawing.Color.White;
+            this.btnRun.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnRun.Image = ((System.Drawing.Image)(resources.GetObject("btnRun.Image")));
+            this.btnRun.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.btnRun.Location = new System.Drawing.Point(0, 0);
+            this.btnRun.Name = "btnRun";
+            this.btnRun.Size = new System.Drawing.Size(70, 72);
+            this.btnRun.TabIndex = 5;
+            this.btnRun.Text = "Run";
+            this.btnRun.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.btnRun.UseVisualStyleBackColor = true;
+            this.btnRun.Click += new System.EventHandler(this.btnRun_Click);
             // 
             // dataGridViewBuildOutput
             // 
@@ -924,8 +956,6 @@
             this.Name = "FormScintillaEditor";
             this.Text = "FormScintillaEditor";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormScintillaEditor_FormClosing);
-            ((System.ComponentModel.ISupportInitialize)(this.panelControl)).EndInit();
-            this.panelControl.ResumeLayout(false);
             this.panelStatus.ResumeLayout(false);
             this.contextMenuTreeView.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.dataGridViewFindReplace)).EndInit();
@@ -947,11 +977,13 @@
             this.splitContainer2.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).EndInit();
             this.splitContainer2.ResumeLayout(false);
-            this.tableLayoutPanel2.ResumeLayout(false);
+            this.EditorLayoutPanel.ResumeLayout(false);
             this.panelFunctions.ResumeLayout(false);
             this.TablePanelOutputs.ResumeLayout(false);
             this.panelOutputs.ResumeLayout(false);
             this.panelOutput.ResumeLayout(false);
+            this.tableLayoutPanel3.ResumeLayout(false);
+            this.panelControl.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.dataGridViewBuildOutput)).EndInit();
             this.ResumeLayout(false);
 
@@ -967,7 +999,6 @@
         private System.Windows.Forms.Button btnEditorOutput;
         private System.Windows.Forms.Panel panelSplitter2;
         private CodeEditor.GridViewVerticalBar vBarOutputs;
-        private DevExpress.XtraEditors.PanelControl panelControl;
         private System.Windows.Forms.Button btnToggleTheme;
         private System.Windows.Forms.Button btnReload;
         private System.Windows.Forms.Button btnSave;
@@ -1002,7 +1033,7 @@
         private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.SplitContainer splitContainer3;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel4;
-        public System.Windows.Forms.TreeView ProjectTree;
+        public CustomTreeView ProjectTree;
         private CodeEditor.TreeViewVerticalBar vBarProjectTree;
         private System.Windows.Forms.Panel panelSplttter1;
         private System.Windows.Forms.TableLayoutPanel tblViewMethodes;
@@ -1010,18 +1041,22 @@
         private CodeEditor.GridViewVerticalBar vBarMethodes;
         private System.Windows.Forms.Label lblMethodes;
         private System.Windows.Forms.SplitContainer splitContainer2;
-        private System.Windows.Forms.TableLayoutPanel tableLayoutPanel2;
+        private System.Windows.Forms.TableLayoutPanel EditorLayoutPanel;
         private System.Windows.Forms.Panel panelFunctions;
         private System.Windows.Forms.Button btnShowHidden;
         private CodeEditor.ScintillaVerticalBar vBarEditor;
         private CodeEditor.ScintillaHorizontalBar hBarEditor;
         private System.Windows.Forms.Panel panelSplitter3;
-        public System.Windows.Forms.Panel PanelTabs;
         private System.Windows.Forms.DataGridView dataGridViewBuildOutput;
         private System.Windows.Forms.Panel panelEditor;
         private System.Windows.Forms.Panel panelOutput;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.TextBox tbMethodeFilter;
         private System.Windows.Forms.ToolStripMenuItem deletePageToolStripMenuItem;
+        private System.Windows.Forms.Panel panelControl;
+        private System.Windows.Forms.TableLayoutPanel tableLayoutPanel3;
+        private System.Windows.Forms.FlowLayoutPanel flowLayoutPageData;
+        private System.ComponentModel.BackgroundWorker backgroundWorker1;
+        private DoubleBufferedPanel PanelTabs;
     }
 }

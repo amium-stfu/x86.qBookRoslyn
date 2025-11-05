@@ -1,19 +1,21 @@
 ﻿using ActiproSoftware.Text.Languages.DotNet;
-using DevExpress.XtraEditors;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 using Microsoft.VisualStudio.SolutionPersistence.Model;
 using QB.Controls;
 using qbook.CodeEditor;
 using ScintillaNET;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Web.UI.WebControls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Forms;
@@ -26,7 +28,8 @@ namespace qbook.ScintillaEditor
 {
     public class DocumentEditor : Scintilla
     {
-
+       
+        
         class LineRange
         {
             internal int Start { get; set; }
@@ -38,18 +41,24 @@ namespace qbook.ScintillaEditor
                 End = end;
             }
         }
-        
         internal enum EditorTheme { Light, Dark }
         private EditorTheme _currentTheme = EditorTheme.Light;
 
         private bool _awaitingCtrlK; // für Tastatur-Akkord (Ctrl+K, Ctrl+C/U)
         private bool _awaitingCtrlM; // für Tastatur-Akkord (Ctrl+M, Ctrl+O/L)
 
-        public bool Active = true;
+        public DataTable Output = new DataTable();
+        public DataTable MethodesClasses = new DataTable();
+        public bool HasErrors => Output.Rows.Count > 0;
+
         private readonly System.Windows.Forms.Timer _chordTimer = new() { Interval = 1500 };
         public System.Windows.Forms.Timer DebounceTimer = new System.Windows.Forms.Timer();
 
+        public oPage Page { get; set; }
+        public RoslynDocument KeyRoslynDoc;
+        public bool Active { get; set; } = true;
         public RoslynDocument RoslynDoc;
+        public string Filename;
 
         public Func<Task> UpdateRoslyn;
         public async Task TriggerUpdateAsync()
@@ -123,15 +132,11 @@ namespace qbook.ScintillaEditor
 
             return base.ProcessCmdKey(ref msg, keyData);
         }
-
-
-
         public void OnUi(System.Action a)
         {
             if (IsDisposed) return;
             if (InvokeRequired) BeginInvoke(a); else a();
         }
-
         public void Init()
         {
 
@@ -222,7 +227,7 @@ namespace qbook.ScintillaEditor
 
             CharAdded += async (s, e) =>
             {
-
+                Core.ThisBook.Modified = true;
                 char c = (char)e.Char;
                 DebounceTimer.Stop(); DebounceTimer.Start();
             };
@@ -266,9 +271,6 @@ namespace qbook.ScintillaEditor
                 }
             };
 
-
-
-
             ApplyLightTheme();
 
             CharAdded += OnlineFormat_CharAdded;
@@ -282,7 +284,6 @@ namespace qbook.ScintillaEditor
                 if (e.Control && e.KeyCode == Keys.V) await UpdateRoslyn();
             };
         }
-
         private void ProtectedLines_KeyDown(object sender, KeyEventArgs e)
         {
             int currentLine = LineFromPosition(CurrentPosition);
@@ -358,17 +359,20 @@ namespace qbook.ScintillaEditor
 
         private List<LineRange> protectedRanges = new List<LineRange>();
         private List<LineRange> hidenRanges = new List<LineRange>();
-
         private bool linesHiden = false;
-
+        public void ResetHideProteced()
+        {
+            protectedRanges.Clear();
+            hidenRanges.Clear();
+        }
         public void HideProtectLines(int start, int stop)
         {
+          
             protectedRanges.Add(new LineRange(start, stop));
             hidenRanges.Add(new LineRange(start, stop));
             HideLines(start, stop);
             linesHiden = true;
         }
-
         public bool LineIsProtected(int line)
         {
             foreach (LineRange range in protectedRanges)
@@ -378,15 +382,15 @@ namespace qbook.ScintillaEditor
             }
             return false;
         }
-
-
         public void ToggleHidenLines()
         {
             if (linesHiden)
             {
+
+
                 foreach (LineRange range in hidenRanges)
                 {
-                    ShowLines(range.Start, range.End);
+                    ShowLines(0, range.End);
                     linesHiden = false;
 
                 }
@@ -402,7 +406,6 @@ namespace qbook.ScintillaEditor
             }
 
         }
-
         internal static class ScintillaConstants
         {
             public const int SCI_SETLINEINDENTATION = 2126;
@@ -419,7 +422,7 @@ namespace qbook.ScintillaEditor
         }
         private void OnlineFormat_CharAdded(object sender, CharAddedEventArgs e)
         {
-           
+   
             if (e.Char == '\n')
             {
                 BeginInvoke(new Action(() =>
@@ -615,10 +618,10 @@ namespace qbook.ScintillaEditor
             _currentTheme = EditorTheme.Light;
             // Grundstil (Visual Studio Light / VS Code Light+ nahe)
             StyleResetDefault();
-            Styles[Style.Default].Font = "Cascadia Code";
-            Styles[Style.Default].Size = 10;
-            Styles[Style.Default].BackColor = Active ? Color.White : Color.FromArgb(180, 180, 180);                // Editor Hintergrund
-            Styles[Style.Default].ForeColor = Color.Black;                // Standard Text
+            Styles[ScintillaNET.Style.Default].Font = "Cascadia Code";
+            Styles[ScintillaNET.Style.Default].Size = 10;
+            Styles[ScintillaNET.Style.Default].BackColor = Active ? Color.White : Color.FromArgb(180, 180, 180);                // Editor Hintergrund
+            Styles[ScintillaNET.Style.Default].ForeColor = Color.Black;                // Standard Text
             StyleClearAll();
             CaretForeColor = Color.Black;
             SetSelectionBackColor(true, Color.FromArgb(0xD7, 0xE4, 0xF2)); // Standard VS Light Selektionsblau ähnlich
@@ -626,10 +629,10 @@ namespace qbook.ScintillaEditor
             ViewWhitespace = WhitespaceMode.Invisible;
 
             // Brace Highlight (angepasst an VS Light – leicht gelblicher Hintergrund)
-            Styles[Style.BraceLight].ForeColor = Color.Black;
-            Styles[Style.BraceLight].BackColor = Color.FromArgb(0xFF, 0xF4, 0xC1);
-            Styles[Style.BraceBad].ForeColor = Color.White;
-            Styles[Style.BraceBad].BackColor = Color.FromArgb(0xE5, 0x51, 0x51);
+            Styles[ScintillaNET.Style.BraceLight].ForeColor = Color.Black;
+            Styles[ScintillaNET.Style.BraceLight].BackColor = Color.FromArgb(0xFF, 0xF4, 0xC1);
+            Styles[ScintillaNET.Style.BraceBad].ForeColor = Color.White;
+            Styles[ScintillaNET.Style.BraceBad].BackColor = Color.FromArgb(0xE5, 0x51, 0x51);
 
             // Folding Marker Farben (neutral grau wie VS)
             var foldFore = Color.FromArgb(0x80, 0x80, 0x80);
@@ -698,7 +701,7 @@ namespace qbook.ScintillaEditor
             CaretLineBackColor = Color.FromArgb(0xF3, 0xF9, 0xFF);
 
             // Line Numbers / Folding Ränder
-            Styles[Style.LineNumber].BackColor = Color.White;
+            Styles[ScintillaNET.Style.LineNumber].BackColor = Color.White;
             SetFoldMarginColor(true, Color.White);
             SetFoldMarginHighlightColor(true, Color.White);
 
@@ -716,16 +719,13 @@ namespace qbook.ScintillaEditor
         {
             _currentTheme = EditorTheme.Dark;
             Color _backColor = Color.FromArgb(40, 40, 40);
-
-
-
             _currentTheme = EditorTheme.Dark;
             // Grundstil (Visual Studio Dark / VS Code Dark+)
             StyleResetDefault();
-            Styles[Style.Default].Font = "Cascadia Code";
-            Styles[Style.Default].Size = 10;
-            Styles[Style.Default].BackColor = Active ? Color.FromArgb(25, 25, 25) : Color.FromArgb(80, 25, 25);          // #1E1E1E
-            Styles[Style.Default].ForeColor = Color.FromArgb(200, 200, 200);          // Standard Text
+            Styles[ScintillaNET.Style.Default].Font = "Cascadia Code";
+            Styles[ScintillaNET.Style.Default].Size = 10;
+            Styles[ScintillaNET.Style.Default].BackColor = Active ? Color.FromArgb(25, 25, 25) : Color.FromArgb(80, 25, 25);          // #1E1E1E
+            Styles[ScintillaNET.Style.Default].ForeColor = Color.FromArgb(200, 200, 200);          // Standard Text
             StyleClearAll();
             CaretForeColor = Color.White;
             SetSelectionBackColor(true, Color.FromArgb(0x26, 0x4F, 0x78));               // Auswahlblau dunkel
@@ -733,10 +733,10 @@ namespace qbook.ScintillaEditor
             ViewWhitespace = WhitespaceMode.Invisible;
 
             // Brace Highlight (VS Dark ähnlich)
-            Styles[Style.BraceLight].ForeColor = Color.FromArgb(0xFF, 0xC0, 0x40);
-            Styles[Style.BraceLight].BackColor = Color.FromArgb(0x33, 0x33, 0x33);
-            Styles[Style.BraceBad].ForeColor = Color.White;
-            Styles[Style.BraceBad].BackColor = Color.FromArgb(0x90, 0x2B, 0x2B);
+            Styles[ScintillaNET.Style.BraceLight].ForeColor = Color.FromArgb(0xFF, 0xC0, 0x40);
+            Styles[ScintillaNET.Style.BraceLight].BackColor = Color.FromArgb(0x33, 0x33, 0x33);
+            Styles[ScintillaNET.Style.BraceBad].ForeColor = Color.White;
+            Styles[ScintillaNET.Style.BraceBad].BackColor = Color.FromArgb(0x90, 0x2B, 0x2B);
 
             // Folding Marker (leicht kontrastreich)
             var foldFore = Color.FromArgb(0xAA, 0xAA, 0xAA);
@@ -813,7 +813,7 @@ namespace qbook.ScintillaEditor
 
 
             // Line Numbers & Folding
-            Styles[Style.LineNumber].BackColor = Color.FromArgb(25, 25, 25); ;
+            Styles[ScintillaNET.Style.LineNumber].BackColor = Color.FromArgb(25, 25, 25); ;
             SetFoldMarginColor(true, Color.FromArgb(25, 25, 25));
             SetFoldMarginHighlightColor(true, Color.FromArgb(25, 25, 25));
 
@@ -838,7 +838,7 @@ namespace qbook.ScintillaEditor
         }
         public System.Drawing.Font GetFont()
         {
-            var style = Styles[Style.Default];
+            var style = Styles[ScintillaNET.Style.Default];
             string fontName = style.Font;
             int baseSize = style.Size;
             int zoom = Zoom;
@@ -867,10 +867,10 @@ namespace qbook.ScintillaEditor
             // Vorherige Markierung löschen
             IndicatorClearRange(16, TextLength);
 
-            FirstVisibleLine = lineNumber - 17;
+            FirstVisibleLine = lineNumber;
             // Neue Positionen berechnen
-            int startPos = Lines[lineNumber].Position;
-            int endPos = Lines[lineNumber].EndPosition;
+            int startPos = Lines[lineNumber-1].Position;
+            int endPos = Lines[lineNumber-1].EndPosition;
 
 
             IndicatorCurrent = 16;
@@ -880,8 +880,10 @@ namespace qbook.ScintillaEditor
             // Position merken
             lastHighlightedStart = startPos;
             lastHighlightedLength = endPos - startPos;
+            GotoPosition(startPos);
+           
+         
         }
-
         public async Task FormatDocumentAsync()
         {
             string input = Text;
@@ -900,7 +902,6 @@ namespace qbook.ScintillaEditor
                 SetEmptySelection(Math.Min(pos, TextLength));
             }
         }
-
         public void ToggleViewEol()
         {
             if (ViewEol)
@@ -916,6 +917,7 @@ namespace qbook.ScintillaEditor
                 ViewWhitespace = WhitespaceMode.VisibleAlways;
             }
         }
+
 
         ContextMenuStrip EditorContextMenu = new ContextMenuStrip();
         private void InitEditorContextMenu()
@@ -1061,7 +1063,6 @@ namespace qbook.ScintillaEditor
                 new IntPtr(column)
             );
         }
-
         public void FindReplace(string find, string replace, SearchFlags flags = SearchFlags.None)
         {
 
@@ -1095,12 +1096,6 @@ namespace qbook.ScintillaEditor
                 pos = SearchInTarget(find);
             }
         }
-
-
-
-
-
-
 
     }
     public static class SimpleIndentFormatter

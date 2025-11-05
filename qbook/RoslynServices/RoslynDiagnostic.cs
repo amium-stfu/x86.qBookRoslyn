@@ -24,6 +24,7 @@ namespace qbook.ScintillaEditor
 
         public static void InitDiagnostic()
         {
+            Output = new DataTable();
             Output.Columns.Add("Page", typeof(string));
             Output.Columns.Add("Class", typeof(string));
             Output.Columns.Add("Position", typeof(string));

@@ -2922,7 +2922,7 @@ using static QbRoot;
             foreach (var doc in dockManager.ActiveDocuments.OfType<SyntaxEditorDocumentWindow>())
                 doc.SaveCode();
 
-            qbook.Core.ThisBook.Serialize();
+          //  qbook.Core.ThisBook.Serialize();
             qbook.Core.ThisBook.Modified = false;
             UpdateStatusVersion();
         }

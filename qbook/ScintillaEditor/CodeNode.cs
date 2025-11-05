@@ -1,7 +1,8 @@
-﻿using DevExpress.DocumentServices.ServiceModel.DataContracts;
+﻿
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using Microsoft.VisualStudio.SolutionPersistence.Model;
 using QB;
 using qbook.CodeEditor;
 using ScintillaNET;
@@ -23,20 +24,16 @@ namespace qbook.ScintillaEditor
 {
     public class CodeNode : TreeNode
     {
-        public int NodeID { get; set; }
+  
         public oPage Page { get; set; }
         public bool Active { get; set; } = true;
         public RoslynDocument RoslynDoc { get; set; }
         public (AdhocWorkspace Workspace, ProjectId Id) Adhoc;
         public DocumentEditor Editor { get; set; }
-
         public DataTable Output = new DataTable();
         public DataTable MethodesClasses = new DataTable();
-
         private RoslynFoldingHelper RoslynFoldingHelper;
-
         public int CodeIndex { get; set; } = 0;
-
         public bool HasErrors => Output.Rows.Count > 0;
         public string SubcodeKey { get; set; }
         public string FileName { get; set; }
@@ -44,7 +41,6 @@ namespace qbook.ScintillaEditor
         public CodeNode PageNode;
 
         System.Windows.Forms.Panel EditorPanel;
-
         public NodeType Type { get; set; }
         public enum NodeType
         {
@@ -55,7 +51,6 @@ namespace qbook.ScintillaEditor
         }
 
         bool init = true;
-
         private static string TrimCodeText(string file)
         {
             file = file.Replace(".cs", "");
@@ -66,35 +61,6 @@ namespace qbook.ScintillaEditor
             else
                 return parts[0];
         }
-
-
-        public CodeNode(string fileName,
-                (AdhocWorkspace Workspace, ProjectId Id) adhoc,
-                RoslynDocument doc,
-                NodeType type = NodeType.Program)
-    : base(fileName.Replace(".cs", ""))
-        {
-            FileName = fileName;
-            Type = type;
-            Adhoc = adhoc;
-            RoslynDoc = doc;
-
-            Editor = new DocumentEditor();
-            Editor.Init();
-            Editor.Text = doc != null ? doc.GetTextAsync().Result.ToString() : "";
-            Editor.EmptyUndoBuffer();
-
-            Editor.ReadOnly = true;
-           // Editor.UpdateRoslyn = () => RoslynDoc; // kein Update nötig
-            Editor.ApplyLightTheme();
-
-            ImageIndex = 1;
-            SelectedImageIndex = 1;
-            Active = true;
-        }
-
-
-
         public CodeNode(oPage page, string fileName, NodeType type, string subcodeKey = null, CodeNode pageNode = null) : base(fileName.Replace(".cs",""))
         {
    
@@ -173,11 +139,11 @@ namespace qbook.ScintillaEditor
         {
             Type = NodeType.Book;
         }
-
         public RoslynDocument UpdateDocument()
         {
             try
             {
+        
                 if (!Active) return RoslynDoc;
                // var workspace = Adhoc.Workspace;
                 var docId = RoslynDoc.Id;
@@ -185,12 +151,14 @@ namespace qbook.ScintillaEditor
                 var newText = SourceText.From(Editor.Text);
                 if (Editor.ReadOnly)
                 {
-                    // If the editor is read-only, we can't update the document
+                  
                     return RoslynDoc;
                 }
                 var updatedDoc = doc.WithText(newText);
                 if (Adhoc.Workspace.TryApplyChanges(updatedDoc.Project.Solution))
                     RoslynDoc = Adhoc.Workspace.CurrentSolution.GetDocument(docId);
+
+              
 
                 return RoslynDoc;
             }
@@ -205,31 +173,32 @@ namespace qbook.ScintillaEditor
             if (Type == NodeType.Book) return;
             Editor.Active = Active;
 
-           
+
             if (!Active)
             {
                 Editor.Text = Editor.Text;
-                LockNecessary();
-                return;
-
             }
-          
-            if (init)
+            else
             {
-                Editor.RoslynDoc = RoslynDoc;
-                await Editor.FormatDocumentAsync();
+
+                if (init)
+                {
+                    Editor.RoslynDoc = RoslynDoc;
+                    await Editor.FormatDocumentAsync();
+                    RoslynFoldingHelper.InitializeFolding(Editor);
+                    RoslynFoldingHelper.ApplyFolding(Editor);
+                    init = false;
+                }
+
+                UpdateDocument();
                 RoslynFoldingHelper.InitializeFolding(Editor);
-                RoslynFoldingHelper.ApplyFolding(Editor);
-                init = false;
-                
+                LockNecessary();
+                await RosylnSemantic.ApplyAsync(Editor, RoslynDoc);
+                Output = await RoslynDiagnostic.ApplyAsync(this);
+                await UpdateMethodesFromRoslynAsync();
             }
 
-            UpdateDocument();
-            RoslynFoldingHelper.InitializeFolding(Editor);
             LockNecessary();
-            await RosylnSemantic.ApplyAsync(Editor, RoslynDoc);
-            Output = await RoslynDiagnostic.ApplyAsync(this);
-            await UpdateMethodesFromRoslynAsync();
 
         }
         public async Task FormatCode()
@@ -241,85 +210,11 @@ namespace qbook.ScintillaEditor
             Editor.FirstVisibleLine = firstVisibleLine;
             Editor.GotoPosition(pos);
         }
-        public async Task<List<string>> GetUsings()
-        {
-            var usings = new List<string>();
-
-            if (RoslynDoc == null) return usings;
-
-            var text = await RoslynDoc.GetTextAsync();
-            string code = Editor.Text;
-
-            var usingMatch = Regex.Match(code, @"^(using\s.+?;\s*)+", RegexOptions.Singleline);
-            if (usingMatch.Success)
-            {
-                var usingLines = usingMatch.Value
-                    .Split(new[] { "\r\n", "\n" }, StringSplitOptions.None)
-                    .Select(line => line.Trim())
-                    .Where(line => !string.IsNullOrWhiteSpace(line));
-
-                usings.AddRange(usingLines);
-            }
-
-          //  foreach (var u in usings) Debug.WriteLine(u);
-            return usings;
-        }
 
         //================ Qbook custom rules =====================
 
         public (int Start, int End) UsingLines;
-        public async Task SyncSubcodeUsings()
-
-        {
-            if (Type != NodeType.SubCode || !Active) return;
-            if (Page == null || PageNode == null || RoslynDoc == null) return;
-
-            var usings = await PageNode.GetUsings();
-            if (usings == null || usings.Count == 0) return;
-
-            var lines = Editor.Text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None).ToList();
-
-            // Finde den using-Block
-            int start = -1, end = -1;
-            for (int i = 0; i < lines.Count; i++)
-            {
-                string line = lines[i].Trim();
-                if (line.StartsWith("using "))
-                {
-                    if (start == -1) start = i;
-                    end = i;
-                }
-                else if (start != -1 && !string.IsNullOrWhiteSpace(line))
-                {
-                    break;
-                }
-            }
-
-            if (start == -1 || end == -1) return;
-
-            // Berechne Positionen im Editor
-            int startPos = Editor.Lines[start].Position;
-            int endPos = Editor.Lines[end].EndPosition;
-
-            // Lösche alten using-Block
-            Editor.TargetStart = startPos;
-            Editor.TargetEnd = endPos;
-            Editor.ReplaceTarget("");
-
-            // Füge neue using-Zeilen ein
-            string newUsings = string.Join("\r\n", usings.Select(u => u.Trim())) + "\r\n";
-            Editor.InsertText(startPos, newUsings);
-
-            int startLine = Editor.LineFromPosition(startPos);
-            int endLine = Editor.LineFromPosition(startPos + newUsings.Length);
-
-            UsingLines.Start = startLine;
-            UsingLines.End = endLine;
-
-        }
-
         bool usingsHidden = false;
- 
         public System.Drawing.Font GetFont()
         {
             var style = Editor.Styles[Style.Default];
@@ -332,9 +227,9 @@ namespace qbook.ScintillaEditor
         }
 
         public (int Start, int End) IncudeBlock;
-
         public void LockNecessary()
         {
+            Editor.ResetHideProteced();
             var lines = Editor.Text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
             int startLine = -1;
             int endLine = -1;
@@ -356,38 +251,10 @@ namespace qbook.ScintillaEditor
                 // Zeilen außerhalb des SubCode-Bereichs ausblenden
                 Editor.HideProtectLines(0, startLine); // Zeilen vor SubCode
                 Editor.HideProtectLines(endLine, Editor.Lines.Count-1); // Zeilen nach SubCode
+                Debug.WriteLine("StartLine " + startLine);
+                Debug.WriteLine("EndLine " + endLine + ".." + Editor.Lines.Count);
             }
         }
-        public void HideIncludeBlock()
-        {
-            if (Type != NodeType.Page) return;
-
-            var editor = Editor;
-            string code = editor.Text;
-            var lines = code.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-
-            int startIndex = -1;
-            int endIndex = -1;
-
-            // Marker suchen (nullbasierter Index!)
-            for (int i = 0; i < lines.Length; i++)
-            {
-                string line = lines[i].Trim();
-                if (line.Contains("//<IncludeStart>")) startIndex = i;
-                if (line.Contains("//<IncludeEnd>"))
-                {
-                    endIndex = i;
-                    break;
-                }
-            }
-            IncudeBlock.Start = startIndex;
-            IncudeBlock.End = endIndex;
-
-            Editor.HideProtectLines(IncudeBlock.Start, IncudeBlock.End);
-            Editor.Refresh();
-            usingsHidden = true;
-        }
-
         public async Task UpdateMethodesFromRoslynAsync()
         {
             MethodesClasses.Clear();
@@ -429,8 +296,6 @@ namespace qbook.ScintillaEditor
         {
             if (Type != NodeType.SubCode || PageNode == null) return;
 
-         
-
             if (Active)
             {
               //  ExcludeCode(this);
@@ -443,8 +308,6 @@ namespace qbook.ScintillaEditor
                 Adhoc.Workspace.TryApplyChanges(newSolution);
 
                 await UpdateRoslyn();
-
-               
             }
             else
             {
@@ -472,7 +335,7 @@ namespace qbook.ScintillaEditor
             string fileName = newName.EndsWith(".cs") ? newName : newName + ".cs";
 
             var originalDocument = RoslynDoc;
-            var solution = Adhoc.Workspace.CurrentSolution;
+            var solution = Core.Workspace.CurrentSolution;
 
             var originText = await originalDocument.GetTextAsync();
 
@@ -523,7 +386,6 @@ namespace qbook.ScintillaEditor
             RoslynDoc = null;
           
         }
-
         public string NewPageCode(string name) => newPage(name);
 
         private string newPage(string name)
@@ -572,7 +434,10 @@ namespace qbook.ScintillaEditor
     using System.Linq;
     using QB;
 
+    public class CustomCode()
+    {{
 
+    }}
     //<CodeEnd>
 }}
 ";

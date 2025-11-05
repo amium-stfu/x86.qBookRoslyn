@@ -10,6 +10,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
+
 namespace QB.Net
 {
     public class ValueDescriptor
@@ -86,6 +87,8 @@ namespace QB.Net
     {
         public static byte[] StructArrayToBytes<T>(T[] structArray) where T : struct
         {
+           
+            
             int totalSize = structArray.Length * Marshal.SizeOf<T>();
             byte[] byteArray = new byte[totalSize];
             MemoryMarshal.Cast<T, byte>(structArray).CopyTo(byteArray);

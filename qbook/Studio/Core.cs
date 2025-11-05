@@ -13,9 +13,12 @@ using IronPython.Runtime.Operations;
 using log4net;
 using log4net.Appender;
 using log4net.Layout;
+using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio.SolutionPersistence.Model;
+using Newtonsoft.Json;
 using QB; //qbookCsScript
 using QB.Net;
+using qbook.CodeEditor;
 using qbook.ScintillaEditor;
 using qbook.Scripting;
 using System;
@@ -29,6 +32,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Printing;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Policy;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -36,17 +40,25 @@ using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
 using System.Xml;
+using System.Text.Json;
 using static IronPython.Modules._ast;
 using static IronPython.Runtime.Exceptions.PythonExceptions;
 using static log4net.Appender.ColoredConsoleAppender;
+using static qbook.ScintillaEditor.FormScintillaEditor;
+
+
 
 namespace qbook
 {
     public class Core
     {
-
-
         public static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
+        public static RoslynService Roslyn;
+        public static AdhocWorkspace Workspace => Roslyn.GetWorkspace;
+        public static ProjectId Id => Roslyn.GetProjectId;
+
+
 
         public static List<string> KnownObjectNames = (new[]
         {
@@ -708,436 +720,7 @@ using System.Text.Json;
 
         //public static List<ErrorFragment> ErrorList = new();
 
-        internal static async Task<bool> CsScriptRebuildAll(string toastInfoText = "Rebuilding Script-Code")
-        {
-            //csScript = null;
-            //LastBuildResult = null;
-            //LastBuildErrors = null;
-
-            //    ErrorList.Clear();
-
-            System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
-            QB.UI.Toast toast = null;
-            try
-            {
-                MainForm.SetStatusText("building...");
-                CsScript_Destroy();
-
-                csScript = null;
-                LastBuildResult = null;
-                LastBuildErrors = null;
-
-                IsBuilding = true;
-                if (false)
-                {
-                    toast = QB.UI.Toast.Show("Please wait...", toastInfoText, 30.0);
-                }
-
-                UpdateProjectAssemblyQbRoot("Core.CsScriptRebuildAll");
-
-                //this.Cursor = Cursors.WaitCursor;
-                //TODO: save all code changes
-                foreach (var page in qbook.Core.ThisBook.Main.Objects)
-                {
-                }
-                //TODO: for now, just save this editor's code
-                //Item.CsCode = codeEditor.Text;
-                //Item.CsCodeHeader = textBoxHeader.Text.Replace("\r", "").Replace("\n", "\r\n");
-                //Item.CsCodeFooter = textBoxFooter.Text.Replace("\r", "").Replace("\n", "\r\n");
-                //Main.Qb.Book.Serialize();
-                //Main.Qb.Book.Modified = false;
-
-                //textBoxOutput.Text = "";
-                //toolStripLabelInfo.Text = "building...";
-                //mainToolStrip.Refresh();
-                CSScript.EvaluatorConfig.Access = EvaluatorAccess.Singleton;
-                CSScript.Evaluator.DebugBuild = true; //generate debugging/reflection information
-                //string mainEntry = " public void Main() { page1.Go(); }";
-
-                //1) get all pages' (header-)usings and join together
-
-                if (false)
-                {
-                    List<string> usingList = new List<string>();
-                    foreach (var page in qbook.Core.ThisBook.Main.Objects)
-                        usingList.AddRange(ScriptHelpers.GetUsingsFromCode(page.CsCodeHeader));
-                    usingList = usingList.Distinct().ToList();
-                    string usingsCode = string.Join("\r\n", usingList.Select(i => "using " + i + ";"));
-                }
-
-
-                if (false)
-                {
-                    string programMain = qbook.Core.ProgramMainCode;
-
-
-                    Regex includeMatchRegex = new Regex(@"\n\s*//\+include (?<include>.*)");
-
-                    //2) join all pages' code
-                    string code = "";
-                    foreach (var page in qbook.Core.ThisBook.Main.Objects)
-                    {
-                        code += "\r\n\r\n//=== class '" + page.FullName + "' ===\r\n";
-                        code += "public class @class_" + page.FullName + " {";
-                        code += "\r\nprivate static string _classpath_ = \"" + page.FullName + "\";";
-                        if (false) //CsCode + add all CsCodeExtras before footer
-                        {
-                            code += "\r\n" + ScriptHelpers.StripUsingsFromCode(page.CsCode, out int offset);
-                            foreach (var subCode in page.CsCodeExtra)
-                            {
-                                //--- Page.sub 'p2' ---
-                                code += "\r\n\r\n//=== class.sub '" + page.FullName + "." + subCode.Key + "' ===";
-                                code += "\r\n" + subCode.Value;
-                                code += "\r\n//=== \\class.sub '" + page.FullName + "." + subCode.Key + "' ===";
-                            }
-                        }
-                        if (true) //CsCode + CsCodeExtras added using //+include nameOfPage -> relative: name or ./name or absolute: /root/page2/name
-                        {
-                            string pageCode = page.CsCode;
-                            //MatchEvaluator ReplaceCodeIncludeEvaluator = new MatchEvaluator(ReplaceCodeInclude);
-                            //var pageCode2 = includeMatchRegex.Replace(pageCode, ReplaceCodeIncludeEvaluator);
-                            var pageCode2 = includeMatchRegex.Replace(pageCode, match => ReplaceCodeInclude(match, page.FullName));
-                            code += pageCode2;
-                        }
-                        code += "\r\n}";
-                        code += "\r\n//=== \\Class '" + page.FullName + "' ===\r\n";
-                    }
-                }
-
-
-
-                //3) fullCode = (joinedHeader + programMain + joinedPages + commonFooter)
-                //string fullCode = usingsCode + Main.Qb.ProgramMainCode + code; // + "}";
-
-                //4) add WatchItem code? -> object[] EvalWatchItems(string[] items)
-                //4) add Immediate code? -> object EvalImmediateCode(string code)
-
-                sw.Restart();
-                //string fullCode = programMain + "\r\n\r\n//---pages---"
-                //    + textBoxHeader.Text
-                //    + codeEditor.Text
-                //    + textBoxFooter.Text;
-
-                CSScript.Evaluator.Reset();
-
-
-                bool inMemory = true;
-                if (inMemory)
-                {
-                    string usingsCode = GetUsingsCode();
-                    string csScriptCode = CsScriptCombineCode();
-                    string fullCode = usingsCode + "\r\n" + qbook.Core.ProgramMainCode + csScriptCode;
-
-                    await Task.Run((System.Action)(() =>
-                    {
-                        int assCount1 = 0;
-                        int assCount2 = 0;
-                        if (Core.ActiveCsAssembly != null)
-                        {
-                            try
-                            {
-                                //ActiveCsAssembly.Unload();
-                                assCount1 = AppDomain.CurrentDomain.GetAssemblies().Length;
-
-                                //2025--07-24 stfu
-                                //  var scriptAssemblyType = (Type)Core.csScript.GetType();
-                                //    scriptAssemblyType.Assembly.Unload();
-
-
-                                if (Core.csScript != null)
-                                {
-                                    var scriptAssemblyType = Core.csScript.GetType();
-                                    scriptAssemblyType.Assembly.Unload();
-                                }
-                                //
-
-
-                                assCount2 = AppDomain.CurrentDomain.GetAssemblies().Length;
-                                QB.Logger.Info($"assemblyCount pre/after unload: {assCount1}/{assCount2}");
-                            }
-                            catch (Exception ex)
-                            {
-                                assCount2 = AppDomain.CurrentDomain.GetAssemblies().Length;
-                                QB.Logger.Debug("#EX unloading active assembly: " + ex.Message + (QB.Logger.ShowStackTrace ? ex.StackTrace : ""));
-                                QB.Logger.Debug($"assemblyCount pre/after unload: {assCount1}/{assCount2}");
-                            }
-                        }
-
-                        //string fullCode = usingsCode + "\r\n" + Main.Qb.ProgramMainCode + code;
-
-                        Core.LastCsScriptBuildCode = fullCode;
-                        CSScript.Evaluator.ReferenceAssembliesFromCode(fullCode);
-                        //csScript = CSScript.Evaluator
-                        //    .ReferenceAssemblyByName("qbookCsScript")
-                        //    .LoadCode(fullCode);
-                        try
-                        {
-                            if (Core.CsScript_ass != null)
-                                Core.CsScript_ass.Unload();
-                        }
-                        catch (Exception ex)
-                        {
-
-                        }
-
-                        /*
-                        //Assembly ass = CSScript.Evaluator
-                        CsScript_ass = CSScript.Evaluator
-                            .ReferenceAssemblyByName("qbookCsScript")
-                            .CompileCode(fullCode);
-                        //CsScript_ass = ass;
-
-                        csScript = CSScript.Evaluator
-                            .ReferenceAssemblyOf(CsScript_ass)
-                            .LoadCode(fullCode);
-                        */
-
-                        int assCount3 = AppDomain.CurrentDomain.GetAssemblies().Length;
-                        bool useFileDll = false;
-                        if (useFileDll) //compile to dll and load
-                        {
-                            var info = new CompileInfo { RootClass = "QbRoot" };
-                            //CsScript_ass?.Unload();
-                            Assembly ass = CSScript.Evaluator
-                                .With(eval => { eval.IsCachingEnabled = true; })
-                                .ReferenceAssemblyByName("qbookCsScript")
-                                .CompileCode(fullCode, info);
-                            Core.ActiveCsAssembly = ass;
-
-                            Core.csScript = ass.CreateObject("*");
-
-                            //csScript = CSScript.Evaluator                               
-                            //    //.ReferenceAssembly(System.IO.Path.GetFullPath("QbRoot.dll"))
-                            //    //.ReferenceAssemblyByName("qbookCsScript")
-                            //    .LoadFile(fullCode);
-
-                            //TODO: goal: compile to script and then assign to csScript= ... maybe compile all the pages-code to .dll and then .LoadFile(Program&QbRoot-code only?!)
-                            //TODO: doesn't load code to csScrip
-                            //TODO: unload?
-                        }
-
-
-                        if (!useFileDll) //in-memory
-                        {
-                            //fullCode = "class Test {}";
-                            try
-                            {
-                                Core.csScript = CSScript.Evaluator
-                                    //.With(eval => { eval.IsAssemblyUnloadingEnabled = true; })
-                                    //.With(eval => { eval.IsCachingEnabled = true; })
-                                    //.With(eval => { eval.IsAssemblyUnloadingEnabled = true; eval.IsCachingEnabled = true; })
-                                    .ReferenceAssembliesFromCode("using System.Windows.Forms;\r\n" + fullCode)
-                                    .ReferenceAssemblyByName("qbookCsScript")
-                                    .LoadCode(fullCode);
-                                MainForm.SetStatusText("Rebuild OK", 3000);
-                            }
-                            catch (Exception ex)
-                            {
-                                Core.LastBuildErrors = ex.Message;
-                                MainForm.SetStatusText("#ERR: build error(s)");
-
-                                string LastErrorDir = Path.Combine(ProgramWorkingDir, "LastError");
-
-                                if (!Directory.Exists(LastErrorDir))
-                                    Directory.CreateDirectory(LastErrorDir);
-
-                                File.WriteAllText(Path.Combine(LastErrorDir, "fullErrorCode.txt"), fullCode);
-                                File.WriteAllText(Path.Combine(LastErrorDir, "ErrorDescription.txt"), ex.Message);
-
-
-                                //Create ErrorList
-
-
-                                string errorString = ex.Message;
-                                string[] lines = fullCode.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
-
-                                var errorRegex = new Regex(@"\((\d+),(\d+)\):\s*error\s+\w+:\s*(.+)");
-
-                                foreach (Match match in errorRegex.Matches(errorString))
-                                {
-                                    int line = int.Parse(match.Groups[1].Value);
-                                    int col = int.Parse(match.Groups[2].Value);
-                                    string description = match.Groups[3].Value.Trim();
-
-                                    string codeLine = lines[line - 1];
-                                    int idx = col - 1;
-
-                                    string fragment = "";
-                                    if (idx < codeLine.Length)
-                                    {
-                                        var tokenMatch = Regex.Match(codeLine.Substring(idx), @"\w+");
-                                        fragment = tokenMatch.Success ? tokenMatch.Value : codeLine.Substring(idx, 1);
-                                    }
-
-                                    int length = fragment.Length;
-
-                                    //   ErrorFragment _error = new(line, col, length, description, fullCode);
-                                    //Debug.WriteLine(_error.ToString());
-
-                                    // ErrorList.Add(_error);
-                                }
-
-                                throw;
-                                //return ex.Message;
-                                //toolStripLabelInfo.Text = "#EX: " + ex.Message;
-                                //toolStripLabelInfo.Text = "#ERR: rebuild took " + sw.ElapsedMilliseconds.ToString() + "ms";
-                                //tabControl3.SelectedTab = tabPageOutput;
-                                //OutputWriteLine("#EX: " + ex.Message);
-                            }
-                        }
-
-                        int assCount4 = AppDomain.CurrentDomain.GetAssemblies().Length;
-                        Console.WriteLine($"assCount: {assCount1}/{assCount2}/{assCount3}/{assCount4}");
-                    }));
-
-                    qbook.Core.ActiveCsAssembly = (System.Reflection.Assembly)csScript.GetType().Assembly; //hope this works?!
-                    CsScript_Init();
-                    LastBuildResult = null;
-                }
-                else
-                {
-
-                    int assCount1 = AppDomain.CurrentDomain.GetAssemblies().Length;
-                    /*
-                    string usingsCode = GetUsingsCode();
-                    string csScriptCode = CsScriptCombineCode();
-                    string fullCode = usingsCode + Main.Qb.ProgramMainCode + csScriptCode;
-                    string assCode = usingsCode + csScriptCode;
-                    CSScript.Evaluator.ReferenceAssembliesFromCode(fullCode);
-
-                    if (true)
-                    {
-                        var info = new CompileInfo { RootClass = "QbRoot" };
-                        //CsScript_ass?.Unload();
-                        Assembly ass = CSScript.Evaluator
-                            .ReferenceAssemblyByName("qbookCsScript")
-                            .CompileCode(fullCode, info);
-
-                        CsScript_ass = ass;
-                        csScript = CSScript.Evaluator
-                            .ReferenceAssembly(ass)
-                            .LoadMethod(Main.Qb.MethodMainCode_2step);
-                    }                  
-
-                    csScript.Test();
-                    csScript.Main1(null);
-                    */
-
-                    if (scriptDomain != null)
-                    {
-                        try
-                        {
-                            //csScript._DestroyClasses(null);
-                            AppDomain.Unload(scriptDomain);
-                        }
-                        catch (Exception ex)
-                        {
-                            //ERR
-                        }
-                        scriptDomain = null;
-                    }
-                    int assCount2 = AppDomain.CurrentDomain.GetAssemblies().Length;
-
-                    scriptDomain = AppDomain.CreateDomain("MyAppDomain", null, new AppDomainSetup
-                    {
-                        ApplicationName = "MyAppDomain",
-                        ShadowCopyFiles = "true",
-                        PrivateBinPath = "MyAppDomainBin",
-                    });
-
-                    qbook.Core.LastScriptDllFilename = null;
-                    var job = (Job)scriptDomain.CreateInstanceAndUnwrap(Assembly.GetExecutingAssembly().FullName, typeof(Job).FullName);
-                    int assCount3 = AppDomain.CurrentDomain.GetAssemblies().Length;
-                    var assFile = job.Do(qbook.Core.ThisBook);
-                    qbook.Core.LastScriptDllFilename = assFile;
-                    //Main.Qb.Book = book;
-
-                    if (false)
-                    {
-                        //Assembly ass = Assembly.LoadFrom(assFile);
-                        Assembly ass = Assembly.Load(File.ReadAllBytes(assFile));
-
-                        csScript = ass.CreateObject("*");
-
-                        //csScript.Print("foo1");
-                        //csScript.Test01();
-                        //csScript.ShowDialog("Hello World!");
-
-                        qbook.Core.ActiveCsAssembly = (System.Reflection.Assembly)csScript.GetType().Assembly; //hope this works?! 
-                        CsScript_Init();
-                        //csScript._RunClasses(null);
-                        LastBuildResult = null;
-                        //return csScript;
-                    }
-
-                    int assCount4 = AppDomain.CurrentDomain.GetAssemblies().Length;
-                    Console.WriteLine($"assCount: {assCount1}/{assCount2}/{assCount3}/{assCount4}");
-
-
-                }
-
-                //Main.Qb.ActiveCsAssembly = (System.Reflection.Assembly)csScript.GetType().Assembly; //hope this works?!
-
-                toast?.Close();
-
-                if (false) //1-by-1
-                {
-                    foreach (var page in qbook.Core.ThisBook.Main.Objects) //.Where(p => p.Name == "p2"))
-                    {
-                        string pageCode = page.CsCodeHeader + "\r\n" + page.CsCode + "\r\n" + page.CsCodeFooter;
-                        //CSScript.Evaluator.ReferenceAssembliesFromCode(pageCode);
-                        CSScript.Evaluator.LoadCode(pageCode);
-                    }
-                    CSScript.Evaluator.ReferenceAssembliesFromCode(qbook.Core.ProgramMainCode);
-                    csScript = CSScript.Evaluator.LoadCode(qbook.Core.ProgramMainCode);
-                    foreach (var page in qbook.Core.ThisBook.Main.Objects) //.Where(p => p.Name == "p2"))
-                    {
-                        string pageCode = page.CsCodeHeader + "\r\n" + page.CsCode + "\r\n" + page.CsCodeFooter;
-                        csScript = CSScript.Evaluator.LoadCode(pageCode);
-                    }
-                }
-                //CSScript.Evaluator.ReferenceAssembliesFromCode(Main.Qb.ProgramMainCode);
-                //script = CSScript.Evaluator.LoadCode(Main.Qb.ProgramMainCode);
-
-                /*
-                script = CSScript.Evaluator
-                    //.ReferenceAssemblyOf(this)
-                    //.ReferenceAssemblyByName("qbookCsScript")
-                    //.LoadMethod(fullCode)
-                    .ReferenceAssembliesFromCode(usingsCode + Main.Qb.ProgramMainCode)
-                    .ReferenceAssembliesFromCode("using static QbRoot;\r\n" + code)
-                    //.LoadMethod("using static QbRoot;\r\n" + code)
-                    //.LoadMethod("\r\n" + code)
-                    //.LoadMethod("class Foo {}")
-                    .LoadMethod(Main.Qb.ProgramMainCode)
-                    ;
-                */
-                sw.Stop();
-                //toolStripLabelInfo.Text = "Success: rebuild took " + sw.ElapsedMilliseconds.ToString() + "ms";
-                //CsScript_Init();
-                //LastBuildResult = null;
-                return true;
-            }
-            catch (Exception ex)
-            {
-                //toolStripLabelInfo.Text = "#ERR: rebuild took " + sw.ElapsedMilliseconds.ToString() + "ms";
-                //tabControl3.SelectedTab = tabPageOutput;
-                //OutputWriteLine("--- ERRORS ---\r\n" + ex.Message);
-                LastBuildResult = "#ERR in script code";
-                QB.Logger.Error("#EX building C# code:" + ex.Message + "\r\n" + ex.StackTrace);
-                throw ex;
-                return false;
-            }
-            finally
-            {
-                IsBuilding = false;
-                //Main.QB.Logger.InvalidateLog(); //HACK: otherwise no more log messages are received?!
-                toast?.Close();
-                sw.Stop();
-                //this.Cursor = Cursors.Default;
-            }
-        }
-
+    
         static string ReplaceCodeInclude(Match m, string pathToPage = "")
         {
             if (!m.Groups[1].Success)
@@ -1200,8 +783,6 @@ using System.Text.Json;
                    + "\r\n";
             }
         }
-
-
         internal static void CsScript_Init()
         {
             if (csScript != null)
@@ -1225,7 +806,6 @@ using System.Text.Json;
                 }
             }
         }
-
 
         internal static async Task<bool> RunCsScript_Run()
         {
@@ -1596,8 +1176,8 @@ var @class_main = new @class_main();
 
             (new System.Threading.Thread(IdleThread) { IsBackground = true }).Start();
 
-            CsScriptInit();
-            PyScriptInit();
+            //CsScriptInit();
+            //PyScriptInit();
         }
 
         //HALE: HACK? -> attempt a static-destructor for 
@@ -1696,87 +1276,63 @@ var @class_main = new @class_main();
             return false;
         }
 
-        public static FormScintillaEditor ScintillaEditor = null;
-        internal static void ShowFormScintillaEditor(oPage page = null)
+        public static FormScintillaEditor _editor = null;
+
+        internal async static Task ShowFormScintillaEditor(oPage page = null)
         {
             if (!VerifyDeveloperLicense()) return;
 
-
-            if (!Core.ScintillaEditor.Visible)
+            if (_editor == null || _editor.IsDisposed || !_editor.IsHandleCreated)
             {
-                if (Core.ScintillaEditor.InvokeRequired)
-                    Core.ScintillaEditor.Invoke((MethodInvoker)(() => Core.ScintillaEditor.Show()));
+                _editor = null;
+                if (Application.OpenForms.Count > 0)
+                {
+                    Application.OpenForms[0].Invoke((MethodInvoker)(() =>
+                    {
+                        _editor = new FormScintillaEditor();
+                    }));
+                   
+                }
                 else
-                    Core.ScintillaEditor.Show();
+                {
+                    _editor = new FormScintillaEditor();
+                    
+                }
             }
+
+
+            if (_editor.InvokeRequired)
+                _editor.Invoke((System.Action)(async () =>
+                {
+                    await _editor.CreateProjectTree();
+                   
+
+                    if (Roslyn.ErrorFiles.Count > 0)
+                        await _editor.VisualRebuild();
+                    else
+                        await _editor.OpenNodeByName(page.Name);
+
+                    _editor.Show();
+                }));
             else
             {
-                if (Core.ScintillaEditor.InvokeRequired)
-                    Core.ScintillaEditor.Invoke((MethodInvoker)(() => Core.ScintillaEditor.BringToFront()));
+                await _editor.CreateProjectTree();
+                
+
+                if (Roslyn.ErrorFiles.Count > 0)
+                    await _editor.VisualRebuild();
                 else
-                    Core.ScintillaEditor.BringToFront();
-            }
+                    await _editor.OpenNodeByName(page.Name);
 
-            ScintillaEditor.SelectNodeByName(page.Name);
+                _editor.Show();
 
-        }
-
-
-        static qbook.CodeEditor.FormCodeEditor _codeEditorForm = null;
-        internal static void ShowFormCodeEditor(oPage page = null)
-        {
-            if (!VerifyDeveloperLicense())
-                return;
-
-            try
-            {
-                Application.OpenForms[0].Cursor = Cursors.WaitCursor;
-                if (_codeEditorForm == null || _codeEditorForm.IsDisposed || !_codeEditorForm.IsHandleCreated)
-                {
-                    _codeEditorForm = new qbook.CodeEditor.FormCodeEditor();
-                    _codeEditorForm.Show();
-                }
-                _codeEditorForm.SelectPage(page);
-                _codeEditorForm.BringToFront();
-            }
-            catch { }
-            finally
-            {
-                Application.OpenForms[0].Cursor = Cursors.Default;
-            }
-        }
-        internal static qbook.CodeEditor.FormCodeEditor FormCodeEditor
-        {
-            get { return _codeEditorForm; }
-        }
-        internal static bool IsFormCodeEditorVisible
-        {
-            get
-            {
-                return _codeEditorForm != null && _codeEditorForm.Visible;
-            }
-        }
-        internal static void CloseFormCodeEditor()
-        {
-            if (_codeEditorForm != null)
-            {
-                _codeEditorForm.Close();
-            }
-        }
-        internal static void FormCodeEditorRebuild(bool reinit = true)
-        {
-            if (_codeEditorForm != null)
-            {
-                if (reinit)
-                    _codeEditorForm.ReInit();
-                _codeEditorForm.DoRebuild();
             }
         }
 
-        static void InitLogger()
+        public static void InitLogger()
         {
             //string logFilename = Main.Qb.Book.LogFilename.Replace("{date}", DateTime.Now.ToString("yyyy-MM-dd_HHmmss")).Replace('\\', '/');
-            string logFilename = Path.Combine(qbook.Core.ThisBook.TempDirectory, "qbook.{date}.log");
+            string logFilename = Path.Combine(qbook.Core.ThisBook.TempDirectory, ThisBook.Filename.Replace(".qbook","") +".{date}.log");
             logFilename = logFilename.Replace("{date}", DateTime.Now.ToString("yyyy-MM-dd_HHmmss")).Replace('\\', '/');
             log4net.Repository.Hierarchy.Hierarchy hierarchy = (log4net.Repository.Hierarchy.Hierarchy)log4net.LogManager.GetRepository();
             hierarchy.Root.RemoveAllAppenders(); //start anew...
@@ -1824,17 +1380,14 @@ var @class_main = new @class_main();
             QB.Logger.SetILog(logger);
             qbook.Core.ThisBook.LogFilename = logFilename;
 
-            //logger.Info("Hello");
-            //logger.Error("World");
 
         }
-
         static bool IsXml(string filePath)
         {
             try
             {
                 using var reader = XmlReader.Create(filePath);
-                while (reader.Read()) { } // Versucht, das gesamte Dokument zu lesen
+                while (reader.Read()) { }
                 return true;
             }
             catch
@@ -1844,172 +1397,177 @@ var @class_main = new @class_main();
         }
 
         internal static MruFilesManager MruFilesManager = new MruFilesManager();
-        internal static async Task OpenBookFolderAsync(string fullPath = @"T:\qSave")
+
+        internal static void CleanupBeforeLoad()
+        {
+            BookRuntime.DestroyAll();
+
+            // 1) Editor schließen
+            if (_editor != null)
+            {
+                try
+                {
+                    if (_editor.Visible) _editor.Hide();
+                    _editor.RemoveProjectTree();
+                    _editor.Dispose();
+                }
+                catch { }
+                _editor = null;
+            }
+
+            // 2) Script zerstören
+            try { CsScript_Destroy(); } catch { }
+
+            // 3) BookRuntime freigeben
+            try { BookRuntime.DestroyAll(); } catch { }
+
+            // 4) AppDomain für Script entladen (falls verwendet)
+            try
+            {
+                var scriptDomainField = typeof(Core).GetField("scriptDomain", BindingFlags.NonPublic | BindingFlags.Static);
+                var dom = scriptDomainField?.GetValue(null) as AppDomain;
+                if (dom != null) { AppDomain.Unload(dom); scriptDomainField.SetValue(null, null); }
+            }
+            catch { }
+
+            // 5) Roslyn hart zurücksetzen
+            try
+            {
+                if (Roslyn != null)
+                {
+                    Roslyn.Reset(hard: true, externalDocHolders: Array.Empty<object>());
+                    Roslyn = null;
+                }
+            }
+            catch { }
+
+            // 6) Klassen-/Dicts leeren
+            try
+            {
+                QB.Root.ResetObjectDict();
+                QB.Root.ResetWidgetDict();
+            }
+            catch { }
+
+            // 7) GC-Fenster
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+        }
+
+
+        internal static async Task OpenQbookAsync(string fullPath = @"T:\qSave")
         {
             try
             {
+                CleanupBeforeLoad();
+
+                string filename = fullPath.GetFileName();
+                string directory = fullPath.GetDirName();
+
 
                 MainForm.SetStatusText("opening qbook: " + fullPath);
                 MruFilesManager.Add(fullPath);
                 Properties.Settings.Default.MruFileList = MruFilesManager.GetMruCsvString();
                 Properties.Settings.Default.Save();
 
-                qbook.Core.ThisBook = await ScintillaEditor.LoadProjectAsync(fullPath, "");
-                QB.Root.ActiveQbook = qbook.Core.ThisBook;
+                QB.Root.ActiveQbook = null;
 
-                InitLogger();
-                QB.Logger.Info($"Opening qbook: {fullPath}");
+                if(ThisBook!=null)
+                {
+                    if (qbook.Core.ThisBook.Main == null)
+                        qbook.Core.ThisBook.Main = new oControl();  
+                }
 
-                Book.OnStaticPropertyChangedEvent("new Book", "");
+                ThisBook = null;
 
+                string backupDir = fullPath.Replace(".qbook", ".backup");
+                if (!Directory.Exists(backupDir))
+                    Directory.CreateDirectory(backupDir);
 
-                qbook.Core.ThisBook.DesignMode = false;
-                qbook.Core.ThisBook.TagMode = false;
-                // Main.Qb.Book.SrcMode = false;
-                qbook.Core.ThisBook.Recorder = false;
+                string dataDir = "";
+                string settingsDir = "";
+                bool fromXml = false;
+                if (IsXml(fullPath))
+                {
+                    fromXml = true;
+                    ThisBook = Book.Deserialize(fullPath);
+                    ThisBook.PageOrder.Clear();
+                    dataDir = ThisBook.DataDirectory;
+                    settingsDir = ThisBook.SettingsDirectory;
+                    XmlToFolder();
+                    QB.Logger.Info($"Opening qbook: {fullPath} from XML-File");
 
-                //Bounds = Main.Qb.Book.Bounds;
+                    File.Copy(fullPath, Path.Combine(backupDir, filename), true);
 
-                if (qbook.Core.ThisBook.Main == null)
-                    qbook.Core.ThisBook.Main = new oControl();
+                }
+                else
+                {
+                    ThisBook = BookFromFolder(fullPath.Replace(".qbook", ".code"), "");
 
+                    if (fromXml)
+                    {
+                        ThisBook.SetDataDirectory(dataDir);
+                        ThisBook.SetSettingsDirectory(settingsDir);
+                    }
+                }
 
-                qbook.Core.ThisBook.Init();
-                qbook.Core.UpdateProjectAssemblyQbRoot("Core.OpenProjectAsyncZip");
-
-                MainForm.SetStatusText("initializing qbook...");
-                qbook.Core.Init();
-                if ((qbook.Core.ActualMain?.Objects?.Count ?? 0) > 0)
-                    qbook.Core.SelectedPage = qbook.Core.ActualMain.Objects[0] as oPage;
-
-
-                MainForm mainForm = (MainForm)Application.OpenForms["MainForm"];
-                mainForm.InitView = true;
-                mainForm.UpdateStartMenuItems();
-                MainForm.SetStatusText("qbook loaded successfully!", 3000);
+                GlobalExceptions.InitRuntimeErrors();
 
                 ActualMain = ThisBook.Main;
-
-                await ScintillaEditor.Rebuild();
-                if (!ScintillaEditor.HasError)
-                {
-                    ScintillaEditor.Show();
-                }
-                else
-                {
-                    PageRuntime.RunAll();
-                    ScintillaEditor.SetStatusText("[Build] running...");
-                }
-
-
-
-            }
-            catch (Exception ex)
-            {
-                QB.Logger.Error("#EX opening qbook: " + ex.Message + (QB.Logger.ShowStackTrace ? ex.StackTrace : ""));
-                MessageBox.Show(ex.Message, "ERROR OPENING QBOOK", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                MainForm.SetStatusText("#ERR: loading qbook");
-            }
-
-        }
-        internal static async Task OpenQbookAsync(string fullPath)
-        {
-            string filename = fullPath.GetFileName();
-            string directory = fullPath.GetDirName();
-
-
-            if (ScintillaEditor == null)
-            {
-                ScintillaEditor = new ScintillaEditor.FormScintillaEditor();
-                await Task.Delay(1000);
-            }
-
-
-            if (!IsXml(fullPath))
-            {
-             //   string tempFolder = ScintillaEditor.ExtractZipToTemp(fullPath);
-                MainForm.SetStatusText("opening qbook: " + filename);
-                await OpenBookFolderAsync(fullPath.Replace(".qbook",".code"));
-                QB.Logger.Info($"Opening qbook: {fullPath} from code folder");
-            }
-            else
-            {
-                await OpenQbookXMLAsync(fullPath);
-                QB.Logger.Info($"Opening qbook: {fullPath} as xml");
-            }
-        }
-        internal static async Task OpenQbookXMLAsync(string fullPath/*string directory, string filename*/)
-        {
-            string filename = fullPath.GetFileName();
-            string directory = fullPath.GetDirName();
-
-            bool autoBuild = true;
-            bool autoRun = true;
-
-
-            try
-            {
-
-                MainForm.SetStatusText("opening qbook: " + filename);
-
-                if (!filename.ToLower().EndsWith(".qbook"))
-                    filename += ".qbook";
-
-
-                MruFilesManager.Add(fullPath);
-                Properties.Settings.Default.MruFileList = MruFilesManager.GetMruCsvString();
-                Properties.Settings.Default.Save();
-
-                Console.WriteLine($"Opening qbook: {fullPath}");
-
-
-                qbook.Core.ThisBook = Book.Deserialize(fullPath);
-
-                QB.Root.ActiveQbook = qbook.Core.ThisBook;
+                QB.Root.ActiveQbook = ThisBook;
+             
 
                 InitLogger();
                 QB.Logger.Info($"Opening qbook: {fullPath}");
 
                 Book.OnStaticPropertyChangedEvent("new Book", "");
-
-
                 qbook.Core.ThisBook.DesignMode = false;
                 qbook.Core.ThisBook.TagMode = false;
-                // Main.Qb.Book.SrcMode = false;
                 qbook.Core.ThisBook.Recorder = false;
 
-                //Bounds = Main.Qb.Book.Bounds;
-
-                if (qbook.Core.ThisBook.Main == null)
-                    qbook.Core.ThisBook.Main = new oControl();
-
-                qbook.Core.ActualMain = qbook.Core.ThisBook.Main;
-                if (qbook.Core.ActualMain.Objects.Count == 0)
-                    qbook.Core.ActualMain.Add(new oPage("", "page 1"));
-
-                //HALE: no longer necessary?! formulas moved in oItem.Settings
-                //Main.Qb.ScriptingEngine.RebuildBookFormulas();
-
-
-                qbook.Core.ThisBook.Init();
-                qbook.Core.UpdateProjectAssemblyQbRoot("Core.OpenProjectAsyncXML");
-
                 MainForm.SetStatusText("initializing qbook...");
+                ActualMain = ThisBook.Main;
+                await BookRuntime.BuildBookAssembly();
+
+                bool autoBuild = true;
+              
+
+
                 qbook.Core.Init();
                 if ((qbook.Core.ActualMain?.Objects?.Count ?? 0) > 0)
                     qbook.Core.SelectedPage = qbook.Core.ActualMain.Objects[0] as oPage;
-
-                //2025-09-06 STFU
-
-                await Core.ScintillaEditor.LoadXML();
 
 
                 MainForm mainForm = (MainForm)Application.OpenForms["MainForm"];
                 mainForm.InitView = true;
                 mainForm.UpdateStartMenuItems();
-                MainForm.SetStatusText("qbook loaded successfully!", 3000);
+                if (Roslyn.ErrorFiles.Count > 0)
+                {
+                    autoBuild = false;
+                    MainForm.SetStatusText("#E Error qbook build failed!", 0);
 
+                }
+                else
+                {
+                    MainForm.SetStatusText("qbook loaded successfully!", 3000);
+                }
 
+                ThisBook.Init();
+
+                
+                if ((System.Windows.Forms.Control.ModifierKeys == (Keys.Control | Keys.Shift)))
+                {
+                    //don't auto build/run if ctrl-shift are beeing held down at startup
+
+                    autoBuild = false;
+                }
+
+                if (autoBuild)
+                {
+                    BookRuntime.InitializeAll();
+                    BookRuntime.RunAll();
+                }
 
             }
             catch (Exception ex)
@@ -2019,153 +1577,419 @@ var @class_main = new @class_main();
                 MainForm.SetStatusText("#ERR: loading qbook");
             }
 
+        }
 
-            if ((System.Windows.Forms.Control.ModifierKeys == (Keys.Control | Keys.Shift)))
+        internal static void XmlToFolder()
+        {
+            Debug.WriteLine("Reset Roslyn");
+
+            Roslyn = new RoslynService();
+            Roslyn.EnsureWorkspace();
+
+            Debug.WriteLine("GC Reset");
+      
+        
+          
+
+            Debug.WriteLine("Creating Roslyn Project");
+            Core.Roslyn.CreateProject();
+
+
+            Debug.WriteLine("Processing Pages...");
+            string program = "namespace QB\r\n{\r\n\tpublic static class Program \r\n\t{\r\n";
+            var roslynFiles = new List<(string fileName, string code)>();
+            int pageCount = -1;
+            string firstFile = null;
+
+            List<string> Pages = new List<string>();
+
+            int CodeIndex = 0;
+            int PageIndex = 0;
+            foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
             {
-                //don't auto build/run if ctrl-shift are beeing held down at startup
-                autoBuild = false;
-                autoRun = false;
-            }
+                page.CodeOrder.Clear();
+                page.Includes.Clear();
+    
+                string className = "Definition" + page.Name + ".qPage";
+                pageCount++;
+                string code = page.CsCode;
 
-            // await ScintillaEditor.CreateAssemblyFromTree();
+                List<string> includes = CutInludesBlock(ref code);
 
-            if (autoBuild)
-            {
-                await ScintillaEditor.Rebuild();
-                if (!ScintillaEditor.HasError)
+                string pageCode = "namespace Definition" + page.Name + "{\r\n//<CodeStart>\r\n";
+                pageCode += Regex.Replace(code, @"public class\s+@class_\w+", "public class qPage");
+                pageCode += "\r\n//<CodeEnd>\r\n}";
+                program += "\t\tpublic static " + className + " " + page.Name + " { get; } = new " + className + "();\r\n";
+                pageCode = ReplaceClassToDefinition(pageCode);
+
+                Pages.Add(page.Name);
+                page.Code = pageCode;
+
+                string PageFileName = $"{page.Name}.qPage.cs";
+
+                page.Filename = $"{page.Name}.qPage.cs";
+
+                Core.ThisBook.PageOrder.Add(page.Name);
+                page.CodeOrder.Add(PageFileName);
+
+                page.OrderIndex = PageIndex;
+                if (firstFile == null)
+                    firstFile = PageFileName;
+
+                var lines = code.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+                var usings = lines
+                    .TakeWhile(l => !l.TrimStart().StartsWith("public class"))
+                    .Where(l => l.TrimStart().StartsWith("using"))
+                    .ToList();
+
+                foreach (var subClass in page.CsCodeExtra)
                 {
-                    ScintillaEditor.Show();
-                }
-                else
-                {
-                    PageRuntime.RunAll();
-                    ScintillaEditor.SetStatusText("[Build] running...");
-                }
+                    string subCode = "\r\n\r\nnamespace Definition" + page.Name
+                        + "\r\n{\r\n//<CodeStart>\r\n"
+                        + string.Join("\r\n", usings)
+                        + subClass.Value
+                        + "\r\n//<CodeEnd>\r\n"
+                        + "\r\n}";
 
-            }
+                    subCode = ReplaceClassToDefinition(subCode);
+                    string subFileName = $"{page.Name}.{subClass.Key}.cs";
 
+                    page.CodeOrder.Add(subFileName);
+                    page.SubCodes[subFileName] = new oCode(subFileName, includes.Contains(subClass.Key), null, subCode);
 
-            return;
-
-
-            //write a temp file, and delete after successfull build/run of the qbook.
-            //if build/run fails and qbook crashes, show info on next startup and offer not do build/run qbook automatically...
-            var buildRunTrialPath = fullPath + "~buildrun~";
-            if (File.Exists(buildRunTrialPath))
-            {
-                var dr = MessageBox.Show("The most recent attempt to build this qbook failed!\r\n\r\n[Retry]\tto try and rebuild now\r\n[Cancel]\tto fix the problem(s), then manually rebuild", "LAST BUILD/RUN FAILED", MessageBoxButtons.RetryCancel, MessageBoxIcon.Warning);
-                if (dr == DialogResult.Cancel)
-                {
-                    autoBuild = false;
-                    autoRun = false;
-                }
-                //File.Delete(buildRunTrialPath);
-            }
-
-            //if (autoBuildRun)
-            {
-                try
-                {
-
-                    _ = Task.Run((Func<Task>)(async () =>
+                    if (includes.Contains(subClass.Key))
                     {
-                        if (autoBuild)
-                        {
-                            //File.Create(buildRunTrialPath);
-                            try
-                            {
-                                using (File.Create(buildRunTrialPath)) { } //HACK: otherwise the file is locked
-                                bool firstPageContainsCsCode = !string.IsNullOrEmpty(qbook.Core.ThisBook.Main.Objects.FirstOrDefault()?.CsCode);
-                                QB.UI.Toast infoToast = null;
-                                if (firstPageContainsCsCode)
-                                {
-                                    Application.OpenForms[0].EnsureBeginInvoke((System.Action)(() =>
-                                    {
-                                        infoToast = QB.UI.Toast.Show($"{Path.GetFileNameWithoutExtension(filename)}\r\n\r\n// please wait... //", "starting qbook", timeout: 20000, backColor: System.Drawing.Color.Gainsboro);
-                                    }));
-                                }
-                                QB.Logger.Debug($"rebuilding and calling qbook.Init()");
-                                await qbook.Core.CsScriptRebuildAll("Initializing");
-                                Application.OpenForms[0].EnsureBeginInvoke(() =>
-                                {
-                                    infoToast?.Close();
-                                });
-                            }
-                            catch (Exception ex)
-                            {
-                                QB.Logger.Error($"#ERR error building qbook: " + ex.Message);
-                            }
-                        }
-
-                        if (autoRun)
-                        {
-                            if (Program.Args == null || !Program.Args.Contains("-norun"))
-                            {
-                                QB.Logger.Debug($"calling qbook.Run()");
-                                try
-                                {
-                                    _ = qbook.Core.RunCsScript_Run();
-                                }
-                                catch (Exception ex)
-                                {
-                                    QB.Logger.Error($"#ERR error running qbook: " + ex.Message);
-                                }
-                            }
-                        }
-
-                        if (File.Exists(buildRunTrialPath))
-                        {
-                            try
-                            {
-                                File.Delete(buildRunTrialPath);
-                            }
-                            catch (Exception ex)
-                            {
-                                //file locked?! -> should be fixed now...
-                                QB.Logger.Warn($"#WRN cannot delete {buildRunTrialPath}: " + ex.Message);
-                            }
-                        }
-                    }));
-                }
-                catch (Exception ex)
-                {
-                    //MessageBox.Show(ex.Message, "ERROR OPENING QBOOK", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-                finally
-                {
-                    if (File.Exists(buildRunTrialPath))
-                    {
-                        try
-                        {
-                            File.Delete(buildRunTrialPath);
-                        }
-                        catch (Exception ex)
-                        {
-                            QB.Logger.Warn($"#WRN cannot delete(2) {buildRunTrialPath}: " + ex.Message);
-                        }
+                        page.SubCodes[subFileName].RoslynDoc = Core.Roslyn.AddDocument(subFileName, subCode);
+                        page.Includes.Add(subFileName);
                     }
                 }
             }
+
+        }
+
+        public class PageInfo
+        {
+            public string Name { get; set; } = "";
+            public string PagePath { get; set; } = "";
+            public string ObjectPath { get; set; } = "";
+        }
+        public class PageDefinition
+        {
+            public string Name { get; set; }
+            public string Text { get; set; }
+            public int OrderIndex { get; set; }
+            public bool Hidden { get; set; }
+            public string Format { get; set; }
+            public List<string> Includes { get; set; }
+            public List<string> CodeOrder { get; set; }
+            public string Section { get; set; }
+            public string Url { get; set; }
+        }
+
+        internal static oPage oPageFromString(string json)
+        {
+            var data = JsonConvert.DeserializeObject(json, typeof(PageDefinition)) as PageDefinition;
+            return new oPage
+            {
+                Name = data.Name,
+                Text = data.Text,
+                OrderIndex = data.OrderIndex,
+                Hidden = data.Hidden,
+                Format = data.Format,
+                Includes = data.Includes ?? new List<string>(),
+                CodeOrder = data.CodeOrder,
+                Section = data.Section,
+                Url = data.Url
+            };
+        }
+        internal static Book BookFromFolder(string folderPath, string bookname)
+        {
+
+            Roslyn = new RoslynService();
+            Roslyn.EnsureWorkspace();
+            Roslyn.CreateProject();
+
+            Book newBook = new Book();
+            newBook.Main = new oControl();
+
+            string bookJson = File.ReadAllText(Path.Combine(folderPath, "Book.json"));
+            var qbook = JsonConvert.DeserializeObject(bookJson, typeof(qBookDefinition)) as qBookDefinition;
+
+            newBook.Version = qbook.Version;
+            newBook.VersionHistory = qbook.VersionHistory;
+            newBook.VersionEpoch = qbook.VersionEpoch;
+            newBook.StartFullScreen = qbook.StartFullScreen;
+            newBook.HidPageMenuBar = qbook.HidPageMenuBar;
+            newBook.PasswordAdmin = qbook.PasswordAdmin;
+            newBook.PasswordService = qbook.PasswordService;
+            newBook.PasswordUser = qbook.PasswordUser;
+            newBook.Directory = qbook.Directory;
+            newBook.Filename = qbook.Filename;
+            newBook.SettingsDirectory = qbook.SettingsDirectory;
+            newBook.DataDirectory = qbook.DataDirectory;
+            newBook.TempDirectory = qbook.TempDirectory;
+            newBook.Language = qbook.Language;
+            newBook.PageOrder = qbook.PageOrder;
+
+
+            List<string> reversePageOrder = newBook.PageOrder.AsEnumerable().Reverse().ToList();
+
+            List<oPage> pages = new List<oPage>();
+
+            foreach (string page in reversePageOrder)
+            {
+                oPage opage = null;
+              
+                string pageFolder = Path.Combine(folderPath, "Pages", page);
+                string oPageJson = File.ReadAllText(Path.Combine(pageFolder, "oPage.json"));
+                opage = oPageFromString(oPageJson);
+                string filename = page + ".qPage.cs";
+                opage.Filename = filename;
+                opage.Code = File.ReadAllText(Path.Combine(pageFolder, filename));
+     
+                List<string> reverseCodeOrder = opage.CodeOrder.AsEnumerable().Reverse().ToList();
+
+                foreach (string codeFile in reverseCodeOrder)
+                {
+                    if (codeFile.EndsWith("qPage.cs")) continue;
+                    string subCode = File.ReadAllText(Path.Combine(pageFolder, codeFile));
+                    opage.SubCodes[codeFile] = new oCode(codeFile, opage.Includes.Contains(codeFile), null, subCode);
+
+                }
+                pages.Add(opage);
+            }
+            pages.Reverse();
+
+            foreach (oPage p in pages)
+            {
+                newBook.Main.Objects.Add(p);
+            }
+
+            newBook.Program = Core.Roslyn.AddDocument("Program.cs", File.ReadAllText(Path.Combine(folderPath, "Program.cs")));
+            newBook.Global = Core.Roslyn.AddDocument("GlobalUsing.cs", "global using static QB.Program;");
+            return newBook;
+
+        }
+        public static async Task SaveInFolder()
+        {
+            string uri = Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename.Replace(".qbook", "") + ".code");
+
+            if (Directory.Exists(uri))
+            {
+                string backupFile = Core.ThisBook.Filename.Replace(".qbook", "") + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".code";
+                string backupUri = Path.Combine(Core.ThisBook.BackupDirectory, backupFile);
+                Directory.Move(uri, backupUri);
+            }
+
+            Directory.CreateDirectory(uri);
+            string link = "SaveDate: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            File.WriteAllText(Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename), link);
+
+            await SaveProjectAsync(uri);
+        }
+        public static async Task SaveProjectAsync(string newFile = @"T:\qSave")
+        {
+           
+
+            if (!Directory.Exists(newFile))
+                Directory.CreateDirectory(newFile);
+
+            string codeDir = Path.Combine(newFile, "Pages");
+            Directory.CreateDirectory(codeDir);
+
+
+            // 🧩 Projektbeschreibung vorbereiten
+            var project = new qBookDefinition
+            {
+                ProjectName = Core.ThisBook.Filename.Replace(".qbook", ""),
+                Version = Core.ThisBook.Version,
+                VersionHistory = Core.ThisBook.VersionHistory,
+                VersionEpoch = Core.ThisBook.VersionEpoch,
+                StartFullScreen = Core.ThisBook.StartFullScreen,
+                HidPageMenuBar = Core.ThisBook.HidPageMenuBar,
+                PasswordAdmin = Core.ThisBook.PasswordAdmin,
+                PasswordService = Core.ThisBook.PasswordService,
+                PasswordUser = Core.ThisBook.PasswordUser,
+                Directory = Core.ThisBook.Directory,
+                Filename = Core.ThisBook.Filename,
+                SettingsDirectory = Core.ThisBook.SettingsDirectory,
+                DataDirectory = Core.ThisBook.DataDirectory,
+                BackupDirectory = Core.ThisBook.BackupDirectory,
+                TempDirectory = Core.ThisBook.TempDirectory,
+                Language = Core.ThisBook.Language,
+                PageOrder = Core.ThisBook.PageOrder
+            };
+
+            foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
+            {
+                string pageDir = Path.Combine(codeDir, $"{page.Name}");
+                Directory.CreateDirectory(pageDir);
+
+                var temp = await Core.Roslyn.GetDocumentTextAsync(page.Filename);
+                string csCode = temp.ToString();
+                System.IO.File.WriteAllText(Path.Combine(pageDir, page.Filename), csCode);
+
+                foreach(oCode sub in page.SubCodes.Values)
+                {
+                    temp = await Core.Roslyn.GetDocumentTextAsync(sub.Filename);
+                    if(temp == null)
+                        temp = sub.Code;
+                    csCode = temp.ToString();
+                    System.IO.File.WriteAllText(Path.Combine(pageDir, sub.Filename), csCode);
+                }
+
+                var dto = new PageDefinition
+                {
+                    Name = page.Name,
+                    Text = page.Text,
+
+                    OrderIndex = page.OrderIndex,
+
+                    Hidden = page.Hidden,
+                    Format = page.Format,
+                    Includes = page.Includes,
+                    Section = page.Section,
+                    Url = page.Url,
+                    CodeOrder = page.CodeOrder,
+
+                };
+
+                string oPageJson = JsonConvert.SerializeObject(dto, Newtonsoft.Json.Formatting.Indented);
+                File.WriteAllText(Path.Combine(pageDir, "oPage.json"), oPageJson);
+            }
+
+            var code = await Core.Roslyn.GetDocumentTextAsync("Program.cs");
+            string path = Path.Combine(newFile, "Program.cs");
+            File.WriteAllText(path, code);
+
+            code = await Core.Roslyn.GetDocumentTextAsync("GlobalUsing.cs");
+            path = Path.Combine(newFile, "GlobalUsing.cs");
+            File.WriteAllText(path, code);
+
+            string bookJson = JsonConvert.SerializeObject(project, Newtonsoft.Json.Formatting.Indented);
+            File.WriteAllText(Path.Combine(newFile, "Book.json"), bookJson);
+
+        }
+        private static List<string> CutInludesBlock(ref string source)
+        {
+            List<string> includes = new List<string>();
+            if (string.IsNullOrWhiteSpace(source)) return includes;
+
+            var regex = new Regex(@"//\+include\s+(\w+)", RegexOptions.Compiled);
+            var lines = source.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+            var newLines = new List<string>();
+            var includeLines = new List<string>();
+            int lineNumber = 0;
+            int includeLineNumber = 0;
+
+            bool inIncludeBlock = false;
+            bool includeStartExists = false;
+            bool includeEndExists = false;
+
+            foreach (var line in lines)
+            {
+                var match = regex.Match(line);
+                if (match.Success)
+                {
+                    includes.Add(match.Groups[1].Value);
+                    includeLines.Add(line);
+                }
+                else
+                {
+                    if (!line.Contains("//<IncludeStart>") && !line.Contains("//<IncludeEnd>"))
+                    {
+                        newLines.Add(line);
+                    }
+
+                }
+
+                if (line.Contains("public class @"))
+                {
+                    includeLineNumber = lineNumber;
+                }
+                //{
+                //    // Stoppe das Sammeln, wenn ein Include-Block bereits existiert
+                //    includeLines.Clear();
+                //}
+                lineNumber++;
+
+            }
+            //Debug.WriteLine("Insert Startline = " + includeLineNumber);
+            //Debug.WriteLine("===== Includes ======");
+
+            List<string> includeBlock = new List<string>();
+
+            foreach (string l in includes) Debug.WriteLine(l);
+
+            if (includeLines.Count > 0)
+            {
+                includeBlock.Add("//<IncludeStart>");
+                includeBlock.AddRange(includeLines);
+                includeBlock.Add("//<IncludeEnd>");
+
+                // Optional: Du kannst entscheiden, wo der Block eingefügt wird.
+                // Hier wird er am Anfang eingefügt.
+
+            }
+            else
+            {
+                includeBlock.Add("\t//<IncludeStart>");
+                includeBlock.Add("");
+                includeBlock.Add("\t//<IncludeEnd>");
+            }
+
+            //  newLines.InsertRange(includeLineNumber + 2, includeBlock);
+
+            source = string.Join("\n", newLines);
+            //Debug.WriteLine("===== Updated Source ======");
+            //Debug.WriteLine(source);
+            return includes;
+        }
+        private static string ReplaceClassToDefinition(string code)
+        {
+            string result = code;
+
+
+            foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
+            {
+                string find = $"class_{page.Name}";
+                string replace = $"Definition{page.Name}";
+                Debug.WriteLine("find '" + find + "'");
+                Debug.WriteLine("repl '" + replace + "'");
+
+                string pattern = $@"\b{find}\b";
+
+                result = Regex.Replace(result, pattern, replace);
+            }
+
+            return result;
         }
         internal static async Task SaveThisBook()
         {
             if (qbook.Core.ThisBook != null)
             {
                 MainForm.SetStatusText("saving qbook: " + qbook.Core.ThisBook.Filename);
-                await ScintillaEditor.SaveInFolder();
+                await SaveInFolder();
                 qbook.Core.ThisBook.Modified = false;
                 qbook.Properties.Settings.Default.Save();
                 MainForm.SetStatusText("qbook saved successfully!", 3000);
             }
         }
-
-        internal static void ShowOpenQbookFileDialog(object sender)
+        internal static async Task ShowOpenQbookFileDialog(object sender)
         {
             if (qbook.Core.ThisBook != null && qbook.Core.ThisBook.Modified)
             {
                 DialogResult result = MessageBox.Show("save " + qbook.Core.ThisBook.Filename + "?", "qBook NOT SAVED", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (result == DialogResult.Yes)
-                    qbook.Core.ThisBook.Serialize();
+                    await SaveInFolder();
+            }
+            if (_editor != null)
+            {
+                if (_editor.Visible)
+                    _editor.Close();
+
+                _editor.Dispose();
+                _editor = null;
             }
 
             var fileContent = string.Empty;
@@ -2183,14 +2007,13 @@ var @class_main = new @class_main();
                 }
             }
         }
-
         internal static void ShowNewQbookFileDialog(object sender)
         {
             if (qbook.Core.ThisBook != null && qbook.Core.ThisBook.Modified)
             {
                 DialogResult result = MessageBox.Show("save " + qbook.Core.ThisBook.Filename + "?", "qBook NOT SAVED", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (result == DialogResult.Yes)
-                    qbook.Core.ThisBook.Serialize();
+                    qbook.Core.SaveInFolder();
             }
 
             var fileContent = string.Empty;

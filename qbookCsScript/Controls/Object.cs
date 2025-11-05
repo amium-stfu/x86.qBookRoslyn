@@ -626,12 +626,14 @@ namespace QB
 
                 if (OnElapsed != null)
                     OnElapsed(this, new TimerEventArgs());
-            }
+        }
             catch (Exception ex)
             {
-                QB.Logger.Error($"#EX in Timer.Elapsed({this.Name},{this.Interval}): " + ex.Message + (QB.Logger.ShowStackTrace ? ex.StackTrace : ""));
+                //QB.Logger.Error($"#ex in timer.elapsed({this.Name},{this.Interval}): " + ex.Message + (QB.Logger.ShowStackTrace ? ex.StackTrace : ""));
+                //throw;
+                GlobalExceptions.Handle(ex, $"Timer.Elapsed({Name})");
             }
-        }
+}
 
         public delegate void OnElapsedDelegate(Timer t, TimerEventArgs ea);
         public OnElapsedDelegate OnElapsed;

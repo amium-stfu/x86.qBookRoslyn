@@ -7,6 +7,8 @@ using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using System.Xml;
 using System.Xml.Serialization;
+using RoslynDocument = Microsoft.CodeAnalysis.Document;
+
 
 namespace qbook
 {
@@ -22,6 +24,12 @@ namespace qbook
         public bool StartFullScreen = false;
         public bool HidPageMenuBar = false;
         public List<string> PageOrder = new List<string>();
+
+        [XmlIgnore]
+        public RoslynDocument Program;
+        [XmlIgnore]
+        public RoslynDocument Global;
+
 
         public string PasswordAdmin { get; set; } = null; //overrides the default Admin-Password
         public string PasswordService { get; set; } = null; //overrides the default Service-Password
@@ -121,6 +129,47 @@ namespace qbook
             set
             {
                 _DataDirectory = null;// value;
+            }
+        }
+
+        public void SetDataDirectory(string dir) { _DataDirectory = dir; }
+        public void SetSettingsDirectory(string dir) { _SettingsDirectory = dir; }
+
+
+        string _BackupDirectory = null;
+        public string BackupDirectory
+        {
+            get
+            {
+                if (_BackupDirectory == null)
+                {
+                    //create/use default data-directory
+                    string qbookName = Core.ThisBook.Filename;
+                    Match m = NameVersionExtRegex.Match(qbookName);
+                    if (m.Success)
+                    {
+                        string name = m.Groups["name"].Value;
+                        string version = m.Groups["version"].Value;
+                        string ext = m.Groups["ext"].Value.ToLower();
+                        if (ext == ".qbook")
+                        {
+                            string dir = Path.Combine(Core.ThisBook.Directory, name + ".backup");
+                            if (!System.IO.Directory.Exists(dir))
+                                System.IO.Directory.CreateDirectory(dir);
+
+                            _BackupDirectory = dir;
+                        }
+                    }
+                    else
+                    {
+                        _BackupDirectory = qbookName + ".backup";
+                    }
+                }
+                return _BackupDirectory;
+            }
+            set
+            {
+                _BackupDirectory = null;// value;
             }
         }
 
@@ -333,79 +382,80 @@ namespace qbook
         public void Init()
         {
             RebuildItemHierarchy(Main);
+           
 
             Main.Init();
         }
 
 
 
-        public void Serialize()
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(Directory))
-                    Directory = System.Windows.Forms.Application.StartupPath;
-                string filename = Path.Combine(Path.GetFullPath(Directory), Filename); // + ".qbook";
-                CreateBackups(filename, 5, "qbook.backup");
+        //public void Serialize()
+        //{
+        //    try
+        //    {
+        //        if (string.IsNullOrEmpty(Directory))
+        //            Directory = System.Windows.Forms.Application.StartupPath;
+        //        string filename = Path.Combine(Path.GetFullPath(Directory), Filename); // + ".qbook";
+        //        CreateBackups(filename, 5, "qbook.backup");
 
-                //EditObjectForm.ApplyAllCodeChanges();
-                this.VersionEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        //        //EditObjectForm.ApplyAllCodeChanges();
+        //        this.VersionEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-                var xmlWriterSettings = new XmlWriterSettings() { Indent = true };
-                XmlSerializer xmlSerializer = new XmlSerializer(typeof(Book));
-                XmlWriter xmlWriter = XmlWriter.Create(filename, xmlWriterSettings);
-                xmlWriter.WriteProcessingInstruction("xml-stylesheet", "type='text/xsl' href='qbook.xsl'");
-                using (xmlWriter)
-                {
-                    xmlSerializer.Serialize(xmlWriter, this);
-                    xmlWriter.Close();
-                }
-                EditObjectForm.SetAllOpenEditorsToUnModified();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "ERROR SAVING QBOOK");
-            }
-        }
+        //        var xmlWriterSettings = new XmlWriterSettings() { Indent = true };
+        //        XmlSerializer xmlSerializer = new XmlSerializer(typeof(Book));
+        //        XmlWriter xmlWriter = XmlWriter.Create(filename, xmlWriterSettings);
+        //        xmlWriter.WriteProcessingInstruction("xml-stylesheet", "type='text/xsl' href='qbook.xsl'");
+        //        using (xmlWriter)
+        //        {
+        //            xmlSerializer.Serialize(xmlWriter, this);
+        //            xmlWriter.Close();
+        //        }
+        //        EditObjectForm.SetAllOpenEditorsToUnModified();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        MessageBox.Show(ex.Message, "ERROR SAVING QBOOK");
+        //    }
+        //}
 
-        void CreateBackups(string filename, int count, string subdirectory = null)
-        {
-            try
-            {
-                var ext = Path.GetExtension(filename);
-                var bakDir = Path.GetDirectoryName(filename);
-                if (!string.IsNullOrEmpty(subdirectory))
-                {
-                    bakDir = Path.Combine(bakDir, subdirectory);
-                    if (!System.IO.Directory.Exists(bakDir))
-                        System.IO.Directory.CreateDirectory(bakDir);
-                }
-                var bakFiles = new DirectoryInfo(bakDir).GetFiles(Path.GetFileNameWithoutExtension(filename) + ".*.bak" + ext)
-                                                              //.Where(f => Regex.IsMatch(f.FullName, @".*\.\d{8}_\d{6}\.bak"))
-                                                              .OrderByDescending(f => f.LastWriteTime)
-                                                              .ToList();
-                //delete all existing backups (except n-1)
-                if (count > 1 && (bakFiles.Count() > (count - 1)))
-                {
-                    foreach (var f in bakFiles.Skip(count - 1))
-                    {
-                        File.Delete(f.FullName);
-                    }
-                }
+        //void CreateBackups(string filename, int count, string subdirectory = null)
+        //{
+        //    try
+        //    {
+        //        var ext = Path.GetExtension(filename);
+        //        var bakDir = Path.GetDirectoryName(filename);
+        //        if (!string.IsNullOrEmpty(subdirectory))
+        //        {
+        //            bakDir = Path.Combine(bakDir, subdirectory);
+        //            if (!System.IO.Directory.Exists(bakDir))
+        //                System.IO.Directory.CreateDirectory(bakDir);
+        //        }
+        //        var bakFiles = new DirectoryInfo(bakDir).GetFiles(Path.GetFileNameWithoutExtension(filename) + ".*.bak" + ext)
+        //                                                      //.Where(f => Regex.IsMatch(f.FullName, @".*\.\d{8}_\d{6}\.bak"))
+        //                                                      .OrderByDescending(f => f.LastWriteTime)
+        //                                                      .ToList();
+        //        //delete all existing backups (except n-1)
+        //        if (count > 1 && (bakFiles.Count() > (count - 1)))
+        //        {
+        //            foreach (var f in bakFiles.Skip(count - 1))
+        //            {
+        //                File.Delete(f.FullName);
+        //            }
+        //        }
 
-                //move orig file to .bak
-                if (File.Exists(filename))
-                {
-                    FileInfo fi = new FileInfo(filename);
-                    string backFilename = Path.Combine(bakDir, Path.GetFileNameWithoutExtension(filename)) + "." + fi.LastWriteTime.ToString("yyyyMMdd_HHmmss") /*+ ".bak"*/ + ext;
-                    File.Move(filename, backFilename);
-                }
-            }
-            catch (Exception ex)
-            {
-                QB.Logger.Error("#EX creating qbook backups: " + ex.Message + (QB.Logger.ShowStackTrace ? ex.StackTrace : ""));
-            }
-        }
+        //        //move orig file to .bak
+        //        if (File.Exists(filename))
+        //        {
+        //            FileInfo fi = new FileInfo(filename);
+        //            string backFilename = Path.Combine(bakDir, Path.GetFileNameWithoutExtension(filename)) + "." + fi.LastWriteTime.ToString("yyyyMMdd_HHmmss") /*+ ".bak"*/ + ext;
+        //            File.Move(filename, backFilename);
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        QB.Logger.Error("#EX creating qbook backups: " + ex.Message + (QB.Logger.ShowStackTrace ? ex.StackTrace : ""));
+        //    }
+        //}
 
 
         public static Book Deserialize(string fullPath/*string directory, string filename*/)

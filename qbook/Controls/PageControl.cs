@@ -1021,17 +1021,18 @@ namespace qbook
             }
             if (e.Control && e.KeyCode == Keys.E) //show/hide CodeEditor
             {
-                if (Core.IsFormCodeEditorVisible)
-                    Core.FormCodeEditor.SendToBack();
-                else
-                {
-                    if (QB.Book.AccessLevel >= AccessLevel.Admin)
-                    {
-                        Core.ShowFormCodeEditor(Page);
-                    }
-                }
+                //if (Core.IsFormCodeEditorVisible)
+                //    Core.FormCodeEditor.SendToBack();
+                //else
+                //{
+                //    if (QB.Book.AccessLevel >= AccessLevel.Admin)
+                //    {
+                //        Core.ShowFormCodeEditor(Page);
+                //    }
+                //}
                 return;
             }
+
             if (e.Control && e.KeyCode == Keys.O) //open
             {
                 Core.ShowOpenQbookFileDialog(sender);

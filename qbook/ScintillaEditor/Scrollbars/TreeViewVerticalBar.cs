@@ -24,6 +24,8 @@ namespace qbook.CodeEditor
         private ScrollMessageFilter? msgFilter;
         private ScrollHiderWindow? hiderWnd;
 
+        private const int OverscrollRows = 2; // Anzahl zusätzlicher Zeilen, die "leer" gescrollt werden können
+
         #region WinAPI – Hide native vertical scrollbar
         [DllImport("user32.dll")]
         private static extern bool ShowScrollBar(IntPtr hWnd, int wBar, bool bShow);
@@ -36,6 +38,28 @@ namespace qbook.CodeEditor
         private const int WM_STYLECHANGED = 0x007D;
         private const int WM_PAINT = 0x000F;
         #endregion
+
+        protected override void OnMouseWheel(MouseEventArgs e)
+        {
+            base.OnMouseWheel(e);
+            if (tree == null || !scrollThumb.Visible) return;
+
+            int linesPerWheel = SystemInformation.MouseWheelScrollLines;
+            if (linesPerWheel == 0) linesPerWheel = 3; // Fallback
+
+            int direction = e.Delta > 0 ? -1 : 1; // -1 = nach oben, 1 = nach unten
+            int topIndex = GetTopVisibleIndex();
+            int maxTopIndex = GetMaxTopIndex();
+
+            int newIndex = Math.Max(0, Math.Min(topIndex + direction * linesPerWheel, maxTopIndex));
+            SetTopVisibleIndex(newIndex);
+            SyncScrollBar();
+        }
+
+        private void scrollBarPanel_MouseWheel(object sender, MouseEventArgs e)
+        {
+            OnMouseWheel(e);
+        }
 
         public Color SetBackColor
         {
@@ -61,7 +85,8 @@ namespace qbook.CodeEditor
             scrollBarPanel.Paint += (s, e) => e.Graphics.Clear(scrollBarPanel.BackColor);
             scrollBarPanel.MouseDown += ScrollBar_MouseDown;
             scrollBarPanel.Cursor = Cursors.Hand;
-
+            scrollBarPanel.MouseWheel += scrollBarPanel_MouseWheel;
+          
             scrollThumb = new Panel
             {
                 Width = Width,
@@ -77,6 +102,8 @@ namespace qbook.CodeEditor
             scrollBarPanel.Controls.Add(scrollThumb);
             Controls.Add(scrollBarPanel);
         }
+
+  
 
         public void Init(TreeView treeView, bool hideNativeScrollbar = false)
         {
@@ -112,6 +139,9 @@ namespace qbook.CodeEditor
             TryHideNativeVScrollBar();
             if (tree.IsHandleCreated)
                 BeginInvoke((Action)UpdateScrollBar);
+
+            tree.MouseWheel += scrollBarPanel_MouseWheel;
+
         }
 
         protected override void Dispose(bool disposing)
@@ -136,6 +166,36 @@ namespace qbook.CodeEditor
         {
             if (!hideNative) return;
             try { if (tree?.IsHandleCreated == true) ShowScrollBar(tree.Handle, SB_VERT, false); } catch { /* ignore */ }
+        }
+
+        private int GetTotalVisibleNodeCount()
+        {
+            if (tree == null || tree.Nodes.Count == 0)
+                return 0;
+
+            int count = 0;
+            TreeNode node = tree.Nodes[0];
+            while (node != null)
+            {
+                count++;
+                node = node.NextVisibleNode;
+            }
+            return count;
+        }
+
+        private int GetTopVisibleIndex()
+        {
+            if (tree == null || tree.TopNode == null || tree.Nodes.Count == 0)
+                return 0;
+
+            int idx = 0;
+            TreeNode node = tree.Nodes[0];
+            while (node != null && node != tree.TopNode)
+            {
+                idx++;
+                node = node.NextVisibleNode;
+            }
+            return idx;
         }
 
         private void UpdateScrollBar()
@@ -168,6 +228,23 @@ namespace qbook.CodeEditor
             SyncScrollBar();
         }
 
+        private int GetViewportRowSlots()
+        {
+            // Pixel-based viewport estimate (includes partially visible last row)
+            int ih = Math.Max(1, tree.ItemHeight);
+            int h = Math.Max(1, tree.ClientSize.Height);
+            // ceil to account for partial row visibility (so scrolling becomes available slightly earlier)
+            return (h + ih - 1) / ih;
+        }
+
+        private int GetMaxTopIndex()
+        {
+            int totalVisibleNodes = GetTotalVisibleNodeCount();
+            int visibleSlots = GetViewportRowSlots();
+            // Erlaube Overscroll, aber nicht über das Maximum hinaus
+            return Math.Max(0, totalVisibleNodes - visibleSlots + OverscrollRows);
+        }
+
         private void SyncScrollBar()
         {
             if (tree == null || !scrollThumb.Visible) return;
@@ -175,12 +252,14 @@ namespace qbook.CodeEditor
             int totalVisibleNodes = GetTotalVisibleNodeCount();
             int visibleSlots = GetViewportRowSlots();
             int topIndex = GetTopVisibleIndex();
-            int max = Math.Max(totalVisibleNodes - visibleSlots, 1);
+            int max = GetMaxTopIndex();
             int trackHeight = Math.Max(1, scrollBarPanel.Height - scrollThumb.Height);
 
-            int newTop = (int)Math.Round((double)trackHeight * topIndex / max);
+            int newTop = (max > 0)
+                ? (int)Math.Round((double)trackHeight * topIndex / max)
+                : 0;
             scrollThumb.Top = Math.Max(0, Math.Min(trackHeight, newTop));
-            scrollThumb.Width = Width; // follow parent width
+            scrollThumb.Width = Width;
         }
 
         private void ScrollThumb_MouseDown(object sender, MouseEventArgs e)
@@ -200,13 +279,12 @@ namespace qbook.CodeEditor
             if (newTop == scrollThumb.Top) return;
             scrollThumb.Top = newTop;
 
-            int totalVisibleNodes = GetTotalVisibleNodeCount();
-            int visibleSlots = GetViewportRowSlots();
-            int max = Math.Max(totalVisibleNodes - visibleSlots, 1);
-            int targetIndex = (int)Math.Round((double)max * newTop / track);
+            int max = GetMaxTopIndex();
+            int targetIndex = (max > 0)
+                ? (int)Math.Round((double)max * newTop / track)
+                : 0;
             SetTopVisibleIndex(targetIndex);
 
-            // After programmatic scroll, resync to reflect any snapping done by TreeView
             BeginInvoke((Action)SyncScrollBar);
         }
 
@@ -225,65 +303,29 @@ namespace qbook.CodeEditor
             int newTop = Math.Max(0, Math.Min(track, e.Y - scrollThumb.Height / 2));
             scrollThumb.Top = newTop;
 
-            int totalVisibleNodes = GetTotalVisibleNodeCount();
-            int visibleSlots = GetViewportRowSlots();
-            int max = Math.Max(totalVisibleNodes - visibleSlots, 1);
-            int targetIndex = (int)Math.Round((double)max * newTop / track);
+            int max = GetMaxTopIndex();
+            int targetIndex = (max > 0)
+                ? (int)Math.Round((double)max * newTop / track)
+                : 0;
             SetTopVisibleIndex(targetIndex);
             BeginInvoke((Action)SyncScrollBar);
         }
 
-        // ===== Visible / viewport helpers =====
-        private int GetViewportRowSlots()
-        {
-            // Pixel-based viewport estimate (includes partially visible last row)
-            int ih = Math.Max(1, tree.ItemHeight);
-            int h = Math.Max(1, tree.ClientSize.Height);
-            // ceil to account for partial row visibility (so scrolling becomes available slightly earlier)
-            return (h + ih - 1) / ih;
-        }
-
-        private int GetTotalVisibleNodeCount()
-        {
-            if (tree.Nodes.Count == 0) return 0;
-            int count = 0;
-            TreeNode n = tree.Nodes[0];
-            while (n != null)
-            {
-                count++;
-                n = n.NextVisibleNode;
-            }
-            return count;
-        }
-
-        private int GetTopVisibleIndex()
-        {
-            if (tree.TopNode == null || tree.Nodes.Count == 0) return 0;
-
-            int idx = 0;
-            TreeNode n = tree.Nodes[0];
-            while (n != null && n != tree.TopNode)
-            {
-                idx++;
-                n = n.NextVisibleNode;
-            }
-            return idx;
-        }
-
         private void SetTopVisibleIndex(int index)
         {
-            if (tree.Nodes.Count == 0) return;
+            int maxTopIndex = GetMaxTopIndex();
+            int clampedIndex = Math.Max(0, Math.Min(index, maxTopIndex));
 
-            TreeNode n = tree.Nodes[0];
+            TreeNode n = tree.Nodes.Count > 0 ? tree.Nodes[0] : null;
             int i = 0;
-            while (n != null && i < index)
+            while (n != null && i < clampedIndex)
             {
                 n = n.NextVisibleNode;
                 i++;
             }
             if (n != null)
             {
-                tree.TopNode = n; // scrolls the TreeView
+                tree.TopNode = n;
             }
         }
 

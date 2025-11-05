@@ -1,10 +1,12 @@
-﻿using Microsoft.Build.Locator;
+﻿using IronPython.Compiler;
+using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Classification;
 using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Elfie.Model; // Alias gegen Kollision mit ScintillaNET.Document
+using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.CodeAnalysis.Host;
@@ -16,6 +18,7 @@ using Microsoft.VisualStudio.SolutionPersistence.Model;
 using PdfSharp.Pdf;
 using QB;
 using QB.Controls;
+using qbook.CodeEditor;
 using qbook.ScintillaEditor;
 using ScintillaNET;
 using System;
@@ -34,7 +37,7 @@ using System.Windows.Forms;
 using AccessibilityCode = Microsoft.CodeAnalysis.Accessibility;
 using RoslynDocument = Microsoft.CodeAnalysis.Document;
 
-namespace qbook.CodeEditor
+namespace qbook
 {
     public sealed partial class RoslynService
     {
@@ -44,6 +47,13 @@ namespace qbook.CodeEditor
         private readonly SemaphoreSlim _loadSemaphore = new(1, 1);
         private bool _isLoading;
 
+
+        public Project GetProject => _project;
+
+        private readonly object _buildLock = new();
+        private bool _isBuildingAssembly = false;
+        public Project? GetCurrentProject() => _adhocWs?.CurrentSolution.GetProject(_projectId);
+        public ProjectId? GetCurrentProjectId() => _projectId;
 
         private bool _useInMemory = true;
         private AdhocWorkspace? _adhocWs;
@@ -116,7 +126,6 @@ namespace qbook.CodeEditor
             if (_ws != null && _workspaceFailedHandler != null)
                 _ws.WorkspaceFailed -= _workspaceFailedHandler;
 
-
             _ws?.Dispose();
             _adhocWs?.Dispose();
             _ws = null;
@@ -125,57 +134,186 @@ namespace qbook.CodeEditor
             _docMap.Clear();
             _useInMemory = true;
             _projectId = null;
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+
+            _adhocWs = new AdhocWorkspace();
+        }
+
+        // NEU: Erweiterte Reset-Variante
+        public void Reset(bool hard = false, IEnumerable<object>? externalDocHolders = null)
+        {
+            try
+            {
+                // Eventhandler lösen
+                if (_ws != null && _workspaceFailedHandler != null)
+                    _ws.WorkspaceFailed -= _workspaceFailedHandler;
+
+                // Referenzen aus externer Struktur (z.B. CodeNode) entfernen
+                if (externalDocHolders != null)
+                {
+                    foreach (var holder in externalDocHolders)
+                    {
+                        // Dynamisch über Reflection einfach 'RoslynDoc' Feld/Property nullen
+                        var prop = holder.GetType().GetProperty("RoslynDoc");
+                        if (prop != null && prop.CanWrite) prop.SetValue(holder, null);
+                        var field = holder.GetType().GetField("RoslynDoc");
+                        if (field != null) field.SetValue(holder, null);
+                    }
+                }
+
+                _docMap.Clear();
+                _project = null;
+                _projectId = null;
+
+                // Workspace wirklich freigeben
+                _adhocWs?.Dispose();
+                _adhocWs = null;
+                _ws?.Dispose();
+                _ws = null;
+
+                if (hard)
+                {
+                    // Dynamische Editor Controls / Forms schließen (optional – anpassen je nach Struktur)
+                    try
+                    {
+                        foreach (Form f in Application.OpenForms.OfType<Form>().ToList())
+                        {
+                            if (f is FormScintillaEditor)
+                            {
+                                f.Close();
+                                f.Dispose();
+                            }
+                        }
+                    }
+                    catch { }
+
+                    // BookRuntime freigeben
+                    try { BookRuntime.DestroyAll(); } catch { }
+
+                    // Script-AppDomain entladen
+                    try
+                    {
+                        if (qbook.Core.ActiveCsAssembly != null)
+                            qbook.Core.ActiveCsAssembly = null;
+                        var scriptDomainField = typeof(Core).GetField("scriptDomain", BindingFlags.NonPublic | BindingFlags.Static);
+                        var domain = scriptDomainField?.GetValue(null) as AppDomain;
+                        if (domain != null)
+                        {
+                            AppDomain.Unload(domain);
+                            scriptDomainField.SetValue(null, null);
+                        }
+                    }
+                    catch { }
+                }
+            }
+            finally
+            {
+                // GC-Fenster gewähren (nicht sofort neuen Workspace anlegen!)
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+            }
+        }
+        public void EnsureWorkspace()
+        {
+            if (_adhocWs == null)
+                _adhocWs = new AdhocWorkspace(s_host);
+        }
+
+        public void CreateProject()
+        {
+
+      
+
+            if (_adhocWs == null)
+            {
+                _adhocWs = new AdhocWorkspace(s_host);
+            }
+            else
+            {
+                try { _adhocWs.ClearSolution(); } catch { }
+            }
+
+            var projectId = ProjectId.CreateNewId();
+
+            _projectId = projectId;
+
+            List<MetadataReference> references = new List<MetadataReference>();
+
+            // Basisreferenzen aus dem laufenden .NET
+            references.Add(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
+            references.Add(MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location));
+            references.Add(MetadataReference.CreateFromFile(typeof(System.Windows.Forms.Form).Assembly.Location));
+            references.Add(MetadataReference.CreateFromFile(typeof(System.Drawing.Point).Assembly.Location));
+
+            string netstandardPath = Path.Combine(RuntimeEnvironment.GetRuntimeDirectory(), "netstandard.dll");
+            if (File.Exists(netstandardPath))
+                references.Add(MetadataReference.CreateFromFile(netstandardPath));
+
+            // Zusätzliche DLLs aus libs/, aber nur managed Assemblies
+            string baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libs");
+            if (Directory.Exists(baseDir))
+            {
+                foreach (string dllPath in Directory.GetFiles(baseDir, "*.dll"))
+                {
+                    try
+                    {
+                        using var fs = new FileStream(dllPath, FileMode.Open, FileAccess.Read);
+                        using var pe = new System.Reflection.PortableExecutable.PEReader(fs);
+                        if (!pe.HasMetadata)
+                        {
+                            continue;
+                        }
+
+                        references.Add(MetadataReference.CreateFromFile(dllPath));
+                        //     Debug.WriteLine($"[Roslyn] +Reference: {Path.GetFileName(dllPath)}");
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.WriteLine($"[Roslyn] Skip invalid: {Path.GetFileName(dllPath)} ({ex.Message})");
+                    }
+                }
+            }
+
+
+
+
+
+            var refs = new List<MetadataReference>();
+            refs.AddRange(GetOrBuildDefaultReferences());
+            if (references != null)
+            {
+                // de-duplicate by file path if possible
+                var existingPaths = new HashSet<string>(refs.OfType<PortableExecutableReference>().Select(r => r.FilePath!), StringComparer.OrdinalIgnoreCase);
+                foreach (var r in references.OfType<PortableExecutableReference>())
+                {
+                    if (r.FilePath is string fp && existingPaths.Contains(fp)) continue;
+                    refs.Add(r);
+                }
+            }
+
+            var projectInfo = ProjectInfo.Create(
+                projectId,
+                VersionStamp.Create(),
+                "InMemoryProject",
+                "InMemoryAssembly",
+                LanguageNames.CSharp,
+                metadataReferences: refs,
+                parseOptions: new CSharpParseOptions(LanguageVersion.Preview),
+                compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+            );
+
+            _adhocWs.AddProject(projectInfo);
+
+            _project = _adhocWs.CurrentSolution.GetProject(projectId);
+
+
         }
 
         private List<MetadataReference> _referenceCache = new();
-        //private static List<MetadataReference> GetOrBuildDefaultReferences()
-        //{
-        //    if (s_cachedReferences != null) return s_cachedReferences;
-        //    lock (s_refLock)
-        //    {
-        //        if (s_cachedReferences != null) return s_cachedReferences;
-
-        //        var refPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        //        {
-        //            typeof(object).Assembly.Location,
-        //            typeof(Console).Assembly.Location,
-        //            typeof(Enumerable).Assembly.Location,
-        //            typeof(System.Runtime.GCSettings).Assembly.Location
-        //        };
-
-        //        // Try optional desktop assemblies
-        //        try
-        //        {
-        //            refPaths.Add(typeof(System.Drawing.Point).Assembly.Location);
-        //            refPaths.Add(typeof(System.Windows.Forms.AccessibleEvents).Assembly.Location);
-        //            refPaths.Add(typeof(System.Diagnostics.Debug).Assembly.Location);
-        //        }
-        //        catch { }
-
-        //        var netstandardPath = Path.Combine(RuntimeEnvironment.GetRuntimeDirectory(), "netstandard.dll");
-        //        if (File.Exists(netstandardPath)) refPaths.Add(netstandardPath);
-
-        //        // Collect DLLs from libs/
-        //        string baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libs");
-        //        if (Directory.Exists(baseDir))
-        //        {
-        //            foreach (var path in Directory.GetFiles(baseDir, "*.dll"))
-        //            {
-        //                var fileName = Path.GetFileNameWithoutExtension(path);
-        //                if (fileName.StartsWith("Microsoft.CodeAnalysis", StringComparison.OrdinalIgnoreCase)) continue;
-        //                refPaths.Add(path);
-
-
-
-        //            }
-        //        }
-
-        //        s_cachedReferences = refPaths
-        //            .Select(p => (MetadataReference)MetadataReference.CreateFromFile(p))
-        //            .ToList();
-        //        return s_cachedReferences;
-        //    }
-        //}
 
         private static List<MetadataReference> GetOrBuildDefaultReferences()
         {
@@ -287,57 +425,55 @@ namespace qbook.CodeEditor
         public ProjectId GetProjectId => _projectId;
 
         ProjectId _projectId;
+
         public async Task LoadInMemoryProjectAsync(
-             IEnumerable<(string fileName, string code)> files,
-             IEnumerable<MetadataReference>? extraReferences = null)
+    IEnumerable<(string fileName, string code)> files,
+    IEnumerable<MetadataReference>? extraReferences = null)
         {
-            // Instead of disposing MEF/Adhoc repeatedly, reset the solution and reuse the host
-            if (_adhocWs == null)
-            {
-                _adhocWs = new AdhocWorkspace(s_host);
-            }
-            else
-            {
-                try { _adhocWs.ClearSolution(); } catch { }
-            }
+            _useInMemory = true;
+            _adhocWs ??= new AdhocWorkspace();
 
-            var projectId = ProjectId.CreateNewId();
+            var parseOptions = new CSharpParseOptions(LanguageVersion.Latest, kind: SourceCodeKind.Regular);
+            var compOptions = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                .WithOptimizationLevel(OptimizationLevel.Debug);
 
-            _projectId = projectId;
-
-           var refs = new List<MetadataReference>();
-            refs.AddRange(GetOrBuildDefaultReferences());
-            if (extraReferences != null)
-            {
-                // de-duplicate by file path if possible
-                var existingPaths = new HashSet<string>(refs.OfType<PortableExecutableReference>().Select(r => r.FilePath!), StringComparer.OrdinalIgnoreCase);
-                foreach (var r in extraReferences.OfType<PortableExecutableReference>())
-                {
-                    if (r.FilePath is string fp && existingPaths.Contains(fp)) continue;
-                    refs.Add(r);
-                }
-            }
-
-            var projectInfo = ProjectInfo.Create(
-                projectId,
+            _projectId = ProjectId.CreateNewId();
+            var projInfo = ProjectInfo.Create(
+                _projectId,
                 VersionStamp.Create(),
-                "InMemoryProject",
-                "InMemoryAssembly",
-                LanguageNames.CSharp,
-                metadataReferences: refs,
-                parseOptions: new CSharpParseOptions(LanguageVersion.Preview),
-                compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                name: "InMemoryQBook",
+                assemblyName: "InMemoryQBook",
+                language: LanguageNames.CSharp,
+                parseOptions: parseOptions,
+                compilationOptions: compOptions,
+                metadataReferences: extraReferences ?? Enumerable.Empty<MetadataReference>()
             );
 
-            _adhocWs.AddProject(projectInfo);
+            _adhocWs.AddProject(projInfo);
+            _project = _adhocWs.CurrentSolution.GetProject(_projectId)!;
 
             foreach (var (fileName, code) in files)
             {
-                Debug.WriteLine($"Adding document {fileName}");
-                _adhocWs.AddDocument(projectId, fileName, SourceText.From(code));
-            }
+                var absolutePath = Path.GetFullPath(fileName);
+                // WICHTIG: Encoding setzen, sonst CS8055 bei Portable PDB
+                var source = SourceText.From(code ?? string.Empty, Encoding.UTF8);
 
-            _project = _adhocWs.CurrentSolution.GetProject(projectId);
+                // Einfacher: direkt AddDocument statt eigenes DocumentInfo mit falschen Parametern
+                var doc = _adhocWs.AddDocument(_projectId, fileName, source);
+
+                Debug.WriteLine("Add " + doc.Name);
+                // FilePath zuweisen (für StackTrace / Debug)
+                var withPath = doc.WithFilePath(absolutePath);
+
+                _adhocWs.TryApplyChanges(withPath.Project.Solution);
+                _project = _adhocWs.CurrentSolution.GetProject(_projectId)!;
+                _docMap[fileName] = withPath.Id;
+            }
+            Debug.WriteLine("[Diag] Id  =" + _project?.Id);
+            Debug.WriteLine("[Diag] Docs=" + _project?.Documents.Count());
+            Debug.WriteLine("[Diag] Has Program.cs=" + (_project?.Documents.Any(d => d.Name == "Program.cs")));
+
+
         }
 
         public async Task<string?> GetDocumentTextAsync(string fileName)
@@ -381,6 +517,21 @@ namespace qbook.CodeEditor
             await RebuildProjectWithActiveFilesAsync();
         }
 
+        public RoslynDocument AddDocument(string filename, string code)
+        {
+            if (_adhocWs == null || _projectId == null)
+                throw new InvalidOperationException("Workspace/Project not initialized.");
+
+            var path = Path.GetFullPath(filename);
+            var source = SourceText.From(code ?? string.Empty, Encoding.UTF8);
+            var doc = _adhocWs.AddDocument(_projectId, filename, source);
+            var withPath = doc.WithFilePath(path);
+
+            _adhocWs.TryApplyChanges(withPath.Project.Solution);
+            _project = _adhocWs.CurrentSolution.GetProject(_projectId)!;
+            _docMap[filename] = withPath.Id;
+            return withPath;
+        }
 
         public async Task IncludeDocument(string fileName, string code)
         {
@@ -395,7 +546,6 @@ namespace qbook.CodeEditor
             _project = _adhocWs.CurrentSolution.GetProject(projectId);
             var compilation = await _project.GetCompilationAsync();
         }
-
 
         public async Task ReactivateDocumentAsync(string fileName, RoslynDocument roslynDoc)
         {
@@ -816,7 +966,7 @@ namespace qbook.CodeEditor
             try
             {
                 BuildResult = "[Rebuild] Destroying old runtime...";
-                PageRuntime.DestroyAll();
+                BookRuntime.DestroyAll();
                 qbook.Core.ActiveCsAssembly = null;
                 GC.Collect();
                 GC.WaitForPendingFinalizers();
@@ -920,6 +1070,11 @@ namespace qbook.CodeEditor
             roslynFiles.Add(("Program.cs", sbProgram.ToString()));
             roslynFiles.Add(("GlobalUsing.cs", "global using static QB.Program;\r\n"));
 
+
+
+
+
+
             // 6️⃣ Referenzen aufbauen
             List<MetadataReference> references = new List<MetadataReference>();
 
@@ -998,11 +1153,11 @@ namespace qbook.CodeEditor
                 Debug.WriteLine(node.Text);
                 if (node.Type == CodeNode.NodeType.Page)
                 {
-                    
+
                     node.RoslynDoc = GetDocumentByFilename(node.FileName);
                     node.Adhoc.Workspace = GetWorkspace;
                     node.Adhoc.Id = GetProjectId;
-                 
+
 
                     foreach (CodeNode sub in node.Nodes)
                     {
@@ -1010,99 +1165,98 @@ namespace qbook.CodeEditor
                         sub.Adhoc.Workspace = GetWorkspace;
                         sub.Adhoc.Id = GetProjectId;
                     }
-                } 
+                }
+
+                if (node.Type == CodeNode.NodeType.Program)
+                {
+                    node.RoslynDoc = GetDocumentByFilename(node.FileName);
+                    node.Adhoc.Workspace = GetWorkspace;
+                    node.Adhoc.Id = GetProjectId;
+
+                }
             }
             BuildResult = "[Rebuild] Building assembly...";
-            await BuildAssemblyAsync(projectTree);
+           // await BuildAssemblyAsync();
         }
-        public async Task<Assembly?> BuildAssemblyAsync(System.Windows.Forms.TreeView projectTree)
+        public async Task<Assembly?> BuildAssemblyAsync()
         {
-
-  
-
-            Debug.WriteLine("======== Start Build ======== ");
-
-            if (_adhocWs == null)
+            lock (_buildLock)
             {
-                QB.Logger.Error("Workspace not initialized.");
-                BuildResult = "[Rebuild] Workspace not initialized.";
-                buildWatch.Stop();
-                BuildSuccess = false;
-
-                return null;
+                if (_isBuildingAssembly) return null;
+                _isBuildingAssembly = true;
             }
-
-            var project = _adhocWs.CurrentSolution.Projects.FirstOrDefault();
-            if (project == null)
+            try
             {
-                QB.Logger.Error("No project loaded.");
-                BuildResult = "[Rebuild] No project loaded.";
-                buildWatch.Stop();
-                BuildSuccess = false;
-
-                return null;
-            }
-
-            var compilation = await project.GetCompilationAsync();
-            if (compilation == null)
-            {
-                Debug.WriteLine("Compilation failed: no project content.");
-                BuildResult = "[Rebuild] Compilation failed: no project content.";
-                buildWatch.Stop(); 
-                BuildSuccess = false;
-                return null;
-            }
-
-            BuildResult = "[Rebuild] Emitting assembly...";
-            // 🧹 alte Assembly verwerfen
-            qbook.Core.ActiveCsAssembly = null;
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-
-            using (var ms = new MemoryStream())
-            {
-                var emitResult = compilation.Emit(ms);
-
-                if (!emitResult.Success)
+                if (_projectId == null || _adhocWs == null)
                 {
-
-                    var errors = emitResult.Diagnostics
-                    .Where(d => d.Severity == DiagnosticSeverity.Error)
-                    .OrderBy(d => d.Location?.GetLineSpan().Path)
-                    .Select(d =>
-                    {
-                        var span = d.Location.GetLineSpan();
-                        ErrorFiles.Add(span.Path);
-                        buildWatch.Stop();
-                        BuildResult = "[Rebuild] Build failed with errors.";
-                        BuildSuccess = false;
-                        return $"{Path.GetFileName(span.Path)}({span.StartLinePosition.Line + 1},{span.StartLinePosition.Character + 1}): {d.Id}: {d.GetMessage()}";
-                    });
-                    Debug.WriteLine(string.Join("\n", errors));
+                    QB.Logger.Error("[Roslyn] BuildAssemblyAsync: no projectId/workspace.");
+                    BuildSuccess = false;
                     return null;
                 }
 
-              
-                ms.Seek(0, SeekOrigin.Begin);
+                // Hole immer gezielt das aktuelle Projekt über _projectId (nicht FirstOrDefault)
+                var project = _adhocWs.CurrentSolution.GetProject(_projectId);
+                if (project == null)
+                {
+                    QB.Logger.Error("[Roslyn] BuildAssemblyAsync: projectId not found in CurrentSolution.");
+                    BuildSuccess = false;
+                    return null;
+                }
 
-                // einfach per Load(byte[]) laden
-                var asm = Assembly.Load(ms.ToArray());
-                qbook.Core.ActiveCsAssembly = asm;
-                BuildResult = "[Rebuild] Binding pages to assembly...";
-                PageRuntime.BindAllPagesToAssembly(asm);
+                // Merke aktuelle Projekt-ID/Doc-Anzahl zur Diagnose
+                Debug.WriteLine($"[Build] Using ProjectId={project.Id} Docs={project.Documents.Count()}");
 
-                Debug.WriteLine("======== Initializing ======== ");
-                BuildResult = "[Rebuild] Initializing runtime...";
-                PageRuntime.InitializeAll();
-               
-                Debug.WriteLine("======== Build Ready ======== ");
-             
-                buildWatch.Stop();
-                BuildDuration = (int)buildWatch.ElapsedMilliseconds;
-                BuildResult = "[Rebuild] Build succeeded.(" + BuildDuration + "ms)";
+                var compilation = await project.GetCompilationAsync();
+                if (compilation == null)
+                {
+                    QB.Logger.Error("[Roslyn] BuildAssemblyAsync: compilation null.");
+                    BuildSuccess = false;
+                    return null;
+                }
 
+                compilation = compilation.WithOptions(
+                    compilation.Options.WithOptimizationLevel(OptimizationLevel.Debug));
+
+                using var peStream = new MemoryStream();
+                using var pdbStream = new MemoryStream();
+
+                var emitResult = compilation.Emit(
+                    peStream,
+                    pdbStream,
+                    options: new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb));
+
+                if (!emitResult.Success)
+                {
+                    var diags = emitResult.Diagnostics
+                        .Where(d => d.Severity == DiagnosticSeverity.Error)
+                        .ToList();
+
+                    ErrorFiles = diags
+                        .Select(d => d.Location.GetMappedLineSpan().Path)
+                        .Where(p => !string.IsNullOrEmpty(p))
+                        .Distinct()
+                        .ToList();
+
+                    QB.Logger.Error("[Roslyn] Emit failed:\n" +
+                        string.Join("\n", diags.Select(d =>
+                        {
+                            var span = d.Location.GetMappedLineSpan();
+                            return $"{Path.GetFileName(span.Path)}({span.StartLinePosition.Line + 1},{span.StartLinePosition.Character + 1}): {d.Id}: {d.GetMessage()}";
+                        })));
+
+                    BuildSuccess = false;
+                    return null;
+                }
+
+                peStream.Position = 0;
+                pdbStream.Position = 0;
+                var asm = Assembly.Load(peStream.ToArray(), pdbStream.ToArray());
+                BuildSuccess = true;
                 return asm;
+            }
+            finally
+            {
+                lock (_buildLock) _isBuildingAssembly = false;
             }
         }
         private static bool IsManagedAssembly(string path)

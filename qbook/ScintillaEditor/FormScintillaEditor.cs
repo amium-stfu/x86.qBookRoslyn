@@ -1,8 +1,5 @@
 ﻿using CSScripting;
-using DevExpress.DocumentView;
-using DevExpress.Drawing.Printing.Internal;
-using DevExpress.Utils.DPI;
-using DevExpress.XtraPrinting;
+using DevExpress.Utils.Extensions;
 using ICSharpCode.SharpZipLib.Zip;
 using Microsoft.Build.Tasks;
 using Microsoft.CodeAnalysis;
@@ -11,9 +8,12 @@ using Microsoft.CodeAnalysis.Rename;
 using Microsoft.Office.Core;
 using Microsoft.Office.Interop.Outlook;
 using Microsoft.VisualBasic;
+using Microsoft.VisualStudio.SolutionPersistence.Model;
 using Newtonsoft.Json;
+using OpenCvSharp.Internal.Vectors;
 using QB.Controls;
 using qbook.CodeEditor;
+using qbook.ScintillaEditor.InputControls;
 using qbook.UI;
 using ScintillaNET;
 using System;
@@ -22,6 +22,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -32,6 +33,7 @@ using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web.UI.WebControls;
 using System.Web.UI.WebControls.WebParts;
@@ -44,16 +46,16 @@ using static System.ComponentModel.Design.ObjectSelectorEditor;
 using RoslynDocument = Microsoft.CodeAnalysis.Document;
 using Style = ScintillaNET.Style;
 
+
 namespace qbook.ScintillaEditor
 {
 
-    
-    
     public partial class FormScintillaEditor : Form
     {
-        RoslynService _roslyn = new RoslynService();
 
         CodeNode RootNode;
+        CodeNode ProgramNode;
+        oPage SelectedPage = new oPage();
 
         DataGridView GridViewDiagnosticOutput;
         public DataTable TblFindReplaceOutputs = new DataTable();
@@ -63,7 +65,6 @@ namespace qbook.ScintillaEditor
 
         public FormScintillaEditor()
         {
-            
             InitializeComponent();
 
             tblBuildDiagnosic.Columns.Add("Page", typeof(string));
@@ -78,14 +79,13 @@ namespace qbook.ScintillaEditor
             vBarProjectTree.Init(ProjectTree, hideNativeScrollbar: true);
 
             RoslynDiagnostic.InitDiagnostic();
-            RosylnSignatureHelper.Init(_roslyn);
+            RosylnSignatureHelper.Init(Core.Roslyn);
            
-            RoslynAutoComplete.Init(_roslyn);
+            RoslynAutoComplete.Init(Core.Roslyn);
           
 
             InitGridViews();
       
-
             ApplyLightTheme();
 
             panelOutput.Controls.Clear();
@@ -93,210 +93,80 @@ namespace qbook.ScintillaEditor
             vBarOutputs.Init(GridViewDiagnosticOutput);
             UpdateOutputButtons();
 
+            flowLayoutPageData.Controls.Add(new TextBoxWithLabel ("Page Name:", () => SelectedPage.Name, v => SelectedPage.Name = v) {ReadOnly = true });
+            flowLayoutPageData.Controls.Add(new TextBoxWithLabel ("Page Text:", () => SelectedPage.Text, v => SelectedPage.Text = v));
+
+            flowLayoutPageData.Controls.Add(
+                new TextBoxWithLabel(
+                    "Page Format:",
+                    () => SelectedPage.Format,
+                    v => SelectedPage.Format = v,
+                    new List<string> { "A4", "16/9", "16/10" }
+                )
+            );
+
         }
 
-        //============================ Load Book ============================
-        //public async Task LoadBook()
-        //{
 
-        //    _roslyn.Reset();
-        //    GC.Collect();
-        //    GC.WaitForPendingFinalizers();
-        //    GC.Collect();
-
-        //    _roslyn = new RoslynService();
-        //    ProjectTree.Nodes.Clear();
-
-        //    //   tblBuildOutputs.Clear();
-        //    ProjectTree.BeginUpdate();
-        //    ProjectTree.ImageList = imageList1;
-        //    ProjectTree.Nodes.Clear();
-
-        //    RootNode = new CodeNode(qbook.Core.ThisBook.Filename)
-        //    {
-        //        ImageIndex = 1
-        //    };
-
-        //    ProjectTree.Font = new Font("Calibri", 12);
-        //    ProjectTree.Nodes.Add(RootNode);
-
-        //    string program = "namespace QB\r\n{\r\n   public static class Program {\r\n";
-        //    var roslynFiles = new List<(string fileName, string code)>();
-        //    int pageCount = -1;
-        //    string firstFile = null;
-
-        //    foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
-        //    {
-
-        //        string className = "class_" + page.Name + ".@class_" + page.Name;
-
-        //        pageCount++;
-        //        string code = page.CsCode;
-
-        //        List<string> includes = ReplaceIncludesWithBlock(ref code);
-
-        //        string pageCode = "namespace class_" + page.Name + "{\r\n//<CodeStart>\r\n";
-        //        pageCode += code;
-        //        pageCode += "\r\n//<CodeEnd>\r\n}";
-
-        //        //int index = code.IndexOf("public class");
-        //        //string insertText = "\r\nnamespace class_" + page.Name + "\r\n{\r\n";
-        //        //code = code.Insert(index - 1, insertText) + "\r\n}";
-
-        //        program += "   public static " + className + " " + page.Name + " { get; } = new " + className + "();\r\n";
-
-        //        string fileName = $"class_{page.Name}.cs";
-        //        roslynFiles.Add((fileName, code));
-
-        //        CodeNode pageNode = new CodeNode(page, fileName, CodeNode.NodeType.Page, page.Name);
-        //        pageNode.Editor.Text = pageCode;
-        //        pageNode.Editor.EmptyUndoBuffer();
-        //        pageNode.Active = true;
-        //        pageNode.Editor.GoToDefinition = () => GoToDefinitionAsync();
-        //        pageNode.Editor.RenameSymbol = () => RenameSymbolAsync();
-        //        pageNode.Editor.KeyDown += (s, e) =>
-        //        {
-
-        //            if (e.Control && e.KeyCode == Keys.H)
-        //            {
-        //                e.SuppressKeyPress = true;
-        //                btnFindReplace.PerformClick();
-
-        //            }
-
-        //            if (e.Control && e.KeyCode == Keys.F)
-        //            {
-        //                e.SuppressKeyPress = true;
-        //                btnFind.PerformClick();
-
-        //            }
-
-        //        };
-
-        //        ProjectTree.Nodes[0].Nodes.Add(pageNode);
-
-        //        if (firstFile == null)
-        //            firstFile = fileName;
-
-        //        var lines = code.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-        //        var usings = lines
-        //            .TakeWhile(l => !l.TrimStart().StartsWith("public class"))
-        //            .Where(l => l.TrimStart().StartsWith("using"))
-        //            .ToList();
+        #region TreeView
 
 
-        //        int subCount = 0;
+        private void ProjectTree_DragDrop(object sender, DragEventArgs e)
+        {
+            List<string> pageOder = new List<string>();
+            foreach (CodeNode page in ProjectTree.Nodes[0].Nodes)
+                if (page.Type == CodeNode.NodeType.Page) pageOder.Add(page.Text);
 
-        //        foreach (var subClass in page.CsCodeExtra)
-        //        {
-        //            subCount++;
-        //            string sub = string.Join("\r\n", usings)
-        //                + "\r\n\r\nnamespace class_" + page.Name
-        //                + "\r\n{\r\n//<CodeStart>\r\n"
-        //                + subClass.Value
-        //                + "\r\n//<CodeEnd>\r\n"
-        //                + "\r\n}";
+            Core.ThisBook.PageOrder = new List<string>(pageOder);
 
-        //            string subFileName = $"sub_{page.Name}_{subClass.Key}.cs";
-
-        //            CodeNode subNode = new CodeNode(page, subFileName, CodeNode.NodeType.SubCode, subClass.Key, pageNode);
-        //            subNode.Editor.Text = sub;
-        //            subNode.Editor.EmptyUndoBuffer();
-        //            subNode.Editor.GoToDefinition = () => GoToDefinitionAsync();
-        //            subNode.Editor.RenameSymbol = () => RenameSymbolAsync();
-        //            subNode.Editor.KeyDown += (s, e) =>
-        //            {
-
-        //                if (e.Control && e.KeyCode == Keys.H)
-        //                {
-        //                    e.SuppressKeyPress = true;
-        //                    btnFindReplace.PerformClick();
-
-        //                }
-
-        //                if (e.Control && e.KeyCode == Keys.F)
-        //                {
-        //                    e.SuppressKeyPress = true;
-        //                    btnFind.PerformClick();
-
-        //                }
-        //            };
-
-        //            subNode.Active = includes.Contains(subClass.Key);
-        //            if (subNode.Active)
-        //                roslynFiles.Add((subFileName, sub));
-
-        //            subNode.ImageIndex = subNode.Active ? 3 : 4;
-        //            ProjectTree.Nodes[0].Nodes[pageCount].Nodes.Add(subNode);
-        //            subNode.Editor.ApplyLightTheme();
-        //        }
-        //    }
-
-        //    program += "   }\r\n}";
-        //    roslynFiles.Add(("Program.cs", program));
-
-        //    roslynFiles.Add(("GlobalUsing.cs", "global using static QB.Program;"));
+        }
 
 
-        //    string root = AppDomain.CurrentDomain.BaseDirectory;
-        //    string baseDir = System.IO.Path.Combine(root, "libs");
-
-        //    var dllFiles = System.IO.Directory.GetFiles(baseDir, "*.dll").ToArray();
-        //    string[] exclude = { "Microsoft.CodeAnalysis" };
-
-        //    dllFiles = dllFiles
-        //        .Where(path => !exclude.Any(prefix => System.IO.Path.GetFileNameWithoutExtension(path)
-        //            .StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
-        //        .ToArray();
-
-        //    var references = dllFiles.Select(path => MetadataReference.CreateFromFile(path)).ToList();
-        //    await _roslyn.LoadInMemoryProjectAsync(roslynFiles, references);
-
-
-
-        //    // Verknüpfe alle EditorNodes mit den Roslyn Documents
-
-        //    foreach (CodeNode node in ProjectTree.Nodes[0].Nodes)
-        //    {
-        //        if (node is CodeNode editorNode)
-        //        {
-        //            editorNode.RoslynDoc = _roslyn.GetDocument(editorNode.FileName);
-        //            editorNode.Adhoc.Workspace = _roslyn.GetWorkspace;
-        //            editorNode.Adhoc.Id = _roslyn.GetProjectId;
-        //        }
-
-        //        foreach (CodeNode sub in node.Nodes)
-        //        {
-        //            if (sub is CodeNode subNode)
-        //            {
-        //                subNode.RoslynDoc = _roslyn.GetDocument(subNode.FileName);
-        //                subNode.Adhoc.Workspace = _roslyn.GetWorkspace;
-        //                subNode.Adhoc.Id = _roslyn.GetProjectId;
-        //            }
-        //        }
-        //    }
-
-        //    Core.ProgramWorkingDir = "InMemory";
-        //    QB.Logger.Info("Using In-Memory Working Directory");
-        //    ProjectTree.EndUpdate();
-        //}
+        #endregion
 
 
         #region Load Save Book
 
-        public async Task LoadXML()
+        public async Task NewBook()
         {
-            _roslyn.Reset();
+            Book newBook;
+            Thread.CurrentThread.CurrentUICulture = new CultureInfo("en-US");
+            using (SaveFileDialog openFileDialog = new SaveFileDialog())
+            {
+                openFileDialog.Title = "New qBook";
+                openFileDialog.Filter = "qbook files (*.qbook)|*.qbook|All files (*.*)|*.*";
+                openFileDialog.FilterIndex = 1;
+
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    newBook = new Book();
+                    newBook.Main = new oControl();
+
+                    Directory.CreateDirectory(Path.GetDirectoryName(openFileDialog.FileName));
+                    newBook.Filename = Path.GetFileName( openFileDialog.FileName);
+                    newBook.Directory = Path.GetDirectoryName(openFileDialog.FileName);
+                }
+                else
+                {
+                    return;
+                }
+            }
+
+            Core.Roslyn.Reset();
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
 
-            _roslyn = new RoslynService();
+            Core.Roslyn = new RoslynService();
             ProjectTree.Nodes.Clear();
 
             ProjectTree.BeginUpdate();
             ProjectTree.ImageList = imageList1;
             ProjectTree.Nodes.Clear();
+
+     
+
+           
 
             RootNode = new CodeNode(qbook.Core.ThisBook.Filename)
             {
@@ -308,134 +178,25 @@ namespace qbook.ScintillaEditor
 
             string program = "namespace QB\r\n{\r\n\tpublic static class Program \r\n\t{\r\n";
             var roslynFiles = new List<(string fileName, string code)>();
-            int pageCount = -1;
-            string firstFile = null;
 
             List<string> Pages = new List<string>();
+            Pages.Add("Page1");
+            oPage page1 = new oPage("Page1", "Page 1");
+            CodeNode page = new CodeNode(page1, "Page1.qPage.cs", CodeNode.NodeType.Page, "Page1");
+            page.CodeIndex = 1;
+            page.Editor.Text = page.NewPageCode("Page1");
+            roslynFiles.Add(("Page1.qPage.cs", page.Editor.Text));
+            newBook.PageOrder.Add("Page1");
+            page1.CodeOrder.Add("Page1.qPage.cs");
 
-            int CodeIndex = 0;
-            int PageIndex = 0;
-            foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
-            {
-                page.Includes.Clear();
-                CodeIndex = 0;
-                PageIndex++;
-                string className = "Definition" + page.Name + ".qPage";
-                pageCount++;
-                string code = page.CsCode;
+            newBook.Main.Objects.Add(page1);
 
-                List<string> includes = CutInludesBlock(ref code);
-                //List<string> includes = new List<string>();
+            ProjectTree.Nodes[0].Nodes.Add(page);
 
-                string pageCode = "namespace Definition" + page.Name + "{\r\n//<CodeStart>\r\n";
-                
 
-                pageCode += Regex.Replace(code, @"public class\s+@class_\w+", "public class qPage");
-                pageCode += "\r\n//<CodeEnd>\r\n}";
 
-                program += "\t\tpublic static " + className + " " + page.Name + " { get; } = new " + className + "();\r\n";
+            program += "\t\tpublic static " + "DefinitionPage1.qPage" + " " + page.Name + " { get; } = new " + "DefinitionPage1.qPage" + "();\r\n";
 
-                pageCode = ReplaceClassToDefinition(pageCode);
-
-                Pages.Add(page.Name);
-
-               // string PageFileName = $"{PageIndex}.0_Page.cs";
-                string PageFileName = $"{page.Name}.qPage.cs";
-                roslynFiles.Add((PageFileName, code));
-
-                Core.ThisBook.PageOrder.Add(page.Name);
-                page.CodeOrder.Add(PageFileName);
-
-                CodeNode pageNode = new CodeNode(page, PageFileName, CodeNode.NodeType.Page, page.Name);
-                pageNode.CodeIndex = PageIndex;
-                page.OrderIndex = PageIndex;
-                pageNode.Editor.Text = pageCode;
-                pageNode.Editor.EmptyUndoBuffer();
-                pageNode.Active = true;
-                pageNode.Editor.GoToDefinition = () => GoToDefinitionAsync();
-                pageNode.Editor.RenameSymbol = () => RenameSymbolAsync();
-
-                pageNode.Editor.KeyDown += (s, e) =>
-                {
-                    if (e.Control && e.KeyCode == Keys.H)
-                    {
-                        e.SuppressKeyPress = true;
-                        btnFindReplace.PerformClick();
-                    }
-                    if (e.Control && e.KeyCode == Keys.F)
-                    {
-                        e.SuppressKeyPress = true;
-                        btnFind.PerformClick();
-                    }
-                };
-
-                ProjectTree.Nodes[0].Nodes.Add(pageNode);
-
-                if (firstFile == null)
-                    firstFile = PageFileName;
-
-                var lines = code.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-                var usings = lines
-                    .TakeWhile(l => !l.TrimStart().StartsWith("public class"))
-                    .Where(l => l.TrimStart().StartsWith("using"))
-                    .ToList();
-
-                foreach (var subClass in page.CsCodeExtra)
-                {
-                   
-                    CodeIndex++;
-                    string sub = "\r\n\r\nnamespace Definition" + page.Name
-                        + "\r\n{\r\n//<CodeStart>\r\n"
-                        + string.Join("\r\n", usings)
-                        + subClass.Value
-                        + "\r\n//<CodeEnd>\r\n"
-                        + "\r\n}";
-
-                    sub = ReplaceClassToDefinition(sub);
-
-                   // string subFileName = $"{PageIndex}.{CodeIndex}_{subClass.Key}.cs";
-                    string subFileName = $"{page.Name}.{subClass.Key}.cs";
-                    page.CodeOrder.Add(subFileName);
-                    CodeNode subNode = new CodeNode(page, subFileName, CodeNode.NodeType.SubCode, subClass.Key, pageNode);
-                    subNode.CodeIndex = CodeIndex;
-                    subNode.Editor.Text = sub;
-                    subNode.Editor.EmptyUndoBuffer();
-                    subNode.Editor.GoToDefinition = () => GoToDefinitionAsync();
-                    subNode.Editor.RenameSymbol = () => RenameSymbolAsync();
-
-                    subNode.Editor.KeyDown += (s, e) =>
-                    {
-                        if (e.Control && e.KeyCode == Keys.H)
-                        {
-                            e.SuppressKeyPress = true;
-                            btnFindReplace.PerformClick();
-                        }
-                        if (e.Control && e.KeyCode == Keys.F)
-                        {
-                            e.SuppressKeyPress = true;
-                            btnFind.PerformClick();
-                        }
-                    };
-
-                    subNode.Active = includes.Contains(subClass.Key);
-                    if (subNode.Active)
-                    {
-                        roslynFiles.Add((subFileName, sub));
-                        page.Includes.Add(subFileName);
-                    }
-
-                    subNode.ImageIndex = subNode.Active ? 3 : 4;
-                    ProjectTree.Nodes[0].Nodes[pageCount].Nodes.Add(subNode);
-                    subNode.Editor.ApplyLightTheme();
-                }
-
-                //page.CodeOrder.Reverse();
-
-                Debug.WriteLine("======= includes =============");
-                foreach (string f in page.Includes) Debug.WriteLine(f);
-            }
-
-            //Core.ThisBook.PageOrder.Reverse();
 
             program += "\t\tpublic static void Initialize()\r\n\t\t{\r\n";
 
@@ -470,18 +231,15 @@ namespace qbook.ScintillaEditor
             program += "   }\r\n}";
             roslynFiles.Add(("Program.cs", program));
 
+            ProgramNode = new CodeNode(null, "Program.cs", CodeNode.NodeType.Program, "Program.cs");
+            ProgramNode.CodeIndex = 0;
+            ProgramNode.Editor.Text = program;
+            ProgramNode.Editor.EmptyUndoBuffer();
+            ProgramNode.Active = true;
 
-  
-
-            CodeNode Program = new CodeNode(null, "Program.cs", CodeNode.NodeType.Program, "Program.cs");
-            Program.CodeIndex = 0;
-            Program.Editor.Text = program;
-            Program.Editor.EmptyUndoBuffer();
-            Program.Active = true;
-            Program.Editor.ReadOnly = true;
-            Program.Editor.GoToDefinition = () => GoToDefinitionAsync();
-            Program.Editor.RenameSymbol = () => RenameSymbolAsync();
-            RootNode.Nodes.Add(Program);
+            ProgramNode.Editor.GoToDefinition = () => GoToDefinitionAsync();
+            ProgramNode.Editor.RenameSymbol = () => RenameSymbolAsync();
+            RootNode.Nodes.Add(ProgramNode);
 
 
 
@@ -494,7 +252,7 @@ namespace qbook.ScintillaEditor
             Global.Editor.Text = "global using static QB.Program;";
             Global.Editor.EmptyUndoBuffer();
             Global.Active = true;
-            Global.Editor.ReadOnly = true;
+
             Global.Editor.GoToDefinition = () => GoToDefinitionAsync();
             Global.Editor.RenameSymbol = () => RenameSymbolAsync();
             RootNode.Nodes.Add(Global);
@@ -546,43 +304,43 @@ namespace qbook.ScintillaEditor
             // ==============================================================
             // Projekt erzeugen
             // ==============================================================
-            await _roslyn.LoadInMemoryProjectAsync(roslynFiles, references);
+            await Core.Roslyn.LoadInMemoryProjectAsync(roslynFiles, references);
+
+            AdhocWorkspace ws = Core.Roslyn.GetWorkspace;
+            ProjectId id = Core.Roslyn.GetProjectId;
+
 
             // Verknüpfe alle EditorNodes mit den Roslyn Documents
             foreach (System.Windows.Forms.TreeNode node in ProjectTree.Nodes[0].Nodes)
             {
                 if (node is CodeNode editorNode)
                 {
-                    editorNode.RoslynDoc = _roslyn.GetDocumentByFilename(editorNode.FileName);
-                    editorNode.Adhoc.Workspace = _roslyn.GetWorkspace;
-                    editorNode.Adhoc.Id = _roslyn.GetProjectId;
+                    editorNode.RoslynDoc = Core.Roslyn.GetDocumentByFilename(editorNode.FileName);
+                    editorNode.Adhoc.Workspace = ws;
+                    editorNode.Adhoc.Id = id;
                 }
 
                 foreach (System.Windows.Forms.TreeNode sub in node.Nodes)
                 {
                     if (sub is CodeNode subNode)
                     {
-                        subNode.RoslynDoc = _roslyn.GetDocumentByFilename(subNode.FileName);
-                        subNode.Adhoc.Workspace = _roslyn.GetWorkspace;
-                        subNode.Adhoc.Id = _roslyn.GetProjectId;
+                        subNode.RoslynDoc = Core.Roslyn.GetDocumentByFilename(subNode.FileName);
+                        subNode.Adhoc.Workspace = ws;
+                        subNode.Adhoc.Id = id;
                     }
                 }
             }
 
-            Program.RoslynDoc = _roslyn.GetDocumentByFilename("Program.cs");
-            Program.Adhoc.Workspace = _roslyn.GetWorkspace;
-            Program.Adhoc.Id = _roslyn.GetProjectId;
-
-            Global.RoslynDoc = _roslyn.GetDocumentByFilename("GlobalUsing.cs");
-            Global.Adhoc.Workspace = _roslyn.GetWorkspace;
-            Global.Adhoc.Id = _roslyn.GetProjectId;
+            Core.ThisBook = newBook;
+            Core.ActualMain = newBook.Main;
+            Core.ThisBook.Init();
 
 
             Core.ProgramWorkingDir = "InMemory";
             QB.Logger.Info("Using In-Memory Working Directory");
             ProjectTree.EndUpdate();
-        }
 
+        }
 
         private string ReplaceClassToDefinition(string code)
         {
@@ -621,6 +379,8 @@ namespace qbook.ScintillaEditor
             public string SettingsDirectory { get; set; } = null;
             public string DataDirectory { get; set; } = null;
             public string TempDirectory { get; set; } = null;
+
+            public string BackupDirectory { get; set; } = null;
             public string Language { get; set; } = null;
 
             public List<string > PageOrder { get; set; } = new List<string>();
@@ -628,38 +388,8 @@ namespace qbook.ScintillaEditor
 
         }
 
-        public class PageInfo
-        {
-            public string Name { get; set; } = "";
-            public string PagePath { get; set; } = "";
-            public string ObjectPath { get; set; } = "";
-        }
-
-        public class PageDefinition
-        {
-            public string Name { get; set; }
-            public string Text { get; set; }
-            public int OrderIndex { get; set; }
-            public bool Hidden { get; set; }
-            public string Format { get; set; }
-            public List<string> Includes { get; set; }
-            public List<string> CodeOrder { get; set; }
-            public string Section { get; set; }
-            public string Url { get; set; }
-        }
-
-
-        public async Task SaveInFolder()
-        {
-            string uri = Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename.Replace(".qbook","") +".code");
-            Directory.CreateDirectory(uri);
-
-            string link = "SaveDate: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-
-            File.WriteAllText(Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename), link);
-
-            await SaveProjectAsync(uri);
-        }
+ 
+      
 
         public async Task SaveProjectAsync(string newFile = @"T:\qSave")
         {
@@ -688,6 +418,7 @@ namespace qbook.ScintillaEditor
                 Filename = Core.ThisBook.Filename,
                 SettingsDirectory = Core.ThisBook.SettingsDirectory,
                 DataDirectory = Core.ThisBook.DataDirectory,
+                BackupDirectory = Core.ThisBook.BackupDirectory,
                 TempDirectory = Core.ThisBook.TempDirectory,
                 Language = Core.ThisBook.Language,
                 PageOrder = Core.ThisBook.PageOrder
@@ -751,11 +482,11 @@ namespace qbook.ScintillaEditor
                 }
             }
 
-            var code = await _roslyn.GetDocumentTextAsync("Program.cs");
+            var code = await Core.Roslyn.GetDocumentTextAsync("Program.cs");
             string path = Path.Combine(newFile, "Program.cs");
             File.WriteAllText(path, code);
 
-            code = await _roslyn.GetDocumentTextAsync("GlobalUsing.cs");
+            code = await Core.Roslyn.GetDocumentTextAsync("GlobalUsing.cs");
             path = Path.Combine(newFile, "GlobalUsing.cs");
             File.WriteAllText(path, code);
 
@@ -766,507 +497,173 @@ namespace qbook.ScintillaEditor
           
         }
 
-
-        public async Task<Book> LoadProjectAsync(string folderPath,string bookname)
+        public async Task CreateProjectTree(bool rebuild = false)
         {
-            PageRuntime.DestroyAll();
 
-            _roslyn.Reset();
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-            _roslyn = new RoslynService();
-
+            Debug.WriteLine("Creating ProjectTree");
+            if(!rebuild)
+            PanelTabs.Controls.Clear();
             ProjectTree.BeginUpdate();
             ProjectTree.ImageList = imageList1;
             ProjectTree.Nodes.Clear();
-
-            RootNode = new CodeNode(bookname)
-            {
-                ImageIndex = 1
-            };
-
+            RootNode = new CodeNode(Core.ThisBook.Filename.Replace(".qbook",""));
+            RootNode.ImageIndex = 1;
             ProjectTree.Font = new Font("Calibri", 12);
             ProjectTree.Nodes.Add(RootNode);
 
-            Book newBook = new Book();
-            newBook.Main = new oControl();
-
-            var roslynFiles = new List<(string fileName, string code)>();
-            string program = File.ReadAllText(Path.Combine(folderPath, "Program.cs"));
-            roslynFiles.Add(("Program.cs", program));
-            string globalUsing = File.ReadAllText(Path.Combine(folderPath, "GlobalUsing.cs"));
-            roslynFiles.Add(("GlobalUsing.cs", globalUsing));
-
-            string bookJson = File.ReadAllText(Path.Combine(folderPath, "Book.json"));
-            var qbook = JsonConvert.DeserializeObject(bookJson, typeof(qBookDefinition)) as qBookDefinition;
-
-            newBook.Version = qbook.Version;
-            newBook.VersionHistory = qbook.VersionHistory;
-            newBook.VersionEpoch = qbook.VersionEpoch;
-            newBook.StartFullScreen = qbook.StartFullScreen;
-            newBook.HidPageMenuBar = qbook.HidPageMenuBar;
-            newBook.PasswordAdmin = qbook.PasswordAdmin;
-            newBook.PasswordService = qbook.PasswordService;
-            newBook.PasswordUser = qbook.PasswordUser;
-            newBook.Directory = qbook.Directory;
-            newBook.Filename = qbook.Filename;
-            newBook.SettingsDirectory = qbook.SettingsDirectory;
-            newBook.DataDirectory = qbook.DataDirectory;
-            newBook.TempDirectory = qbook.TempDirectory;
-            newBook.Language = qbook.Language;
-            newBook.PageOrder = qbook.PageOrder;
-
-
-            List<string> reversePageOrder = newBook.PageOrder.AsEnumerable().Reverse().ToList();
-
-            List<CodeNode> pages = new List<CodeNode>();
-
-            foreach (string page in reversePageOrder)
+            foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
             {
-                CodeNode pageNode = null;
-                oPage opage = null;
-                string pageFolder = Path.Combine(folderPath, "Pages", page);
-                string oPageJson = File.ReadAllText(Path.Combine(pageFolder, "oPage.json"));
-                opage = oPageFromString(oPageJson);
-
-                string filename = page + ".qPage.cs";
-                pageNode = new CodeNode(opage, filename, CodeNode.NodeType.Page, page);
-                pageNode.Editor.Text = File.ReadAllText(Path.Combine(pageFolder, filename));
+                CodeNode pageNode = new CodeNode(page, page.Filename, CodeNode.NodeType.Page, page.Name);
+                pageNode.Editor.Text = await Core.Roslyn.GetDocumentTextAsync(page.Filename);
                 pageNode.Editor.EmptyUndoBuffer();
                 pageNode.Active = true;
                 pageNode.Editor.GoToDefinition = () => GoToDefinitionAsync();
                 pageNode.Editor.RenameSymbol = () => RenameSymbolAsync();
-                pageNode.CodeIndex = newBook.PageOrder.IndexOf(page);
+                pageNode.RoslynDoc = Core.Roslyn.GetDocumentByFilename(page.Filename); ;
+                pageNode.Adhoc.Workspace = Core.Roslyn.GetWorkspace;
+                pageNode.Adhoc.Id = Core.Roslyn.GetProjectId;
 
-                List<string> reverseCodeOrder = opage.CodeOrder.AsEnumerable().Reverse().ToList();
-
-                foreach (string codeFile in reverseCodeOrder)
+                pageNode.Editor.KeyDown += (s, e) =>
                 {
-                    if (codeFile.EndsWith("qPage.cs")) continue;
-                    CodeNode sub = new CodeNode(opage, codeFile, CodeNode.NodeType.SubCode, codeFile, pageNode);
-                    sub.Editor.Text = File.ReadAllText(Path.Combine(pageFolder, codeFile));
-                    sub.Editor.EmptyUndoBuffer();
-                    sub.Active = opage.Includes.Contains(codeFile);
-                    sub.Editor.GoToDefinition = () => GoToDefinitionAsync();
-                    sub.Editor.RenameSymbol = () => RenameSymbolAsync();
-                    sub.CodeIndex = opage.CodeOrder.IndexOf(codeFile);
-                    pageNode.Nodes.Add(sub);
-
-
-                }
-                pages.Add(pageNode);
-            }
-            pages.Reverse();
-
-            foreach(CodeNode p in pages)
-            {
-                RootNode.Nodes.Add(p);
-                newBook.Main.Objects.Add(p.Page);
-
-            }
-
-            //string codeDir = Path.Combine(folderPath, "Pages");
-
-            //var pageFolders = Directory.GetDirectories(codeDir)
-            //.OrderBy(d =>
-            //{
-            //    var name = Path.GetFileName(d);
-            //    var prefix = name.Split('_')[0];
-            //    double index = 0;
-            //    double.TryParse(prefix.Replace('.', ','), out index);
-            //    return index;
-            //})
-            //.ToList();
-
-            //int pageCounter = 0;
-            //int codeCounter = 0;
-
-            //foreach (string pageFolder in pageFolders)
-            //{
-            //    pageCounter ++;
-            //    codeCounter = -1;
-            //    string pageFolderName = Path.GetFileName(pageFolder);
-            //    int PageIndex = int.Parse(pageFolderName.Split('_')[0].Split('.')[0]);
-            //    string pageName = pageFolder.Split('_')[1];
-
-
-            //    CodeNode pageNode = null;
-            //    oPage opage = null;
-            //    var files = Directory.GetFiles(pageFolder)
-            //    .OrderBy(f =>
-            //    {
-            //        var name = Path.GetFileNameWithoutExtension(f);
-            //        var prefix = name.Split('_')[0];
-            //        double index = 0;
-            //        double.TryParse(prefix.Replace('.', ','), out index);
-            //        return index;
-            //    })
-            //    .ToList();
-
-            //    foreach (string file in files)
-
-            //    {
-
-            //        if (file.EndsWith(".cs"))
-            //        {
-            //            codeCounter++;
-            //            string code = File.ReadAllText(file);
-            //            string fileName = Path.GetFileName(file);
-            //            fileName = fileName.Split('_')[1];
-            //            roslynFiles.Add((fileName, code));
-
-            //            //int CodeIndex = int.Parse(fileName.Split('_')[0].Split('.')[1]);
-            //            //string CodeName = fileName.Split('_')[1];
-
-            //            int CodeIndex = codeCounter;
-            //            string CodeName = fileName.Replace(".cs","");
-
-            //            if (CodeIndex == 0)
-            //            {
-            //                string oPageJson = File.ReadAllText(Path.Combine(pageFolder, "oPage.json"));
-            //                opage = oPageFromString(oPageJson);
-
-            //                pageNode = new CodeNode(opage, fileName, CodeNode.NodeType.Page, CodeName);
-            //                pageNode.Editor.Text = File.ReadAllText(Path.Combine(codeDir,pageFolder,file));
-            //                pageNode.Editor.EmptyUndoBuffer();
-            //                pageNode.Active = true;
-            //                pageNode.Editor.GoToDefinition = () => GoToDefinitionAsync();
-            //                pageNode.Editor.RenameSymbol = () => RenameSymbolAsync();
-            //                pageNode.CodeIndex = CodeIndex;
-            //            }
-            //            else
-            //            {
-            //                CodeNode sub = new CodeNode(opage, fileName, CodeNode.NodeType.SubCode, CodeName, pageNode);
-            //                sub.Editor.Text = File.ReadAllText(Path.Combine(codeDir, pageFolder, file));
-            //                sub.Editor.EmptyUndoBuffer();
-            //                sub.Active = opage.Includes.Contains(fileName);
-            //                sub.Editor.GoToDefinition = () => GoToDefinitionAsync();
-            //                sub.Editor.RenameSymbol = () => RenameSymbolAsync();
-            //                sub.CodeIndex = CodeIndex;
-            //                pageNode.Nodes.Add(sub);
-            //            }
-            //        }
-            //    }
-            //    RootNode.Nodes.Add(pageNode);
-            //    newBook.Main.Objects.Add(pageNode.Page);
-            //}
-
-            List<MetadataReference> references = new List<MetadataReference>();
-
-            // Basisreferenzen aus dem laufenden .NET
-            references.Add(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
-            references.Add(MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location));
-            references.Add(MetadataReference.CreateFromFile(typeof(System.Windows.Forms.Form).Assembly.Location));
-            references.Add(MetadataReference.CreateFromFile(typeof(System.Drawing.Point).Assembly.Location));
-
-            string netstandardPath = Path.Combine(RuntimeEnvironment.GetRuntimeDirectory(), "netstandard.dll");
-            if (File.Exists(netstandardPath))
-                references.Add(MetadataReference.CreateFromFile(netstandardPath));
-
-            // Zusätzliche DLLs aus libs/, aber nur managed Assemblies
-            string baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libs");
-            if (Directory.Exists(baseDir))
-            {
-                foreach (string dllPath in Directory.GetFiles(baseDir, "*.dll"))
-                {
-                    try
+                    if (e.Control && e.KeyCode == Keys.H)
                     {
-                        using var fs = new FileStream(dllPath, FileMode.Open, FileAccess.Read);
-                        using var pe = new System.Reflection.PortableExecutable.PEReader(fs);
-                        if (!pe.HasMetadata)
+                        e.SuppressKeyPress = true;
+                        btnFindReplace.PerformClick();
+                    }
+                    if (e.Control && e.KeyCode == Keys.F)
+                    {
+                        e.SuppressKeyPress = true;
+                        btnFind.PerformClick();
+                    }
+                };
+
+                RootNode.Nodes.Add(pageNode);
+
+
+                foreach (oCode sub in page.SubCodes.Values)
+                {
+                    page.CodeOrder.Add(sub.Filename);
+                    CodeNode subNode = new CodeNode(page, sub.Filename, CodeNode.NodeType.SubCode, sub.Filename, pageNode);
+                    subNode.Editor.Text = await Core.Roslyn.GetDocumentTextAsync(sub.Filename);
+                    subNode.Active = sub.Active;
+                    subNode.RoslynDoc = Core.Roslyn.GetDocumentByFilename(sub.Filename);
+                    subNode.Editor.EmptyUndoBuffer();
+                    subNode.Editor.GoToDefinition = () => GoToDefinitionAsync();
+                    subNode.Editor.RenameSymbol = () => RenameSymbolAsync();
+                    subNode.Adhoc.Workspace = Core.Roslyn.GetWorkspace;
+                    subNode.Adhoc.Id = Core.Roslyn.GetProjectId;
+                    subNode.Editor.KeyDown += (s, e) =>
+                    {
+                        if (e.Control && e.KeyCode == Keys.H)
                         {
-                            //                Debug.WriteLine($"[Roslyn] Skip native DLL: {Path.GetFileName(dllPath)}");
-                            continue;
+                            e.SuppressKeyPress = true;
+                            btnFindReplace.PerformClick();
                         }
-
-                        references.Add(MetadataReference.CreateFromFile(dllPath));
-                        //     Debug.WriteLine($"[Roslyn] +Reference: {Path.GetFileName(dllPath)}");
-                    }
-                    catch (System.Exception ex)
-                    {
-                        //         Debug.WriteLine($"[Roslyn] Skip invalid: {Path.GetFileName(dllPath)} ({ex.Message})");
-                    }
-                }
-            }
-
-            // ==============================================================
-            // Projekt erzeugen
-            // ==============================================================
-
-            Debug.WriteLine("========= Files ==========");
-            foreach (var rf in roslynFiles)
-            {
-                Debug.WriteLine("======== " +rf.fileName);
-                Debug.WriteLine(rf.code);
-                Debug.WriteLine("==");
-            }
-
-
-            await _roslyn.LoadInMemoryProjectAsync(roslynFiles, references);
-
-
-            // Rebind all CodeNodes to new Roslyn documents
-            foreach (CodeNode node in RootNode.Nodes)
-            {
-                if (node.Type == CodeNode.NodeType.Page)
-                {
-                    node.RoslynDoc = _roslyn.GetDocumentByFilename(node.FileName);
-                    node.Adhoc.Workspace = _roslyn.GetWorkspace;
-                    node.Adhoc.Id = _roslyn.GetProjectId;
-
-
-                    foreach (CodeNode sub in node.Nodes)
-                    {
-                        if (sub.Type == CodeNode.NodeType.SubCode)
+                        if (e.Control && e.KeyCode == Keys.F)
                         {
-                            sub.RoslynDoc = _roslyn.GetDocumentByFilename(sub.FileName);
-                            sub.Adhoc.Workspace = _roslyn.GetWorkspace;
-                            sub.Adhoc.Id = _roslyn.GetProjectId;
+                            e.SuppressKeyPress = true;
+                            btnFind.PerformClick();
                         }
-                    }
+                    };
+                    subNode.ImageIndex = subNode.Active ? 3 : 4;
+                    pageNode.Nodes.Add(subNode);
+                    subNode.Editor.ApplyLightTheme();
                 }
             }
 
-            //Core.ThisBook.Init();
-            //Core.UpdateProjectAssemblyQbRoot();
+            CodeNode ProgramNode = new CodeNode(null, "Program.cs", CodeNode.NodeType.Program, "Program.cs");
+            ProgramNode.CodeIndex = 0;
 
-            //Core.ProgramWorkingDir = "InMemory";
-            QB.Logger.Info("Using In-Memory Working Directory");
+            var code = await Core.ThisBook.Program.GetTextAsync();
+
+            ProgramNode.Editor.Text = code.ToString();
+            ProgramNode.Editor.EmptyUndoBuffer();
+            ProgramNode.Active = true;
+            ProgramNode.RoslynDoc = Core.Roslyn.GetDocumentByFilename("Program.cs");
+            ProgramNode.Adhoc.Workspace = Core.Roslyn.GetWorkspace;
+            ProgramNode.Adhoc.Id = Core.Roslyn.GetProjectId;
+
+            ProgramNode.Editor.GoToDefinition = () => GoToDefinitionAsync();
+            ProgramNode.Editor.RenameSymbol = () => RenameSymbolAsync();
+            RootNode.Nodes.Add(ProgramNode);
+
+            CodeNode Global = new CodeNode(null, "GlobalUsing.cs", CodeNode.NodeType.Program, "GlobalUsing.cs");
+            Global.CodeIndex = 0;
+            code = await Core.ThisBook.Global.GetTextAsync();
+            Global.RoslynDoc = Core.Roslyn.GetDocumentByFilename("GlobalUsing.cs");
+            Global.Editor.Text = code.ToString();
+            Global.Editor.EmptyUndoBuffer();
+            Global.Active = true;
+            Global.Adhoc.Workspace = Core.Roslyn.GetWorkspace;
+            Global.Adhoc.Id = Core.Roslyn.GetProjectId;
+
+            Global.Editor.GoToDefinition = () => GoToDefinitionAsync();
+            Global.Editor.RenameSymbol = () => RenameSymbolAsync();
+            RootNode.Nodes.Add(Global);
+
+            ResetTreeViewNodes();
+            RootNode.Expand();
             ProjectTree.EndUpdate();
-
-            return newBook;
-
         }
 
-
-
-        private oPage oPageFromString(string json)
+        public void RemoveProjectTree()
         {
-            var data = JsonConvert.DeserializeObject(json, typeof(PageDefinition)) as PageDefinition;
-            return new oPage
+            // Zusätzliche: Find/Replace Control freigeben
+            if (_findReplaceControl != null)
             {
-                Name = data.Name,
-                Text = data.Text,
-                OrderIndex = data.OrderIndex,
-                Hidden = data.Hidden,
-                Format = data.Format,
-                Includes = data.Includes ?? new List<string>(),
-                CodeOrder = data.CodeOrder,
-                Section = data.Section,
-                Url = data.Url
-            };
-        }
-
-
-
-
-        #endregion
-
-        public async Task CreateAssemblyFromTree(System.Windows.Forms.TreeView project)
-        {
-            Debug.WriteLine("======== CreateAssemblyFromTree ========");
-
-            // 1️⃣ Alte Assembly + Threads zerstören
-            try
-            {
-                PageRuntime.DestroyAll();
-                qbook.Core.ActiveCsAssembly = null;
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-                GC.Collect();
-                Debug.WriteLine("[Rebuild] Old runtime destroyed.");
-            }
-            catch (System.Exception ex)
-            {
-                Debug.WriteLine($"[Rebuild] Destroy failed: {ex.Message}");
+                _findReplaceControl.Dispose();
+                _findReplaceControl = null;
             }
 
-            // 2️⃣ Roslyn-Service resetten
-            _roslyn = new RoslynService();
-            _roslyn.Reset();  // <-- wichtig, Workspace komplett leeren
-
-            // 3️⃣ Code und Program-Klasse aus TreeView aufbauen
-            var pages = new List<string>();
-            var roslynFiles = new List<(string fileName, string code)>();
-            var sbProgram = new StringBuilder();
-            sbProgram.AppendLine("namespace QB");
-            sbProgram.AppendLine("{");
-            sbProgram.AppendLine("\tpublic static class Program");
-            sbProgram.AppendLine("\t{");
+            panelEditor.Controls.Clear();
 
             foreach (CodeNode node in ProjectTree.Nodes)
             {
-                if (node.Type == CodeNode.NodeType.Page)
-                {
-                    pages.Add(node.Text);
-                    string code = node.Editor.Text;
-                    roslynFiles.Add((node.FileName, code));
-
-                    // Page-Instanz als statische Property
-                    sbProgram.AppendLine($"\t\tpublic static Definition{node.Text} {node.Text} {{ get; }} = new Definition{node.Text}();");
-
-                    // Unterknoten (Subpages, Controls, etc.)
-                    foreach (CodeNode sub in node.Nodes)
-                    {
-                        string subcode = sub.Editor.Text;
-                        roslynFiles.Add((sub.FileName, subcode));
-                    }
-                }
+                DisposeNode(node);
             }
 
-            // 4️⃣ Methoden: Initialize / Run / Destroy
-            sbProgram.AppendLine("\t\tpublic static void Initialize()");
-            sbProgram.AppendLine("\t\t{");
-            foreach (string p in pages)
-                sbProgram.AppendLine($"\t\t\t{p}.Initialize();");
-            sbProgram.AppendLine("\t\t}");
+            ProjectTree.Nodes.Clear();
+            SelectedNode = null;
+            RootNode = null;
+            ProgramNode = null;
+}
 
-            sbProgram.AppendLine("\t\tpublic static void Run()");
-            sbProgram.AppendLine("\t\t{");
-            foreach (string p in pages)
-                sbProgram.AppendLine($"\t\t\t{p}.Run();");
-            sbProgram.AppendLine("\t\t}");
-
-            sbProgram.AppendLine("\t\tpublic static void Destroy()");
-            sbProgram.AppendLine("\t\t{");
-            foreach (string p in pages)
-                sbProgram.AppendLine($"\t\t\t{p}.Destroy();");
-            sbProgram.AppendLine("\t\t}");
-
-            sbProgram.AppendLine("\t}");
-            sbProgram.AppendLine("}");
-
-            // 5️⃣ Dateien hinzufügen
-            roslynFiles.Add(("Program.cs", sbProgram.ToString()));
-            roslynFiles.Add(("GlobalUsing.cs", "global using static QB.Program;\r\nusing Thread = qbook.Core.BookThreadFactory;"));
-
-            // 6️⃣ Referenzen aufbauen
-            var references = new List<MetadataReference>
-    {
-        MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-        MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
-        MetadataReference.CreateFromFile(typeof(System.Windows.Forms.Form).Assembly.Location),
-        MetadataReference.CreateFromFile(typeof(System.Drawing.Point).Assembly.Location)
-    };
-
-            string netstandardPath = Path.Combine(RuntimeEnvironment.GetRuntimeDirectory(), "netstandard.dll");
-            if (File.Exists(netstandardPath))
-                references.Add(MetadataReference.CreateFromFile(netstandardPath));
-
-            string baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libs");
-            if (Directory.Exists(baseDir))
-            {
-                foreach (string dllPath in Directory.GetFiles(baseDir, "*.dll"))
-                {
-                    try
-                    {
-                        using var fs = new FileStream(dllPath, FileMode.Open, FileAccess.Read);
-                        using var pe = new System.Reflection.PortableExecutable.PEReader(fs);
-                        if (!pe.HasMetadata)
-                        {
-                            Debug.WriteLine($"[Roslyn] Skip native DLL: {Path.GetFileName(dllPath)}");
-                            continue;
-                        }
-
-                        references.Add(MetadataReference.CreateFromFile(dllPath));
-                        Debug.WriteLine($"[Roslyn] +Reference: {Path.GetFileName(dllPath)}");
-                    }
-                    catch (System.Exception ex)
-                    {
-                        Debug.WriteLine($"[Roslyn] Skip invalid: {Path.GetFileName(dllPath)} ({ex.Message})");
-                    }
-                }
-            }
-
-            // 7️⃣ Neues Roslyn-Projekt erzeugen und kompilieren
-            await _roslyn.LoadInMemoryProjectAsync(roslynFiles, references);
-
-            Debug.WriteLine("======== Rebuild complete ========");
-
-        }
-
-
-        public List<string> CutInludesBlock(ref string source)
+        void DisposeNode(CodeNode node)
         {
-            //Debug.WriteLine("===== ExtractIncludes ======");
-            //Debug.WriteLine(source);
-
-            List<string> includes = new List<string>();
-            if (string.IsNullOrWhiteSpace(source)) return includes;
-
-            var regex = new Regex(@"//\+include\s+(\w+)", RegexOptions.Compiled);
-            var lines = source.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-            var newLines = new List<string>();
-            var includeLines = new List<string>();
-            int lineNumber = 0;
-            int includeLineNumber = 0;
-
-            bool inIncludeBlock = false;
-            bool includeStartExists = false;
-            bool includeEndExists = false;
-
-            foreach (var line in lines)
+            // Editor-Events lösen (KeyDown / eigene Delegates)
+            if (node.Editor != null)
             {
-                var match = regex.Match(line);
-                if (match.Success)
+                try
                 {
-                    includes.Add(match.Groups[1].Value);
-                    includeLines.Add(line);
+                    node.Editor.KeyDown -= null; // keine direkte Referenz – falls du eigene Handler speicherst, explizit abmelden
+                    node.Editor.GoToDefinition = null;
+                    node.Editor.RenameSymbol = null;
                 }
-                else
-                {
-                    if (!line.Contains("//<IncludeStart>") && !line.Contains("//<IncludeEnd>"))
-                    {
-                        newLines.Add(line);
-                    }
+                catch { }
 
-                }
-
-                if (line.Contains("public class @"))
-                {
-                    includeLineNumber = lineNumber;
-                }
-                //{
-                //    // Stoppe das Sammeln, wenn ein Include-Block bereits existiert
-                //    includeLines.Clear();
-                //}
-                lineNumber++;
-
-            }
-            //Debug.WriteLine("Insert Startline = " + includeLineNumber);
-            //Debug.WriteLine("===== Includes ======");
-
-            List<string> includeBlock = new List<string>();
-
-            foreach (string l in includes) Debug.WriteLine(l);
-
-            if (includeLines.Count > 0)
-            {
-                includeBlock.Add("//<IncludeStart>");
-                includeBlock.AddRange(includeLines);
-                includeBlock.Add("//<IncludeEnd>");
-
-                // Optional: Du kannst entscheiden, wo der Block eingefügt wird.
-                // Hier wird er am Anfang eingefügt.
-
-            }
-            else
-            {
-                includeBlock.Add("\t//<IncludeStart>");
-                includeBlock.Add("");
-                includeBlock.Add("\t//<IncludeEnd>");
+                node.Editor.Dispose();
+                node.Editor = null;
             }
 
-          //  newLines.InsertRange(includeLineNumber + 2, includeBlock);
+            // Roslyn-Referenzen lösen
+            node.RoslynDoc = null;
+            if (node.Adhoc.Workspace != null)
+            {
+                node.Adhoc.Workspace = null;
+                node.Adhoc.Id = null;
+            }
 
-            source = string.Join("\n", newLines);
-            //Debug.WriteLine("===== Updated Source ======");
-            //Debug.WriteLine(source);
-            return includes;
+            node.PageNode = null;
+            node.Page = null;
+
+            foreach (CodeNode child in node.Nodes)
+                DisposeNode(child);
+
+            node.Nodes.Clear();
         }
 
-        //============================ Load Book End ========================
+
+        #endregion
 
         private void tableLayoutPanel2_Paint(object sender, PaintEventArgs e)
         {
@@ -1275,14 +672,30 @@ namespace qbook.ScintillaEditor
 
 
         CodeNode _clickedNode;
+
+        public void RefreshPageData()
+        {
+            foreach(System.Windows.Forms.Control c in flowLayoutPageData.Controls)
+            {
+                if(c is InputControls.TextBoxWithLabel tb)
+                {
+                    tb.RefreshValue();
+                }
+            }
+        }
+
         private async void ProjectTree_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
         {
 
             if (e.Button == MouseButtons.Left)
             {
-               if(e.Node is CodeNode)
+                
+                if (e.Node is CodeNode) {
+
                     await OpenNode(e.Node as CodeNode);
-            //    UpdateTabs();
+               
+                }
+                //   
             }
 
 
@@ -1341,6 +754,7 @@ namespace qbook.ScintillaEditor
                     addSubCodeToolStripMenuItem.Visible = false;
                     toolStripMenuOpenWorkspace.Visible = false;
                     toolStripMenuIncludeCode.Visible = true;
+                    deletePageToolStripMenuItem.Visible = false;
 
                     renamePageToolStripMenuItem.Visible = false;
 
@@ -1466,18 +880,22 @@ namespace qbook.ScintillaEditor
             dataGridViewBuildOutput = new DataGridView();
             dataGridViewBuildOutput.DataBindingComplete += (s, e) =>
             {
-                dataGridViewBuildOutput.Columns["Page"].Width = 100;
-                dataGridViewBuildOutput.Columns["Class"].Width = 100;
-                dataGridViewBuildOutput.Columns["Position"].Width = 0;
-                dataGridViewBuildOutput.Columns["Length"].Width = 0;
-                dataGridViewBuildOutput.Columns["Type"].Width = 80;
-                dataGridViewBuildOutput.Columns["Node"].Width = 0;
+                dataGridViewBuildOutput.Columns["Count"].Width = 40;
+                dataGridViewBuildOutput.Columns["RepeatMs"].Width = 40;
+                dataGridViewBuildOutput.Columns["Key"].Visible = false;
+                dataGridViewBuildOutput.Columns["File"].Width = 150;
+                dataGridViewBuildOutput.Columns["Methode"].Width = 150;
+                dataGridViewBuildOutput.Columns["Line"].Visible = false;
+                dataGridViewBuildOutput.Columns["Col"].Visible = false;
 
-                dataGridViewBuildOutput.Columns["Description"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                dataGridViewBuildOutput.Columns["Reason"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                
+
+               
             };
             dataGridViewBuildOutput.AllowUserToResizeColumns = false;
 
-            dataGridViewBuildOutput.DataSource = tblBuildDiagnosic;
+            dataGridViewBuildOutput.DataSource = QB.GlobalExceptions.RuntimeErrors;
             dataGridViewBuildOutput.AllowUserToResizeColumns = false;
             dataGridViewBuildOutput.AllowUserToAddRows = false;
             dataGridViewBuildOutput.RowHeadersVisible = false;
@@ -1508,31 +926,37 @@ namespace qbook.ScintillaEditor
             dataGridViewBuildOutput.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
             dataGridViewBuildOutput.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             dataGridViewBuildOutput.AllowUserToAddRows = false;
-            dataGridViewBuildOutput.CellFormatting += (s, e) =>
-            {
-                if (dataGridViewBuildOutput.Columns[e.ColumnIndex].Name == "Type")
-                {
-                    string severity = e.Value?.ToString();
-                    switch (severity)
-                    {
-                        case "Error":
-                            dataGridViewBuildOutput.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.Tomato;
-                            break;
-                        case "Warning":
-                            dataGridViewBuildOutput.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.LightYellow;
-                            break;
-                        case "Info":
-                            dataGridViewBuildOutput.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.LightBlue;
-                            break;
-                    }
-                }
-            };
+            dataGridViewBuildOutput.DefaultCellStyle.BackColor = Color.Tomato;
+
+            //dataGridViewBuildOutput.CellFormatting += (s, e) =>
+            //{
+            //    if (dataGridViewBuildOutput.Columns[e.ColumnIndex].Name == "Type")
+            //    {
+            //        string severity = e.Value?.ToString();
+            //        switch (severity)
+            //        {
+            //            case "Error":
+            //                dataGridViewBuildOutput.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.Tomato;
+            //                break;
+            //            case "Warning":
+            //                dataGridViewBuildOutput.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.LightYellow;
+            //                break;
+            //            case "Info":
+            //                dataGridViewBuildOutput.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.LightBlue;
+            //                break;
+            //        }
+            //    }
+            //};
             dataGridViewBuildOutput.CellClick += (s, e)  =>
             {
                 if (e.RowIndex >= 0)
                 {
-                    CodeNode node = (CodeNode)dataGridViewBuildOutput.Rows[e.RowIndex].Cells["Node"].Value;
+                    string file = dataGridViewBuildOutput.Rows[e.RowIndex].Cells["File"].Value.ToString();
+                    int line = (int)dataGridViewBuildOutput.Rows[e.RowIndex].Cells["Line"].Value;
+                    CodeNode node = GetNodeByFilename(file);
                     OpenNode(node);
+                    node.Editor.HighlightLine(line, Color.Red);
+                    node.Editor.Refresh();
                 }
             };
 
@@ -1722,19 +1146,30 @@ namespace qbook.ScintillaEditor
             _backColor = Color.FromArgb(220, 220, 220);
             panelControl.BackColor = _backColor;
 
-            foreach (System.Windows.Forms.Button b in panelControl.Controls)
+            foreach (System.Windows.Forms.Control control in panelControl.Controls)
             {
-                b.BackColor = _backColor;
-                //  b.Font = new Font("Segoe UI", 12, FontStyle.Bold);
-                b.ForeColor = Color.Black;
-                b.FlatAppearance.BorderColor = _backColor;
-                Bitmap pic = b.Image as Bitmap;
-                pic = BitmapTools.ReplaceColor(pic, Color.Black, Color.FromArgb(120, 120, 120), 100); //Init Icon Color
-                pic = BitmapTools.ReplaceColor(pic, Color.FromArgb(150, 150, 150), Color.FromArgb(100, 100, 100), 100);
-                pic = BitmapTools.ResizeExact(pic, 28, 28);
-                var old = b.Image;
-                b.Image = pic;
-                old?.Dispose(); ;
+
+                if (control is System.Windows.Forms.Button) {
+                    System.Windows.Forms.Button b = control as System.Windows.Forms.Button;
+                    b.BackColor = _backColor;
+                    //  b.Font = new Font("Segoe UI", 12, FontStyle.Bold);
+                    b.ForeColor = Color.Black;
+                    b.FlatAppearance.BorderColor = _backColor;
+                    Bitmap pic = b.Image as Bitmap;
+                    pic = BitmapTools.ReplaceColor(pic, Color.Black, Color.FromArgb(120, 120, 120), 100); //Init Icon Color
+                    pic = BitmapTools.ReplaceColor(pic, Color.FromArgb(150, 150, 150), Color.FromArgb(100, 100, 100), 100);
+                    pic = BitmapTools.ResizeExact(pic, 28, 28);
+                    var old = b.Image;
+                    b.Image = pic;
+                    old?.Dispose();
+                }
+            }
+
+            flowLayoutPageData.BackColor = _backColor;
+            foreach (System.Windows.Forms.Control c in flowLayoutPageData.Controls)
+            {
+                if (c is InputControls.TextBoxWithLabel tb) tb.ApplyTheme();
+              
             }
 
 
@@ -1766,9 +1201,9 @@ namespace qbook.ScintillaEditor
             dataGridViewFindReplace.ForeColor = Color.Black;
 
             Theme.Current = Theme.EditorTheme.Light;
+            RefreshTabs();
 
-
-        //    UpdateTabs();
+     
         }
         private void ApplyDarkTheme()
         {
@@ -1836,6 +1271,14 @@ namespace qbook.ScintillaEditor
             _backColor = Color.FromArgb(60, 60, 60);
             panelControl.BackColor = _backColor;
 
+
+            flowLayoutPageData.BackColor = _backColor;
+            foreach (System.Windows.Forms.Control c in flowLayoutPageData.Controls)
+            {
+                if (c is InputControls.TextBoxWithLabel tb) tb.ApplyTheme();
+
+            }
+
             foreach (System.Windows.Forms.Button b in panelControl.Controls)
             {
                 b.BackColor = _backColor;
@@ -1882,23 +1325,21 @@ namespace qbook.ScintillaEditor
             dataGridViewFindReplace.BackgroundColor = Color.FromArgb(70, 70, 70);
             dataGridViewFindReplace.ForeColor = Color.Black;
 
-            //
-
-
-            //UpdateTabs();
+            RefreshTabs();
         }
-
-        public async Task ToggleTheme()
+        public void ToggleTheme()
         {
             if (!Theme.IsDark) 
             {
                 ApplyDarkTheme();
+                if(panelEditor.Controls[0] is DocumentEditor)
                 ((DocumentEditor)panelEditor.Controls[0]).ApplyDarkTheme();
             }
             else 
             {
                 ApplyLightTheme();
-                ((DocumentEditor)panelEditor.Controls[0]).ApplyLightTheme();
+                if (panelEditor.Controls[0] is DocumentEditor)
+                    ((DocumentEditor)panelEditor.Controls[0]).ApplyLightTheme();
             }
             ;
             //    RefreshSemanticOverlaysAsync();
@@ -1907,7 +1348,6 @@ namespace qbook.ScintillaEditor
             //if (_currentTheme == EditorTheme.Dark) _findReplaceControl.DarkTheme(); else _findReplaceControl.LightTheme();
 
         }
-
         private void UpdateAllNodes(System.Windows.Forms.TreeView tree, Color color, int nodeLevel, int newIndex)
         {
             foreach (CodeNode node in tree.Nodes)
@@ -1929,8 +1369,7 @@ namespace qbook.ScintillaEditor
             {
                 index = 9;
             }
-
-            node.SelectedImageIndex = SelectedNode.ImageIndex;
+            if(SelectedNode != null) node.SelectedImageIndex = SelectedNode.ImageIndex;
 
             foreach (CodeNode child in node.Nodes)
             {
@@ -1939,8 +1378,6 @@ namespace qbook.ScintillaEditor
         }
 
         #endregion
-
-      
 
         #region Page Control (Add,Remove, Rename)
 
@@ -2018,9 +1455,8 @@ namespace qbook.ScintillaEditor
 
         public CodeNode SelectedNode;
 
-        public async Task SelectNodeByName(string NodeName)
+        public async Task OpenNodeByName(string NodeName)
         {
-            //     Debug.WriteLine($"========== Looking for Node '{NodeName}' ==========");
 
             SafeInvoke(ProjectTree, async () =>
             {
@@ -2028,33 +1464,30 @@ namespace qbook.ScintillaEditor
                 ProjectTree.SelectedNode = null;
                 foreach (CodeNode node in ProjectTree.Nodes[0].Nodes)
                 {
-                    if (node.Text.EndsWith(NodeName))
+                    if (node.Name == NodeName)
                     {
                         ProjectTree.SelectedNode = node;
                         node.EnsureVisible();
                         node.Expand();
                         await OpenNode(node);
-                        //   UpdateTabs();
                         break;
                     }
 
                     foreach (CodeNode subnode in node.Nodes)
                     {
                         //    Debug.WriteLine(subnode.Name);
-                        if (subnode.Name.EndsWith(NodeName))
+                        if (subnode.Name == NodeName)
                         {
                             ProjectTree.SelectedNode = subnode;
                             subnode.EnsureVisible();
                             subnode.Expand();
                             await OpenNode(subnode);
-                            //        UpdateTabs();
                             break;
                         }
                     }
                 }
-            });
+            });  
         }
-
         public async Task OpenNode(CodeNode node)
         {
             if (_findReplaceControl != null)
@@ -2063,7 +1496,16 @@ namespace qbook.ScintillaEditor
                     _findReplaceControl.BringToFront();
             }
 
+            if (node.Type == CodeNode.NodeType.Page || node.Type == CodeNode.NodeType.SubCode)
+            {
+                SelectedPage = node.Page;
+            }
+            else
+            {
+                SelectedPage = new oPage();
+            }
 
+            RefreshPageData();
             if (node == null) return;
             if (node == SelectedNode) return;
             if (node.Editor == null) return;
@@ -2080,11 +1522,6 @@ namespace qbook.ScintillaEditor
             }
 
             bool find = panelEditor.Controls.Contains(_findReplaceControl) && _findReplaceControl.Visible;
-
-
-            //qbook custom
-            await node.SyncSubcodeUsings();
-            
 
             panelEditor.Controls.Clear();
             node.Editor.Dock = DockStyle.Fill;
@@ -2110,7 +1547,10 @@ namespace qbook.ScintillaEditor
             GridViewDiagnosticOutput.DataSource = node.Output;
             MethodenBindingSource.DataSource = node.MethodesClasses;
             node.Select();
-         
+
+            UpdateTabs(node);
+
+
 
         }
         private CodeNode? GetNodeByDocument(RoslynDocument doc)
@@ -2128,6 +1568,7 @@ namespace qbook.ScintillaEditor
 
                 foreach (CodeNode sub in node.Nodes)
                 {
+                    if (!sub.Active) continue;
                     if (sub.RoslynDoc.Name == doc.Name)
                     {
                         Debug.WriteLine("node found: " + sub.Name);
@@ -2138,12 +1579,40 @@ namespace qbook.ScintillaEditor
 
             return null;
         }
+
+        private CodeNode? GetNodeByFilename(string filename)
+        {
+            if (string.IsNullOrEmpty(filename)) return null;
+
+            foreach (CodeNode node in ProjectTree.Nodes[0].Nodes)
+            {
+
+                if (node.FileName == filename)
+                {
+                    Debug.WriteLine("node found: " + node.Name);
+                    return node;
+                }
+
+                foreach (CodeNode sub in node.Nodes)
+                {
+                    if (sub.FileName == filename)
+                    {
+                        Debug.WriteLine("node found: " + sub.Name);
+                        return sub;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+
         private async Task GoToDefinitionAsync()
         {
             if (SelectedNode == null) return;
 
             int caret = SelectedNode.Editor.CurrentPosition;
-            var loc = await _roslyn.GoToDefinitionAsync(SelectedNode.RoslynDoc, caret);
+            var loc = await Core.Roslyn.GoToDefinitionAsync(SelectedNode.RoslynDoc, caret);
             if (loc == null) return;
 
             var (doc, line, column) = loc.Value;
@@ -2158,8 +1627,6 @@ namespace qbook.ScintillaEditor
             node.Editor.ScrollCaret();
         }
         private static int GetPositionFromLineColumn(Scintilla ed, int line, int column) => ed.Lines[line].Position + column;
-
-
         private async Task <CodeNode> newPage(string name)
         {
             
@@ -2167,8 +1634,8 @@ namespace qbook.ScintillaEditor
           
             pageNode.Editor.Text = pageNode.NewPageCode(name);
             pageNode.Editor.EmptyUndoBuffer();
-            pageNode.Adhoc.Workspace = _roslyn.GetWorkspace;
-            pageNode.Adhoc.Id = _roslyn.GetProjectId;
+            pageNode.Adhoc.Workspace = Core.Roslyn.GetWorkspace;
+            pageNode.Adhoc.Id = Core.Roslyn.GetProjectId;
             pageNode.Active = true;
             pageNode.Editor.GoToDefinition = () => GoToDefinitionAsync();
             pageNode.Editor.RenameSymbol = () => RenameSymbolAsync();
@@ -2193,15 +1660,6 @@ namespace qbook.ScintillaEditor
             return subCode;
         }
 
-
-        private void WritePageIndex()
-        {
-            int index = 0;
-            foreach (CodeNode page in ProjectTree.Nodes[0].Nodes) page.CodeIndex = index++;
-           
-        }
-
-
         #endregion
 
         #region FindReplace 
@@ -2219,14 +1677,13 @@ namespace qbook.ScintillaEditor
 
 
         }
-
         private void ShowSearchBar()
         {
            if (SelectedNode == null) return;
 
             if (_findReplaceControl == null)
             {
-                _findReplaceControl = new ControlFindReplace(this, _roslyn, dataGridViewFindReplace);
+                _findReplaceControl = new ControlFindReplace(this, Core.Roslyn, dataGridViewFindReplace);
                 panelEditor.Controls.Add(_findReplaceControl);
             }
 
@@ -2234,7 +1691,6 @@ namespace qbook.ScintillaEditor
             _findReplaceControl.ShowFind();
             _findReplaceControl.FocusFind();
         }
-
         private void ShowReplaceBar()
         {
             if (SelectedNode == null) return;
@@ -2243,7 +1699,7 @@ namespace qbook.ScintillaEditor
 
             if (_findReplaceControl == null)
             {
-                _findReplaceControl = new ControlFindReplace(this, _roslyn, dataGridViewFindReplace);
+                _findReplaceControl = new ControlFindReplace(this, Core.Roslyn, dataGridViewFindReplace);
                 panelEditor.Controls.Add(_findReplaceControl);
             }
 
@@ -2251,7 +1707,6 @@ namespace qbook.ScintillaEditor
             _findReplaceControl.ShowReplace();
             _findReplaceControl.FocusFind();
         }
-
         public static string ShowInputDialog(string prompt, string title, string defaultValue = "")
         {
             Form inputForm = new Form()
@@ -2316,7 +1771,7 @@ namespace qbook.ScintillaEditor
             var solution = doc.Project.Solution;
             var newSolution = await Renamer.RenameSymbolAsync(solution, symbol, newName, solution.Workspace.Options);
 
-            var allDocs = _roslyn.GetAllDocuments();
+            var allDocs = Core.Roslyn.GetAllDocuments();
             int updatedCount = 0;
 
             foreach (RoslynDocument oldDoc in allDocs)
@@ -2365,6 +1820,90 @@ namespace qbook.ScintillaEditor
             // await RefreshDiagnosticsAsync();
             SelectedNode.Editor.FirstVisibleLine = firstLine;
             SelectedNode.Editor.GotoPosition(caretBefore);
+        }
+
+        #endregion
+
+
+        #region Tab Control
+
+        public Dictionary<string, ControlTab> DictTabs = new Dictionary<string, ControlTab>();
+        private void UpdateTabs(CodeNode node)
+        {
+           
+
+            if (!DictTabs.ContainsKey(node.Name))
+            {
+                ControlTab tab = new ControlTab(node)
+                {
+                    SelectTab = () => OpenNodeByName(node.Name),
+                    RemoveTab = () => RemoveTab(node),
+                    CloseOtherTabs = () => CloseAllOtherTabs(),
+                    LoactionForm = this,
+                    Height = 35
+                };
+
+                DictTabs.Add(node.Name, tab);
+
+                RefreshTabs();
+            }
+        }
+
+        private void RemoveTab(CodeNode node)
+        {
+            DictTabs.Remove(node.Name);
+            RefreshTabs();
+        }
+
+        private void CloseAllOtherTabs()
+        {
+            List<string> keysToRemove = new List<string>();
+            foreach (var key in DictTabs.Keys)
+            {
+                if (DictTabs[key].Node != SelectedNode)
+                {
+                    keysToRemove.Add(key);
+                }
+            }
+            foreach (var key in keysToRemove)
+            {
+                DictTabs.Remove(key);
+            }
+            RefreshTabs();
+        }
+
+
+        private void RefreshTabs()
+        {
+         
+            PanelTabs.SuspendLayout();
+            PanelTabs.Invoke((System.Action)(() =>
+            {
+                PanelTabs.Controls.Clear();
+                foreach (ControlTab tab in DictTabs.Values.OrderBy(t => t.Name))
+                {
+                    PanelTabs.Controls.Add(tab);
+                }
+            }));
+
+            double controlWidth = 0;
+            int count = 0;
+            foreach (ControlTab tab in PanelTabs.Controls)
+            {
+                count++;
+                controlWidth += tab.Width;
+                tab.ApplyTheme();
+                if(tab.NodeName == SelectedNode.Name)
+                {
+                    tab.Selected();
+                } 
+            }
+            Debug.WriteLine("c " + count);
+            int rows = (int)Math.Ceiling( controlWidth / PanelTabs.Width);
+
+            EditorLayoutPanel.RowStyles[0].Height = rows * 35;
+
+            PanelTabs.ResumeLayout();
         }
 
         #endregion
@@ -2442,36 +1981,96 @@ namespace qbook.ScintillaEditor
         private async void btnReload_Click(object sender, EventArgs e)
         {
             await Core.OpenQbookAsync(Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename));
+            await VisualRebuild();
         }
 
         private async void btnRebuild_Click(object sender, EventArgs e)
         {
-            await Rebuild();
-            
+            //string nodeName = "none";
+            //ResetTreeViewNodes(collapse: true);
+
+            //if (SelectedNode != null)
+            //nodeName = SelectedNode.Name;
+            //var task = BookRuntime.BuildBookAssembly(rebuild:true);
+            //while (!task.IsCompleted)
+            //{
+            //    SetStatusText(BookRuntime.BuildResult);
+            //    await Task.Delay(100);
+            //}
+            //await task;
+            //await CreateProjectTree();
+            //if (nodeName != "none")
+            //    await OpenNodeByName(nodeName);
+
+            //if (!BookRuntime.BuildSuccess)
+            //{
+            //    ProjectTree.SelectedNode = null;
+            //    ShowBuildErrors();
+            //    return;
+            //}
+            //SetStatusText(BookRuntime.BuildResult);
+
+            bool result = await VisualRebuild();
+
+
+            if (result)
+            {
+                BookRuntime.InitializeAll();
+                MainForm.SetStatusText("qbook rebuils successfully!", 3000);
+            }
+
         }
 
-        public bool HasError => _roslyn.BuildSuccess;
+        public async Task<bool> VisualRebuild()
+        {
+            string nodeName = "none";
+            RootNode.Expand();
+
+            ResetTreeViewNodes(collapse: true);
+
+            if (SelectedNode != null)
+                nodeName = SelectedNode.Name;
+            var task = BookRuntime.BuildBookAssembly(rebuild: true);
+            while (!task.IsCompleted)
+            {
+                SetStatusText(BookRuntime.BuildResult);
+                await Task.Delay(100);
+            }
+            await task;
+            await CreateProjectTree();
+            if (nodeName != "none")
+                await OpenNodeByName(nodeName);
+
+            if (!BookRuntime.BuildSuccess)
+            {
+                ProjectTree.SelectedNode = null;
+                ShowBuildErrors();
+                return false;
+            }
+            return true;
+        }
+
+        public bool HasError => Core.Roslyn.BuildSuccess;
 
         public async Task Rebuild()
         {
-           ResetTreeView();
+           ResetTreeViewNodes(collapse:true);
 
-   
+            var task = Core.Roslyn.CreateAssemblyFromTree(ProjectTree);
 
-            var task = _roslyn.CreateAssemblyFromTree(ProjectTree);
             while (!task.IsCompleted)
             {
-                SetStatusText(_roslyn.BuildResult);
+                SetStatusText(Core.Roslyn.BuildResult);
                 await Task.Delay(100);
             }
             await task;
 
-            SetStatusText(_roslyn.BuildResult);
+            SetStatusText(Core.Roslyn.BuildResult);
             ShowBuildErrors();
 
         }
 
-        public void ResetTreeView(bool collapse = false)
+        public void ResetTreeViewNodes(bool collapse = false)
         {
             ProjectTree.BeginUpdate();
             ProjectTree.SelectedNode = null;
@@ -2508,19 +2107,25 @@ namespace qbook.ScintillaEditor
                 node.ImageIndex = 4;
         }
 
-
         public void ShowBuildErrors()
         {
-
-            if (_roslyn.ErrorFiles.Count > 0)
+            try
             {
-                foreach (string err in _roslyn.ErrorFiles)
+                if (BookRuntime.ErrorFiles.Count > 0)
                 {
-                    CodeNode node = GetNodeByDocument(_roslyn.GetDocumentByFilename(err));
-                    if(node == null) continue;
-                    node.PageNode.ImageIndex = 10;
-                    node.ImageIndex = 10;
+                    foreach (string err in BookRuntime.ErrorFiles)
+                    {
+                        string file = err.GetFileName();
+                        CodeNode node = GetNodeByDocument(Core.Roslyn.GetDocumentByFilename(file));
+                        if (node == null) continue;
+                        node.PageNode.ImageIndex = 10;
+                        node.ImageIndex = 10;
+                    }
                 }
+            }
+            catch(System.Exception ex)
+            {
+                Debug.WriteLine("[ShowBuildError] failed: " + ex.Message);
             }
         }
 
@@ -2600,7 +2205,13 @@ namespace qbook.ScintillaEditor
         private async void renamePageToolStripMenuItem_Click(object sender, EventArgs e)
         {
             string newname = ShowInputDialog($"Input new name:", $"Rename Page {_clickedNode.Text}", _clickedNode.Text);
-            if (newname != null) await _clickedNode.Rename(newname);
+            if (newname != null)
+            {
+                ProgramNode.Editor.FindReplace($"Definition{_clickedNode.Text}", $"Definition{newname}");
+                await _clickedNode.Rename(newname);
+        
+            }
+                
 
         }
 
@@ -2619,7 +2230,8 @@ namespace qbook.ScintillaEditor
 
         private void btnRun_Click(object sender, EventArgs e)
         {
-            PageRuntime.RunAll();
+            BookRuntime.RunAll();
+          
             SetStatusText("[Build] running...");
 
         }
@@ -2631,13 +2243,9 @@ namespace qbook.ScintillaEditor
 
         private async void btnSave_Click(object sender, EventArgs e)
         {
-            int index = 0;
-            foreach (CodeNode page in ProjectTree.Nodes[0].Nodes)
-            {
-                page.CodeIndex = index++;
-                page.Page.OrderIndex = page.CodeIndex;
-            }
-            await SaveInFolder();
+            await Core.SaveInFolder();
+
+ 
         }
 
         private async void customToolStripMenuItem_Click(object sender, EventArgs e)
@@ -2649,6 +2257,7 @@ namespace qbook.ScintillaEditor
             {
                 _clickedNode.Nodes.Add(await newSubCode(_clickedNode, name));
             }
+            ResetTreeViewNodes(collapse: false);
 
         }
 
@@ -2666,15 +2275,30 @@ namespace qbook.ScintillaEditor
             Core.ThisBook.PageOrder.Remove(_clickedNode.Text);
             ProjectTree.Nodes.Remove(_clickedNode);
         }
+
+        private void PanelTabs_Resize(object sender, EventArgs e)
+        {
+            RefreshTabs();
+        }
     }
+
+    public class DoubleBufferedPanel : FlowLayoutPanel
+    {
+        public DoubleBufferedPanel()
+        {
+            this.DoubleBuffered = true;
+            this.SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
+            this.UpdateStyles();
+        }
+    }
+
+
 
     public static class Theme
     {
         public enum EditorTheme { Light, Dark }
         public static EditorTheme Current = EditorTheme.Light;
-
         public static bool IsDark => Current == EditorTheme.Dark;
-
     }
 
     internal static class DwmTitleBar
@@ -2727,6 +2351,121 @@ namespace qbook.ScintillaEditor
             int colorRef = ColorTranslator.ToWin32(color);
             int hr = DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref colorRef, sizeof(int));
             return hr >= 0;
+        }
+    }
+
+    public class CustomTreeView : System.Windows.Forms.TreeView
+    {
+        public int InsertLineY { get; set; } = -1;
+
+        public CustomTreeView()
+        {
+            DragDrop += ProjectTree_DragDrop;
+            DragEnter += ProjectTree_DragEnter;
+            DragOver += ProjectTree_DragOver;
+            DragLeave += ProjectTree_DragLeave;
+            ItemDrag += ProjectTree_ItemDrag;
+        }
+
+        protected override void WndProc(ref System.Windows.Forms.Message m)
+        {
+            base.WndProc(ref m);
+
+            const int WM_PAINT = 0x000F;
+
+            if (m.Msg == WM_PAINT && InsertLineY >= 0)
+            {
+                using (Graphics g = Graphics.FromHwnd(this.Handle))
+                using (Pen pen = new Pen(Color.Red, 2))
+                {
+                    g.DrawLine(pen, 0, InsertLineY, this.Width, InsertLineY);
+                }
+            }
+        }
+
+        private void ProjectTree_ItemDrag(object sender, ItemDragEventArgs e)
+        {
+            DoDragDrop(e.Item, DragDropEffects.Move);
+        }
+
+        private void ProjectTree_DragEnter(object sender, DragEventArgs e)
+        {
+            e.Effect = DragDropEffects.Move;
+        }
+
+        private void ProjectTree_DragOver(object sender, DragEventArgs e)
+        {
+            Point pt = PointToClient(new Point(e.X, e.Y));
+            System.Windows.Forms.TreeNode targetNode = GetNodeAt(pt);
+
+            if (targetNode != null)
+            {
+                // Linie oberhalb oder unterhalb des Knotens je nach Mausposition
+                InsertLineY = pt.Y < targetNode.Bounds.Top + targetNode.Bounds.Height / 2
+                    ? targetNode.Bounds.Top
+                    : targetNode.Bounds.Bottom;
+
+                Invalidate(); // Neu zeichnen
+                e.Effect = DragDropEffects.Move;
+            }
+            else
+            {
+                InsertLineY = -1;
+                Invalidate();
+                e.Effect = DragDropEffects.None;
+            }
+        }
+
+        private void ProjectTree_DragLeave(object sender, EventArgs e)
+        {
+            InsertLineY = -1;
+            Invalidate(); // Linie entfernen
+        }
+
+        private void ProjectTree_DragDrop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(typeof(CodeNode)))
+            {
+                Point pt = PointToClient(new Point(e.X, e.Y));
+                System.Windows.Forms.TreeNode targetNode = GetNodeAt(pt);
+                CodeNode draggedNode = (CodeNode)e.Data.GetData(typeof(CodeNode));
+
+                if (targetNode != null &&
+                    draggedNode != targetNode &&
+                    !IsChildNode(draggedNode, targetNode) &&
+                    draggedNode.Parent == targetNode.Parent)
+                {
+                    System.Windows.Forms.TreeNodeCollection siblings = targetNode.Parent?.Nodes ?? Nodes;
+
+                    int targetIndex = targetNode.Index;
+
+                    // Wenn draggedNode vor targetNode steht, wird der Index durch Remove verschoben
+                    if (draggedNode.Index < targetIndex)
+                        targetIndex--;
+
+                    // Mausposition entscheidet, ob oberhalb oder unterhalb eingefügt wird
+                    int insertIndex = pt.Y < targetNode.Bounds.Top + targetNode.Bounds.Height / 2
+                        ? targetIndex
+                        : targetIndex + 1;
+
+                    draggedNode.Remove();
+                    siblings.Insert(insertIndex, draggedNode);
+                }
+
+                InsertLineY = -1;
+                Invalidate();
+            }
+        }
+
+        private bool IsChildNode(System.Windows.Forms.TreeNode parent, System.Windows.Forms.TreeNode child)
+        {
+            while (child.Parent != null)
+            {
+                if (child.Parent == parent)
+                    return true;
+                child = child.Parent;
+            }
+            return false;
         }
     }
 

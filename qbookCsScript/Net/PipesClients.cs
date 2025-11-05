@@ -64,7 +64,7 @@ namespace QB.Net
                 Writer = new BinaryWriter(Client);
                 isConnected = true;
                 Console.WriteLine("[CLIENT] Connected.");
-            }
+        }
             catch (TimeoutException)
             {
                 Console.WriteLine("[CLIENT] Connection timeout: Server not available.");

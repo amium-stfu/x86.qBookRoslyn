@@ -1,15 +1,22 @@
 ﻿using log4net;
 using log4net.Appender;
 using log4net.Layout;
+using QB;
 using System;
+using System.Globalization;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace qbook
 {
+
     static class Program
     {
+        static MainForm LandingPage;
+        
         [DllImport("shell32.dll", SetLastError = true)]
         private static extern void ShellExecute(IntPtr hwnd, string lpOperation, string lpFile, string lpParameters, string lpDirectory, int nShowCmd);
 
@@ -33,110 +40,124 @@ namespace qbook
 
         internal static UdpLogListener AppUdpLogListener;
 
+
+
         /// <summary>
         /// Der Haupteinstiegspunkt für die Anwendung.
         /// </summary>
         [STAThread]
         static void Main(string[] args)
         {
-            if (false) //testing
+
+
+            GlobalExceptions.SafeInvoke("Main", () =>
             {
-                log4net.Repository.Hierarchy.Hierarchy hierarchy = (log4net.Repository.Hierarchy.Hierarchy)log4net.LogManager.GetRepository();
-
-                //RollingFileAppender
-                PatternLayout rollerPatternLayout = new log4net.Layout.PatternLayout();
-                rollerPatternLayout.ConversionPattern = "%date [%thread] %-5level %logger - %message%newline";
-                rollerPatternLayout.ActivateOptions();
-                RollingFileAppender roller = new log4net.Appender.RollingFileAppender();
-                roller.AppendToFile = false;
-                roller.File = @"qbook.log";
-                roller.Layout = rollerPatternLayout;
-                roller.MaxSizeRollBackups = 5;
-                roller.MaximumFileSize = "10MB";
-                roller.RollingStyle = RollingFileAppender.RollingMode.Size;
-                roller.StaticLogFileName = true;
-                roller.ActivateOptions();
-                hierarchy.Root.AddAppender(roller);
-
-                //UdpAppender
-                var udpPatternLayout = new log4net.Layout.PatternLayout();
-                udpPatternLayout.ConversionPattern = "%date [%thread] %-5level %logger - %message%newline";
-                udpPatternLayout.ActivateOptions();
-                var udpAppender = new log4net.Appender.UdpAppender();
-                udpAppender.RemoteAddress = new System.Net.IPAddress(new byte[] { 127, 0, 0, 1 });
-                udpAppender.RemotePort = 39999;
-                udpAppender.Layout = udpPatternLayout;
-                udpAppender.ActivateOptions();
-                hierarchy.Root.AddAppender(udpAppender);
-
-                hierarchy.Root.Level = log4net.Core.Level.All;
-                hierarchy.Configured = true;
-
-                ILog logger = log4net.LogManager.GetLogger(hierarchy.Name, "qbLogger");
-            }
 
 
-            //license for SyntaxEditor (Actipro+.NetLang+PythonLang)
-            ActiproSoftware.Products.ActiproLicenseManager.RegisterLicense(Licensing.Decrypt("v0XW+hEwOMFQr5Hymgo7iw=="), Licensing.Decrypt("zht+EQ4LRTJKXl7EOd7Xwfu27VNxniquzsoMHWaHyvo="));
 
-            Args = args;
-            System.Globalization.CultureInfo ci = new System.Globalization.CultureInfo("en-US");
-            System.Globalization.CultureInfo.CurrentCulture = ci;
-            System.Globalization.CultureInfo.DefaultThreadCurrentCulture = ci;
-            System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = ci;
+                if (false) //testing
+                {
+                    log4net.Repository.Hierarchy.Hierarchy hierarchy = (log4net.Repository.Hierarchy.Hierarchy)log4net.LogManager.GetRepository();
+
+                    //RollingFileAppender
+                    PatternLayout rollerPatternLayout = new log4net.Layout.PatternLayout();
+                    rollerPatternLayout.ConversionPattern = "%date [%thread] %-5level %logger - %message%newline";
+                    rollerPatternLayout.ActivateOptions();
+                    RollingFileAppender roller = new log4net.Appender.RollingFileAppender();
+                    roller.AppendToFile = false;
+                    roller.File = @"qbook.log";
+                    roller.Layout = rollerPatternLayout;
+                    roller.MaxSizeRollBackups = 5;
+                    roller.MaximumFileSize = "10MB";
+                    roller.RollingStyle = RollingFileAppender.RollingMode.Size;
+                    roller.StaticLogFileName = true;
+                    roller.ActivateOptions();
+                    hierarchy.Root.AddAppender(roller);
+
+                    //UdpAppender
+                    var udpPatternLayout = new log4net.Layout.PatternLayout();
+                    udpPatternLayout.ConversionPattern = "%date [%thread] %-5level %logger - %message%newline";
+                    udpPatternLayout.ActivateOptions();
+                    var udpAppender = new log4net.Appender.UdpAppender();
+                    udpAppender.RemoteAddress = new System.Net.IPAddress(new byte[] { 127, 0, 0, 1 });
+                    udpAppender.RemotePort = 39999;
+                    udpAppender.Layout = udpPatternLayout;
+                    udpAppender.ActivateOptions();
+                    hierarchy.Root.AddAppender(udpAppender);
+
+                    hierarchy.Root.Level = log4net.Core.Level.All;
+                    hierarchy.Configured = true;
+
+                    ILog logger = log4net.LogManager.GetLogger(hierarchy.Name, "qbLogger");
+                }
 
 
-            //1: load some assemblies from /libs/ -> BEST wuld be a "<probing privatePath="libs" />" in app.config; however SCAN doesn't want extra files like app.config (as ILMerge is used to create ONE file qbook.exe only)
-            //so if we want more complex possibilities (like the HTML (CefSharp) plugin, we need to put these files in /libs/)
+                //license for SyntaxEditor (Actipro+.NetLang+PythonLang)
+                ActiproSoftware.Products.ActiproLicenseManager.RegisterLicense(Licensing.Decrypt("v0XW+hEwOMFQr5Hymgo7iw=="), Licensing.Decrypt("zht+EQ4LRTJKXl7EOd7Xwfu27VNxniquzsoMHWaHyvo="));
 
-            //2: load some assemblies from /libs/ -> OK, but obsolete :/
-            //AppDomain.CurrentDomain.AppendPrivatePath("libs"); 
-
-            //3: load some assemblies from /libs/ -> OK, but nut sure if everything gets loaded?!
-            //AppDomain currentDomain = AppDomain.CurrentDomain;
-            //currentDomain.AssemblyResolve += new ResolveEventHandler(MyResolveEventHandler);
-
-
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
+                Args = args;
+                System.Globalization.CultureInfo ci = new System.Globalization.CultureInfo("en-US");
+                System.Globalization.CultureInfo.CurrentCulture = ci;
+                System.Globalization.CultureInfo.DefaultThreadCurrentCulture = ci;
+                System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = ci;
 
 
-            AppUdpLogListener = new UdpLogListener();
-            AppUdpLogListener.StartListening(39999);
+                //1: load some assemblies from /libs/ -> BEST wuld be a "<probing privatePath="libs" />" in app.config; however SCAN doesn't want extra files like app.config (as ILMerge is used to create ONE file qbook.exe only)
+                //so if we want more complex possibilities (like the HTML (CefSharp) plugin, we need to put these files in /libs/)
+
+                //2: load some assemblies from /libs/ -> OK, but obsolete :/
+                //AppDomain.CurrentDomain.AppendPrivatePath("libs"); 
+
+                //3: load some assemblies from /libs/ -> OK, but nut sure if everything gets loaded?!
+                //AppDomain currentDomain = AppDomain.CurrentDomain;
+                //currentDomain.AssemblyResolve += new ResolveEventHandler(MyResolveEventHandler);
 
 
-            if (false) //HALE //TEMP testing
-            {
-                Form f = new Form();
-                f.Width = 800;
-                f.Height = 600;
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
 
-                TextBox tb = new TextBox();
-                tb.Dock = DockStyle.Top;
-                f.Controls.Add(tb);
 
-                ColoredTextBox.ColoredTextBoxControl ctb = new ColoredTextBox.ColoredTextBoxControl();
-                ctb.ParentObjectName = "";
-                ctb.Dock = DockStyle.Fill;
-                f.Controls.Add(ctb);
-                ctb.BringToFront();
-                ctb.Text = "";
-                ctb.ShowDebugInfo = true;
+                AppUdpLogListener = new UdpLogListener();
+                AppUdpLogListener.StartListening(39999);
 
-                f.ShowDialog();
-                return;
-            }
 
-            //if (false)
-            //{
-            //    CancellationTokenSource Timer10CancellationTokenSource = new CancellationTokenSource(); // TimeSpan.FromSeconds(300));
-            //    Timer10CancellationTokenSource = new CancellationTokenSource(); // TimeSpan.FromSeconds(300));
-            //    var Timer10msCancellationToken = Timer10CancellationTokenSource.Token;
-            //    _ = AccurateTimer.PrecisionRepeatActionOnIntervalAsync(Action10ms(), TimeSpan.FromMilliseconds(10), Timer10msCancellationToken);
-            //    MessageBox.Show("running");
-            //}
+                if (false) //HALE //TEMP testing
+                {
+                    Form f = new Form();
+                    f.Width = 800;
+                    f.Height = 600;
 
-            Application.Run(new MainForm(args));
+                    TextBox tb = new TextBox();
+                    tb.Dock = DockStyle.Top;
+                    f.Controls.Add(tb);
+
+                    ColoredTextBox.ColoredTextBoxControl ctb = new ColoredTextBox.ColoredTextBoxControl();
+                    ctb.ParentObjectName = "";
+                    ctb.Dock = DockStyle.Fill;
+                    f.Controls.Add(ctb);
+                    ctb.BringToFront();
+                    ctb.Text = "";
+                    ctb.ShowDebugInfo = true;
+
+                    f.ShowDialog();
+                    return;
+                }
+
+                //if (false)
+                //{
+                //    CancellationTokenSource Timer10CancellationTokenSource = new CancellationTokenSource(); // TimeSpan.FromSeconds(300));
+                //    Timer10CancellationTokenSource = new CancellationTokenSource(); // TimeSpan.FromSeconds(300));
+                //    var Timer10msCancellationToken = Timer10CancellationTokenSource.Token;
+                //    _ = AccurateTimer.PrecisionRepeatActionOnIntervalAsync(Action10ms(), TimeSpan.FromMilliseconds(10), Timer10msCancellationToken);
+                //    MessageBox.Show("running");
+                //}
+
+                Thread.CurrentThread.CurrentUICulture = new CultureInfo("en-US");
+                Application.Run(LandingPage = new MainForm(args));
+
+            });
+
+
         }
 
         //static List<long> _ticks10ms = new List<long>();

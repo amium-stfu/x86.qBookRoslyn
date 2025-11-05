@@ -6,12 +6,33 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml.Serialization;
+using RoslynDocument = Microsoft.CodeAnalysis.Document;
 
 namespace qbook
 {
+    public class oCode
+    {
+        public bool Active { get; set; } = true;
+        public RoslynDocument RoslynDoc;
+        public string Code;
+        public string Filename;
+
+        public oCode(string filename, bool active, RoslynDocument doc, string code)
+        {
+            this.Filename = filename;
+            this.Active = active;
+            this.RoslynDoc = doc;
+            this.Code = code;
+        }
+    }
+    
+    
+    
     [Serializable]
     public class oPage : oControl
     {
+  
+
         public oPage()
         {
         }
@@ -23,8 +44,15 @@ namespace qbook
 
         public List<oHtml> HtmlItems = new List<oHtml>();
 
-        //[XmlIgnore]
-        //List<Control> Controls = new List<Control>();
+        //Roslyn
+        [XmlIgnore]
+        public RoslynDocument RoslynDoc;
+
+        [XmlIgnore]
+        public Dictionary<string,oCode> SubCodes = new Dictionary<string,oCode>();
+
+        public string Filename { get; set; }
+        //
 
         [XmlIgnore]
         public System.Threading.Thread IdleThread;

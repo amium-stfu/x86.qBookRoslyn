@@ -298,7 +298,7 @@ namespace qbook
         }
 
         bool _FormClosingNoUserInteraction = false;
-        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        private async void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (qbook.Core.ThisBook != null)
                 qbook.Core.ThisBook.Bounds = Bounds;
@@ -318,7 +318,7 @@ namespace qbook
                 {
                     DialogResult result = MessageBox.Show("Save " + qbook.Core.ThisBook.Filename + "?", "qbook NOT SAVED", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                     if (result == DialogResult.Yes)
-                        qbook.Core.ThisBook.Serialize();
+                      await qbook.Core.SaveInFolder();
 
                     //Main.Properties.Settings.Default.Save();
                 }
@@ -478,9 +478,11 @@ namespace qbook
                 }
 
             }
+            int pageCount = 0;
             foreach (oPage page in viewList)
-              //  foreach (oPage page in qbook.Core.ActualMain.Objects.Where(item => item is oPage))
             {
+                if(!page.Hidden) pageCount++;
+
                 if (!showPageControl) break;
 
                 if (page.Hidden && !qbook.Core.ThisBook.DesignMode)
@@ -503,7 +505,7 @@ namespace qbook
                 if (page.Url != null)
                 {
                     page.Text = page.Url;
-                    IconsAdd(new oIcon(page, qbook.Icon.Button, Pens.LightSlateGray, "" + qbook.Core.PageNumber(page), x, y, (float)(h), (float)(h), PageSelect));
+                    IconsAdd(new oIcon(page, qbook.Icon.Button, Pens.LightSlateGray, "" +pageCount, x, y, (float)(h), (float)(h), PageSelect));
 
                     string itemText = "   ";
                     if (qbook.Core.ThisBook.DesignMode)
@@ -518,7 +520,7 @@ namespace qbook
                 }
                 else
                 {
-                    IconsAdd(new oIcon(page, qbook.Icon.PageNumber, Pens.LightSlateGray, "" + qbook.Core.PageNumber(page), x, y, h, h, PageSelect));
+                    IconsAdd(new oIcon(page, qbook.Icon.PageNumber, Pens.LightSlateGray, "" + pageCount, x, y, h, h, PageSelect));
 
                     string itemText = "    ";
                     if (qbook.Core.ThisBook.DesignMode)
@@ -588,8 +590,8 @@ namespace qbook
             {
 
                 DialogResult result = MessageBox.Show("save " + qbook.Core.ThisBook.Filename + "?", "qBook NOT SAVED", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (result == DialogResult.Yes)
-                    qbook.Core.ThisBook.Serialize();
+               // if (result == DialogResult.Yes)
+                  //  qbook.Core.ThisBook.Serialize();
 
                 //Main.Properties.Settings.Default.LastFiles = Main.Properties.Settings.Default.LastFiles.Replace(Main.Qb.Book.Filename, "").Replace("||", "|").Trim('|');
                 //Main.Properties.Settings.Default.LastFiles += "|" + Main.Qb.Book.Filename;
@@ -843,36 +845,25 @@ namespace qbook
             Draw.PdfShow();
         }
 
-        void NewQbook(object sender)
+        async Task NewQbook(object sender)
         {
             if (qbook.Core.ThisBook.Modified)
             {
-
                 DialogResult result = MessageBox.Show("save " + qbook.Core.ThisBook.Filename + "?", "qBook NOT SAVED", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (result == DialogResult.Yes)
-                    qbook.Core.ThisBook.Serialize();
+                if (result == DialogResult.Yes) 
+                    await Core.SaveThisBook();
 
-                //Main.Properties.Settings.Default.LastFiles = Main.Properties.Settings.Default.LastFiles.Replace(Main.Qb.Book.Filename, "").Replace("||", "|").Trim('|');
-                //Main.Properties.Settings.Default.LastFiles += "|" + Main.Qb.Book.Filename;
-                //Main.Properties.Settings.Default.Save();
             }
-            string directory = Path.Combine(GetApplicationPath(), "qbooks");
-            qbook.Core.ThisBook = Book.Deserialize(Path.Combine(directory, DateTime.Now.ToString("yyyy-MM-dd hh.mm") + " new")); // GetApplicationPath(), DateTime.Now.ToString("yyyy-MM-dd hh.mm") + " new"); 
-            QB.Root.ActiveQbook = qbook.Core.ThisBook;
 
-            if (qbook.Core.ThisBook.Main == null)
-                qbook.Core.ThisBook.Main = new oControl();
-            qbook.Core.ActualMain = qbook.Core.ThisBook.Main;
-            //   Main.Qb.PagesRootText = "";
-            if (qbook.Core.ActualMain.Objects.Count == 0)
-                qbook.Core.ActualMain.Add(new oPage("", "page 1"));
-            qbook.Core.ThisBook.Init();
-            qbook.Core.ThisBook.PropertyChanged -= Book_PropertyChanged;
-            qbook.Core.ThisBook.PropertyChanged += Book_PropertyChanged;
+            await Core._editor.NewBook();
+            Core.InitLogger();
             if (Debugger.IsAttached)
                 QB.Book.AccessLevel = QB.AccessLevel.Admin;
             UpdateMenuBar();
             qbook.Core.UpdateProjectAssemblyQbRoot("MainForm.NewQbook");
+            qbook.Core.ThisBook.PropertyChanged -= Book_PropertyChanged;
+            qbook.Core.ThisBook.PropertyChanged += Book_PropertyChanged;
+
         }
 
         async void ShowOpenQbookFileDialog(object sender)
@@ -1055,11 +1046,7 @@ namespace qbook
 
         async Task Save(object sender)
         {
-            await Core.SaveThisBook();
-
-            //qbook.Core.ThisBook.Serialize();
-            //qbook.Core.ThisBook.Modified = false;
-            //qbook.Properties.Settings.Default.Save();
+            await Core.SaveInFolder();
         }
         void Home(object sender)
         {
@@ -1137,7 +1124,7 @@ namespace qbook
 
                     //oPage page = (sender as oIcon).Parent as oPage;
 
-                    Core.ShowFormScintillaEditor((sender as oIcon).Parent as oPage);
+                     Core.ShowFormScintillaEditor((sender as oIcon).Parent as oPage);
 
            
                   //  Core.ShowFormCodeEditor((sender as oIcon).Parent as oPage);
@@ -1175,24 +1162,6 @@ namespace qbook
             qbook.Core.SelectedPage = page;
         }
 
-        void EditName(object sender)
-        {
-            if (!qbook.Core.ThisBook.DesignMode)
-                return;
-            qbook.Core.ThisBook.Modified = true;
-
-
-            int x = Location.X + (sender as oIcon).e.X;
-            int y = Location.Y + (sender as oIcon).e.Y + 25;
-            x = Math.Min(x, Screen.PrimaryScreen.Bounds.Width - 362 - 20);
-            y = Math.Min(y, Screen.PrimaryScreen.Bounds.Height - 266 - 40);
-
-            StringForm.Edit(x, y, ref (sender as oIcon).Parent.Name, null);
-
-
-            if ((sender as oIcon).Parent.Name == "")
-                qbook.Core.ThisBook.Main.Remove((sender as oIcon).Parent);
-        }
         void EditFileName(object sender)
         {
             string oldFilename = qbook.Core.ThisBook.Filename;
@@ -1233,111 +1202,6 @@ namespace qbook
             }
         }
 
-        void OpenCsScriptEditor(object sender)
-        {
-            //open first page with code in it...
-            var firstPageWithCode = qbook.Core.ThisBook.Main.Objects.FirstOrDefault(p => p.CsCode.Trim().Length > 0);
-            if (firstPageWithCode != null)
-            {
-                //var editForm = EditObjectForm.Edit(0, 0, firstPageWithCode);
-                qbook.Core.ShowFormCodeEditor(firstPageWithCode as oPage);
-                Application.DoEvents();
-                qbook.Core.FormCodeEditorRebuild(true);
-            }
-        }
-
-
-        //void EditUser(object sender)
-        //{
-
-        //    Main.Qb.Book.Modified = true;
-        //    string u = Main.Properties.Settings.Default.DefaultLayer;
-
-        //    int x = Location.X + (sender as oIcon).e.X;
-        //    int y = Location.Y + (sender as oIcon).e.Y + 25;
-        //    x = Math.Min(x, Screen.PrimaryScreen.Bounds.Width - 362 - 20);
-        //    y = Math.Min(y, Screen.PrimaryScreen.Bounds.Height - 266 - 40);
-
-        //    StringForm.Edit(x, y, ref u, null);
-        //    Main.Properties.Settings.Default.DefaultLayer = u;
-        //    Main.Properties.Settings.Default.Save();
-        //}
-        void AddLayer(object sender)
-        {
-            qbook.Core.ThisBook.Modified = true;
-            int lCount = qbook.Core.SelectedPage.Objects.Where(item => item is oLayer).ToList().Count;
-            string text = (lCount == 1) ? qbook.Properties.Settings.Default.DefaultLayer : "L" + (lCount + 1);
-            oLayer page = new oLayer(text, "");
-            qbook.Core.SelectedPage.Add(page);
-        }
-        void AddPage(object sender)
-        {
-
-            qbook.Core.ThisBook.Modified = true;
-            qbook.Core.ActualMain = (sender as oIcon).Parent;
-
-            string newName = "p" + ((sender as oIcon).Parent.Objects.Where(item => item is oPage).ToList().Count + 1);
-        _AddPageStart:
-            if (DialogResult.OK == QB.UI.InputDialog.ShowDialog("Add New Page", "Page Name:", ref newName))
-            {
-                bool pageNameExists = false;
-                foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
-                {
-                    string newFullName = null;
-                    int index = page.FullName.LastIndexOf(".");
-                    if (index == -1)
-                        newFullName = newName.Trim();
-                    else
-                        newFullName = page.FullName.Substring(0, index) + newName.Trim();
-                    if (page.FullName == newFullName)
-                    {
-                        pageNameExists = true;
-                        break;
-                    }
-                }
-                if (pageNameExists)
-                {
-                    MessageBox.Show($"A page with the name '{newName}' already exists.\r\nPlease choose a different name."
-                        , "PAGE NAME EXISTS", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
-                    goto _AddPageStart;
-                }
-
-                oPage newPage = new oPage(newName, newName);
-                int indx = (sender as oIcon).Parent.Objects.IndexOf(qbook.Core.SelectedPage);
-                (sender as oIcon).Parent.Objects.Insert(indx + 1, newPage);
-                qbook.Core.SelectedPage = newPage;
-
-                //   Main.Qb.SelectedLayer.Add(newItem);
-                qbook.Core.ThisBook.Modified = true;
-
-                //   NewPageForm.Edit((sender as oIcon).Parent);
-
-                /*
-
-                      string text = "page " + ((sender as oIcon).Parent.Objects.Where(item => item is oPage).ToList().Count + 1);
-                      oPage page = new oPage("", text);
-                      int indx = (sender as oIcon).Parent.Objects.IndexOf(Main.Qb.SelectedPage);
-                      (sender as oIcon).Parent.Objects.Insert(indx + 1, page);
-                      Main.Qb.SelectedPage = page;*/
-            }
-        }
-        //void CenterLayout(object sender)
-        //{
-        //    Main.Qb.Book.Modified = true;
-        //    ((sender as oIcon).Parent as oPage).lItemWidth = Draw.DefaultItemWidth;
-        //    ((sender as oIcon).Parent as oPage).rItemWidth = Draw.DefaultItemWidth;
-        //}
-        //void LeftLayout(object sender)
-        //{
-        //    Main.Qb.Book.Modified = true;
-        //    ((sender as oIcon).Parent as oPage).lItemWidth = 20;
-        //    ((sender as oIcon).Parent as oPage).rItemWidth = Draw.DefaultItemWidth * 2 - 20;
-        //}
-        void ToggleVisibility(object sender)
-        {
-            qbook.Core.ThisBook.Modified = true;
-            (sender as oIcon).Parent.Visible = !(sender as oIcon).Parent.Visible;
-        }
         void PageSelect(object sender)
         {
             if (qbook.Core.SelectedPage == (sender as oIcon).Parent as oPage)
@@ -1516,35 +1380,35 @@ namespace qbook
         bool _IsFirstActivation = true;
         private async void MainForm_Activated(object sender, EventArgs e)
         {
-            if (_IsFirstActivation)
-            {
-                _IsFirstActivation = false;
+            //if (_IsFirstActivation)
+            //{
+            //    _IsFirstActivation = false;
 
-                if (false) //
-                {
-                    if (!(System.Windows.Forms.Control.ModifierKeys == (Keys.Control | Keys.Shift))) //don't auto build/run if ctrl-shift is pressed
-                    {
-                        try
-                        {
-                            await qbook.Core.CsScriptRebuildAll("Initializing");
+            //    if (false) //
+            //    {
+            //        if (!(System.Windows.Forms.Control.ModifierKeys == (Keys.Control | Keys.Shift))) //don't auto build/run if ctrl-shift is pressed
+            //        {
+            //            try
+            //            {
+            //                await qbook.Core.CsScriptRebuildAll("Initializing");
 
-                            if (Program.Args == null || !Program.Args.Contains("-norun"))
-                                qbook.Core.RunCsScript_Run();
-                        }
-                        catch (Exception ex)
-                        {
-                            //MessageBox.Show(ex.Message, "--- ERRORS ---");
-                        }
-                    }
-                }
+            //                if (Program.Args == null || !Program.Args.Contains("-norun"))
+            //                    qbook.Core.RunCsScript_Run();
+            //            }
+            //            catch (Exception ex)
+            //            {
+            //                //MessageBox.Show(ex.Message, "--- ERRORS ---");
+            //            }
+            //        }
+            //    }
 
-                if (true)
-                {
-                    //InitMainForm();
-                }
+            //    if (true)
+            //    {
+            //        //InitMainForm();
+            //    }
 
-                //Main.Qb.RunCsScript();
-            }
+            //    //Main.Qb.RunCsScript();
+            //}
         }
 
         private void InitMainForm()
@@ -1669,9 +1533,10 @@ namespace qbook
             EditFileName(this);
         }
 
-        private void newToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void newToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            NewQbook(this);
+           await NewQbook(this);
+         //  await Core.SaveInFolder();
         }
 
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
@@ -2235,7 +2100,7 @@ namespace qbook
 
             _staticMainForm.Invoke((MethodInvoker)(() =>
             {
-                _staticStatusLabel.Text = text;
+               
                 if (text.Contains("#E"))
                 {
                     _staticStatusLabel.BackColor = Color.Red;
@@ -2251,6 +2116,9 @@ namespace qbook
                     _staticStatusLabel.BackColor = Color.Transparent;
                     _staticStatusLabel.ForeColor = Color.Black;
                 }
+
+                _staticStatusLabel.Text = text.Replace("#E","").Replace("#W", "");
+
             }));
 
             if (statusTextResetTimer == null)
@@ -2279,7 +2147,7 @@ namespace qbook
         {
             if (_staticStatusLabel.Text == "#ERR: build error(s)")
             {
-                qbook.Core.ShowFormCodeEditor(null);
+              
             }
         }
 
@@ -2511,7 +2379,6 @@ namespace qbook
         {
             qbook.Core.ShowLogForm();
         }
-        
 
         private void codeToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -2646,14 +2513,9 @@ namespace qbook
 </Project>";
         }
 
-        private void exportToolStripMenuItem1_Click(object sender, EventArgs e)
-        {
-            qbook.Core.ShowFormCodeEditor(Core.SelectedPage);
-        }
-
         private async void newToolStripMenuItem1_Click(object sender, EventArgs e)
         {
-            await Core.OpenBookFolderAsync();
+            await Core.OpenQbookAsync();
         }
 
         private void testToolStripMenuItem_Click(object sender, EventArgs e)

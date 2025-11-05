@@ -1134,7 +1134,8 @@ namespace QB.Net
             }
             public void PdoUpload(uint moduleId, byte type, double value)
             {
-            //    if (moduleId == 1360)
+           if(CanClient == null) return;
+                //    if (moduleId == 1360)
             //        return;
             //    if (QB.Global.TempDisablePdoUploadForId0)
             //        return;
