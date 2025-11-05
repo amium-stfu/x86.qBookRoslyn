@@ -123,8 +123,8 @@ namespace qbook
         //}
 
         [XmlIgnore]
-        internal ActiproSoftware.UI.WinForms.Controls.SyntaxEditor.SyntaxEditor MySyntaxEditor { get; set; } = null;
-        [XmlIgnore]
+      
+      
         internal string CsCodeSourceFileKey = null;
 
         string _CsCode = //@"using @__default_usings__;

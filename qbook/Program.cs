@@ -93,8 +93,7 @@ namespace qbook
 
 
                 //license for SyntaxEditor (Actipro+.NetLang+PythonLang)
-                ActiproSoftware.Products.ActiproLicenseManager.RegisterLicense(Licensing.Decrypt("v0XW+hEwOMFQr5Hymgo7iw=="), Licensing.Decrypt("zht+EQ4LRTJKXl7EOd7Xwfu27VNxniquzsoMHWaHyvo="));
-
+               
                 Args = args;
                 System.Globalization.CultureInfo ci = new System.Globalization.CultureInfo("en-US");
                 System.Globalization.CultureInfo.CurrentCulture = ci;

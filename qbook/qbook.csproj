@@ -133,45 +133,6 @@
     <TargetZone>LocalIntranet</TargetZone>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ActiproSoftware.Bars.WinForms, Version=23.1.3.0, Culture=neutral, PublicKeyToken=c27e062d3c1a4763, processorArchitecture=MSIL">
-      <HintPath>..\packages\ActiproSoftware.Controls.WinForms.Bars.23.1.3\lib\net462\ActiproSoftware.Bars.WinForms.dll</HintPath>
-    </Reference>
-    <Reference Include="ActiproSoftware.Docking.WinForms, Version=23.1.3.0, Culture=neutral, PublicKeyToken=c27e062d3c1a4763, processorArchitecture=MSIL">
-      <HintPath>..\packages\ActiproSoftware.Controls.WinForms.Docking.23.1.3\lib\net462\ActiproSoftware.Docking.WinForms.dll</HintPath>
-    </Reference>
-    <Reference Include="ActiproSoftware.Navigation.WinForms, Version=23.1.3.0, Culture=neutral, PublicKeyToken=c27e062d3c1a4763, processorArchitecture=MSIL">
-      <HintPath>..\packages\ActiproSoftware.Controls.WinForms.Navigation.23.1.3\lib\net462\ActiproSoftware.Navigation.WinForms.dll</HintPath>
-    </Reference>
-    <Reference Include="ActiproSoftware.Shared.WinForms, Version=23.1.3.0, Culture=neutral, PublicKeyToken=c27e062d3c1a4763, processorArchitecture=MSIL">
-      <HintPath>..\packages\ActiproSoftware.Controls.WinForms.Shared.23.1.3\lib\net462\ActiproSoftware.Shared.WinForms.dll</HintPath>
-    </Reference>
-    <Reference Include="ActiproSoftware.SyntaxEditor.Addons.DotNet.WinForms, Version=23.1.3.0, Culture=neutral, PublicKeyToken=c27e062d3c1a4763, processorArchitecture=MSIL">
-      <HintPath>..\packages\ActiproSoftware.Controls.WinForms.SyntaxEditor.Addons.DotNet.23.1.3\lib\net462\ActiproSoftware.SyntaxEditor.Addons.DotNet.WinForms.dll</HintPath>
-    </Reference>
-    <Reference Include="ActiproSoftware.SyntaxEditor.Addons.Python.WinForms, Version=23.1.3.0, Culture=neutral, PublicKeyToken=c27e062d3c1a4763, processorArchitecture=MSIL">
-      <HintPath>..\packages\ActiproSoftware.Controls.WinForms.SyntaxEditor.Addons.Python.23.1.3\lib\net462\ActiproSoftware.SyntaxEditor.Addons.Python.WinForms.dll</HintPath>
-    </Reference>
-    <Reference Include="ActiproSoftware.SyntaxEditor.WinForms, Version=23.1.3.0, Culture=neutral, PublicKeyToken=c27e062d3c1a4763, processorArchitecture=MSIL">
-      <HintPath>..\packages\ActiproSoftware.Controls.WinForms.SyntaxEditor.23.1.3\lib\net462\ActiproSoftware.SyntaxEditor.WinForms.dll</HintPath>
-    </Reference>
-    <Reference Include="ActiproSoftware.Text.Addons.DotNet.Roslyn.WinForms, Version=23.1.3.0, Culture=neutral, PublicKeyToken=c27e062d3c1a4763, processorArchitecture=MSIL">
-      <HintPath>..\packages\ActiproSoftware.Controls.WinForms.SyntaxEditor.Addons.DotNet.23.1.3\lib\net462\ActiproSoftware.Text.Addons.DotNet.Roslyn.WinForms.dll</HintPath>
-    </Reference>
-    <Reference Include="ActiproSoftware.Text.Addons.DotNet.WinForms, Version=23.1.3.0, Culture=neutral, PublicKeyToken=c27e062d3c1a4763, processorArchitecture=MSIL">
-      <HintPath>..\packages\ActiproSoftware.Controls.WinForms.SyntaxEditor.Addons.DotNet.23.1.3\lib\net462\ActiproSoftware.Text.Addons.DotNet.WinForms.dll</HintPath>
-    </Reference>
-    <Reference Include="ActiproSoftware.Text.Addons.Python.WinForms, Version=23.1.3.0, Culture=neutral, PublicKeyToken=c27e062d3c1a4763, processorArchitecture=MSIL">
-      <HintPath>..\packages\ActiproSoftware.Controls.WinForms.SyntaxEditor.Addons.Python.23.1.3\lib\net462\ActiproSoftware.Text.Addons.Python.WinForms.dll</HintPath>
-    </Reference>
-    <Reference Include="ActiproSoftware.Text.LLParser.WinForms, Version=23.1.3.0, Culture=neutral, PublicKeyToken=c27e062d3c1a4763, processorArchitecture=MSIL">
-      <HintPath>..\packages\ActiproSoftware.Controls.WinForms.SyntaxEditor.23.1.3\lib\net462\ActiproSoftware.Text.LLParser.WinForms.dll</HintPath>
-    </Reference>
-    <Reference Include="ActiproSoftware.Text.WinForms, Version=23.1.3.0, Culture=neutral, PublicKeyToken=c27e062d3c1a4763, processorArchitecture=MSIL">
-      <HintPath>..\packages\ActiproSoftware.Controls.WinForms.SyntaxEditor.23.1.3\lib\net462\ActiproSoftware.Text.WinForms.dll</HintPath>
-    </Reference>
-    <Reference Include="ActiproSoftware.Wizard.WinForms, Version=23.1.3.0, Culture=neutral, PublicKeyToken=c27e062d3c1a4763, processorArchitecture=MSIL">
-      <HintPath>..\packages\ActiproSoftware.Controls.WinForms.Wizard.23.1.3\lib\net462\ActiproSoftware.Wizard.WinForms.dll</HintPath>
-    </Reference>
     <Reference Include="Autofac, Version=8.2.0.0, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
       <HintPath>..\packages\Autofac.8.2.0\lib\netstandard2.0\Autofac.dll</HintPath>
     </Reference>
@@ -208,16 +169,6 @@
     <Reference Include="Dapper.Extensions.SQLite, Version=5.2.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Dapper.Extensions.SQLite.5.2.0\lib\netstandard2.0\Dapper.Extensions.SQLite.dll</HintPath>
     </Reference>
-    <Reference Include="DevExpress.Data.Desktop.v23.2, Version=23.2.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
-    <Reference Include="DevExpress.Data.Desktop.v25.1, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL" />
-    <Reference Include="DevExpress.Data.v23.2, Version=23.2.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
-    <Reference Include="DevExpress.Data.v25.1, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL" />
-    <Reference Include="DevExpress.Drawing.v23.2, Version=23.2.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
-    <Reference Include="DevExpress.Printing.v23.2.Core, Version=23.2.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
-    <Reference Include="DevExpress.Printing.v25.1.Core, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL" />
-    <Reference Include="DevExpress.Utils.v23.2, Version=23.2.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL" />
-    <Reference Include="DevExpress.Utils.v25.1, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL" />
-    <Reference Include="DevExpress.XtraEditors.v25.1, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL" />
     <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>..\packages\EntityFramework.6.5.1\lib\net45\EntityFramework.dll</HintPath>
     </Reference>
@@ -707,9 +658,6 @@
     <Compile Include="Controls\AboutDialog.Designer.cs">
       <DependentUpon>AboutDialog.cs</DependentUpon>
     </Compile>
-    <Compile Include="Controls\CodeEditorHelpers\HighlightRangeTag.cs" />
-    <Compile Include="Controls\CodeEditorHelpers\HighlightRangeTagger.cs" />
-    <Compile Include="Controls\CodeEditorHelpers\IncludeCsCodeTagger.cs" />
     <Compile Include="Controls\DebugConsole.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -743,7 +691,6 @@
     <Compile Include="Controls\SetPasswordsForm.Designer.cs">
       <DependentUpon>SetPasswordsForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="Controls\SyntaxEditorHelper.cs" />
     <Compile Include="Controls\TestPlugin.cs" />
     <Compile Include="Controls\ModuleControl.cs">
       <SubType>UserControl</SubType>
@@ -768,12 +715,6 @@
     </Compile>
     <Compile Include="Controls\TagForm.Designer.cs">
       <DependentUpon>TagForm.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\EditObjectForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Controls\EditObjectForm.Designer.cs">
-      <DependentUpon>EditObjectForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Controls\StringForm.cs">
       <SubType>Form</SubType>
@@ -897,12 +838,6 @@
     <Compile Include="x_Scripting\FormAutocomplete.Designer.cs">
       <DependentUpon>FormAutocomplete.cs</DependentUpon>
     </Compile>
-    <Compile Include="x_Scripting\FormCsScriptForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="x_Scripting\FormCsScriptForm.Designer.cs">
-      <DependentUpon>FormCsScriptForm.cs</DependentUpon>
-    </Compile>
     <Compile Include="x_Scripting\ListControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -1016,10 +951,6 @@
     <EmbeddedResource Include="Controls\TagForm.resx">
       <DependentUpon>TagForm.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Controls\EditObjectForm.resx">
-      <DependentUpon>EditObjectForm.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
     <EmbeddedResource Include="Controls\StringForm.resx">
       <DependentUpon>StringForm.cs</DependentUpon>
     </EmbeddedResource>
@@ -1058,9 +989,6 @@
     <EmbeddedResource Include="x_Scripting\FormAutocomplete.resx">
       <DependentUpon>FormAutocomplete.cs</DependentUpon>
       <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="x_Scripting\FormCsScriptForm.resx">
-      <DependentUpon>FormCsScriptForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

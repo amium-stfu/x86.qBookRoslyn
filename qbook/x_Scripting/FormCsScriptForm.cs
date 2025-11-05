@@ -1,5 +1,4 @@
-﻿using ActiproSoftware.Text.Parsing;
-using ActiproSoftware.Text.Parsing.LLParser;
+﻿
 using CSScriptLib;
 using System;
 using System.Collections.Generic;
@@ -22,16 +21,6 @@ namespace qbook.Scripting
         string codeFooter = @" } }";
 
         string CsCodeSourceFileKey = null;
-        public FormCsScript()
-        {
-            InitializeComponent();
-
-            codeEditor.Document.Language = qbook.Core.CsScriptLanguage;
-            CsCodeSourceFileKey = qbook.Core.CsScriptAssembly.SourceFiles.Last().Key;
-            codeEditor.Document.SetHeaderAndFooterText(codeHeader, codeFooter);
-
-            codeEditor.Text = "QB.Logger.Info(\"hui\");";
-        }
 
         dynamic script;
         class WatchItem
@@ -132,77 +121,7 @@ namespace qbook.Scripting
         }
 
         bool hasPendingParseData = false;
-        private void codeEditor_UserInterfaceUpdate(object sender, EventArgs e)
-        {
-            // If there is a pending parse data change...
-            if (hasPendingParseData)
-            {
-                // Clear flag
-                hasPendingParseData = false;
-
-                var parseData = codeEditor.Document.ParseData as ILLParseData;
-                if (parseData != null)
-                {
-                    //if (codeEditor.Document.CurrentSnapshot.Length < 10000)
-                    //{
-                    //    // Show the AST
-                    //    if (parseData.Ast != null)
-                    //        astOutputEditor.Text = parseData.Ast.ToTreeString(0).Replace("\t", " ");
-                    //    else
-                    //        astOutputEditor.Text = null;
-                    //}
-                    //else
-                    //    astOutputEditor.Text = "(Not displaying large AST for performance reasons)";
-
-                    // Output errors
-                    this.RefreshErrorList(parseData.Errors);
-                }
-                else
-                {
-                    // Clear UI
-                    //astOutputEditor.Text = null;
-                    this.RefreshErrorList(null);
-                }
-            }
-        }
-
-        private void RefreshErrorList(IEnumerable<IParseError> errors)
-        {
-            errorListView.Items.Clear();
-
-            if (errors != null)
-            {
-                foreach (var error in errors)
-                {
-                    var item = new ListViewItem(new string[] {
-                        error.PositionRange.StartPosition.DisplayLine.ToString(), error.PositionRange.StartPosition.DisplayCharacter.ToString(), error.Description
-                    });
-                    item.Tag = error;
-                    errorListView.Items.Add(item);
-                }
-            }
-        }
-
-        private void syntaxEditor1_DocumentParseDataChanged(object sender, EventArgs e)
-        {
-            hasPendingParseData = true;
-        }
-
-        private void FormCsScript_Load(object sender, EventArgs e)
-        {
-            if (System.IO.File.Exists("CsScript.immediate.txt"))
-                codeEditor.Text = System.IO.File.ReadAllText("CsScript.immediate.txt");
-
-            if (System.IO.File.Exists("CsScript.watchitems.txt"))
-            {
-                foreach (string line in System.IO.File.ReadAllLines("CsScript.watchitems.txt"))
-                    watchItems.Add(new WatchItem() { Term = line });
-                dataGridView1.DataSource = watchItems;
-            }
-        }
-
-
-
+  
         private void buttonEval_Click(object sender, EventArgs e)
         {
             System.Diagnostics.Stopwatch sw = new Stopwatch();
@@ -397,15 +316,6 @@ namespace qbook.Scripting
         private void buttonClearOutput_Click(object sender, EventArgs e)
         {
             textBoxOutput.Text = "";
-        }
-
-        private void FormCsScript_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            if (CsCodeSourceFileKey != null && qbook.Core.CsScriptAssembly.SourceFiles.Contains(CsCodeSourceFileKey))
-                qbook.Core.CsScriptAssembly.SourceFiles.Remove(CsCodeSourceFileKey);
-
-            System.IO.File.WriteAllText("CsScript.immediate.txt", codeEditor.Text);
-            System.IO.File.WriteAllText("CsScript.watchitems.txt", string.Join(Environment.NewLine, watchItems.Select(w => w.Term)));
         }
 
         class ObjectItem

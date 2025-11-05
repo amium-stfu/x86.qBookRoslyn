@@ -614,7 +614,7 @@ namespace qbook
             if (Debugger.IsAttached)
                 QB.Book.AccessLevel = QB.AccessLevel.Admin;
             UpdateMenuBar();
-            qbook.Core.UpdateProjectAssemblyQbRoot("MainForm.Template");
+        
         }
 
         void UpdateMenuBar()
@@ -860,7 +860,7 @@ namespace qbook
             if (Debugger.IsAttached)
                 QB.Book.AccessLevel = QB.AccessLevel.Admin;
             UpdateMenuBar();
-            qbook.Core.UpdateProjectAssemblyQbRoot("MainForm.NewQbook");
+          
             qbook.Core.ThisBook.PropertyChanged -= Book_PropertyChanged;
             qbook.Core.ThisBook.PropertyChanged += Book_PropertyChanged;
 
@@ -1116,7 +1116,7 @@ namespace qbook
                     && ((ModifierKeys & Keys.Control) == Keys.Control))
                 {
                     //old editor
-                    EditObjectForm.Edit(x, y, (sender as oIcon).Parent);
+                   
                 }
                 else
                 {

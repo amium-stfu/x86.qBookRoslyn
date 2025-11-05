@@ -1,12 +1,4 @@
-﻿using ActiproSoftware.Text;
-using ActiproSoftware.Text.Implementation;
-using ActiproSoftware.Text.Languages.CSharp.Implementation;
-using ActiproSoftware.Text.Languages.DotNet.Reflection;
-using ActiproSoftware.Text.Languages.Python.Implementation;
-using ActiproSoftware.Text.Tagging.Implementation;
-using ActiproSoftware.UI.WinForms.Controls.SyntaxEditor;
-using ActiproSoftware.UI.WinForms.Controls.SyntaxEditor.Highlighting.Implementation;
-using CefSharp.DevTools.Debugger;
+﻿using CefSharp.DevTools.Debugger;
 using CSScripting;
 using CSScriptLib;
 using IronPython.Runtime.Operations;
@@ -294,84 +286,11 @@ namespace qbook
 
         //cs-script 
         // A project assembly (similar to a Visual Studio project) contains source files and assembly references for reflection
-        internal static IProjectAssembly CsScriptAssembly;
-        internal static IProjectAssembly PyScriptAssembly;
+
         internal static System.Reflection.Assembly CsScript_ass;
-        internal static CSharpSyntaxLanguage CsScriptLanguage = null;// new CSharpSyntaxLanguage();
-        internal static PythonSyntaxLanguage PyScriptLanguage = null;
+
         internal static System.Reflection.Assembly ActiveCsAssembly = null;
         internal static string LastScriptDllFilename = null;
-
-
-
-        private static string GetQbookScriptDllPath()
-        {
-            var exeDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            return Path.GetFullPath(Path.Combine(exeDir, "libs", "qbookCsScript.dll"));
-        }
-
-        private static bool IsAssemblyLoaded(string assemblyName)
-        {
-            return AppDomain.CurrentDomain.GetAssemblies()
-                .Any(a => string.Equals(a.GetName().Name, assemblyName, StringComparison.OrdinalIgnoreCase));
-        }
-
-        static void CsScriptInit()
-        {
-            if (CsScriptAssembly == null)
-            {
-                CsScriptAssembly = new CSharpProjectAssembly("qbScript");
-
-                try
-                {
-                    var qbookPath = GetQbookScriptDllPath();
-                    if (!IsAssemblyLoaded("qbookCsScript"))
-                        CsScriptAssembly.AssemblyReferences.AddFrom(qbookPath);
-                }
-                catch (Exception ex)
-                {
-                    QB.Logger.Error("#EX in CsScriptInit - Could not reference qbookCsScript.dll: " + ex.Message + (QB.Logger.ShowStackTrace ? ex.StackTrace : ""));
-                }
-
-                var assemblyLoader = new BackgroundWorker();
-                assemblyLoader.DoWork += DotNetProjectAssemblyReferenceLoader;
-                assemblyLoader.RunWorkerAsync();
-
-                CsScriptLanguage = new CSharpSyntaxLanguage();
-                CsScriptLanguage.RegisterService(CsScriptAssembly);
-                CsScriptLanguage.RegisterService(new CodeDocumentTaggerProvider<qbook.CodeEditor.IncludeCsCodeTagger>(typeof(qbook.CodeEditor.IncludeCsCodeTagger)));
-                CsScriptLanguage.RegisterService(new CodeDocumentTaggerProvider<qbook.CodeEditor.HighlightRangeTagger>(typeof(qbook.CodeEditor.HighlightRangeTagger)));
-            }
-        }
-
-
-
-        static void PyScriptInit()
-        {
-            if (PyScriptAssembly == null)
-            {
-                PyScriptAssembly = new CSharpProjectAssembly("qbScript");
-
-                try
-                {
-                    var qbookPath = GetQbookScriptDllPath();
-                    if (!IsAssemblyLoaded("qbookCsScript"))
-                        PyScriptAssembly.AssemblyReferences.AddFrom(qbookPath);
-                }
-                catch (Exception ex)
-                {
-                    QB.Logger.Error("#EX in PyScriptInit - Could not reference qbookCsScript.dll: " + ex.Message + (QB.Logger.ShowStackTrace ? ex.StackTrace : ""));
-                }
-
-                var assemblyLoader = new BackgroundWorker();
-                assemblyLoader.DoWork += DotNetProjectAssemblyReferenceLoader;
-                assemblyLoader.RunWorkerAsync();
-
-                PyScriptLanguage = new PythonSyntaxLanguage();
-                PyScriptLanguage.RegisterService(PyScriptAssembly);
-            }
-        }
-
 
         private static string _LastCsScriptBuildCode = "";
         internal static string LastCsScriptBuildCode
@@ -388,18 +307,7 @@ namespace qbook
             }
         }
         private static string[] _LastCsScriptBuildCodeLines = null;
-        internal static string[] LastCsScriptBuildCodeLines
-        {
-            get
-            {
-                return _LastCsScriptBuildCodeLines;
-            }
-            //set
-            //{
-
-            //}
-        }
-
+   
 
         internal static dynamic csScript;
         internal static bool IsBuilding = false;
@@ -506,221 +414,9 @@ using System.Text.Json;
 
 
 
-        public class Job : MarshalByRefObject
-        {
-            public string Do(Book book)
-            {
-                try
-                {
-                    ActiproSoftware.Products.ActiproLicenseManager.RegisterLicense(Licensing.Decrypt("v0XW+hEwOMFQr5Hymgo7iw=="), Licensing.Decrypt("zht+EQ4LRTJKXl7EOd7Xwfu27VNxniquzsoMHWaHyvo="));
-
-                    Console.WriteLine("---Job.Do()");
-
-                    //CSScript.Evaluator.DebugBuild = true;
-                    qbook.Core.ThisBook = book;
-                    qbook.Core.UpdateProjectAssemblyQbRoot("Core.Job.Do");
-                    string usingsCode = GetUsingsCode(); // book);
-                    string csScriptCode = CsScriptCombineCode(); // book);
-                    string fullCode = usingsCode + "\r\n" + qbook.Core.ProgramMainCode + csScriptCode;
-
-                    //                    fullCode = @"
-                    //using System;
-                    //class Test
-                    //{
-                    //public void Write(string text)
-                    //{
-                    //Console.WriteLine(""text: "" + text);
-                    //}
-                    //}
-                    //";
-
-                    CSScript.Evaluator.DebugBuild = true;
-                    //CSScript.EvaluatorConfig.PdbFormat = DebugInformationFormat.Embedded;
-                    string assFileName = CSScript.Evaluator
-                                             .ReferenceAssembly(Path.GetFullPath(Path.Combine("libs", "qbookCsScript.dll")))
-                                             .CompileAssemblyFromCode(fullCode, "ScriptDll.dll");
-                    //.CompileAssemblyFromCode(fullCode, "ScriptDll." + Guid.NewGuid() + ".dll");
-
-
-                    if (true)
-                    {
-                        Assembly ass = Assembly.LoadFrom(assFileName);
-                        csScript = ass.CreateObject("*");
-                        qbook.Core.ActiveCsAssembly = (System.Reflection.Assembly)csScript.GetType().Assembly; //hope this works?! 
-                        qbook.Core.CsScript_Init();
-                        //csScript._RunClasses(null);
-                        qbook.Core.RunCsScript_Run();
-                        //csScript.Write("hi");
-                        LastBuildResult = null;
-                    }
-                    return assFileName;
-
-                }
-                catch (Exception ex)
-                {
-                    return null;
-                }
-            }
-
-
-            public string DoExternal(Book book)
-            {
-                try
-                {
-                    ActiproSoftware.Products.ActiproLicenseManager.RegisterLicense(Licensing.Decrypt("v0XW+hEwOMFQr5Hymgo7iw=="), Licensing.Decrypt("zht+EQ4LRTJKXl7EOd7Xwfu27VNxniquzsoMHWaHyvo="));
-
-                    Console.WriteLine("---Job.DoExternal()");
-
-                    //CSScript.Evaluator.DebugBuild = true;
-                    qbook.Core.ThisBook = book;
-                    qbook.Core.UpdateProjectAssemblyQbRoot("Job.DoExternal");
-                    return "";
-
-                }
-                catch (Exception ex)
-                {
-                    return null;
-                }
-            }
-        }
-
 
         static AppDomain scriptDomain = null;
 
-
-        //public class ErrorFragment
-        //{
-        //    public string PageName { get; set; }
-        //    public string ClassName { get; set; }
-        //    public string Description { get; set; }
-        //    public int Line { get; set; }
-        //    public int Column { get; set; }
-        //    public int Length { get; set; }
-        //    public string[] FullCode { get; set; }
-
-        //    private int _offset = 0;
-
-        //    public ErrorFragment(int line, int col, int length, string description, string fullCode)
-        //    {
-        //        Line = line;
-        //        Column = col;
-        //        Length = length;
-        //        Description = description;
-        //        FullCode = fullCode.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
-        //        GetClassPageName();
-        //    }
-
-        //    public override string ToString() => $"{PageName},{ClassName},{Line},{Column},{Length},{Description}";
-
-        //    private void GetClassPageName()
-        //    {
-        //        string pageName = null;
-        //        string className = null;
-        //        bool inIncludeBlock = false;
-
-        //        int pageStart = 0;
-
-        //        // 1. PageName suchen
-        //        for (int i = Line; i >= 0; i--)
-        //        {
-        //            var line = FullCode[i];
-        //            var match = System.Text.RegularExpressions.Regex.Match(line, @"//=== class '([^']+)' ===");
-        //            if (match.Success)
-        //            {
-        //                pageStart = i;
-        //                pageName = match.Groups[1].Value;
-        //                break;
-        //            }
-        //        }
-
-        //        bool insideInclude = IsInsideIncludeBlock(FullCode, Line, pageStart);
-        //        Debug.WriteLine("isInside " + insideInclude + " : " + Description);
-        //        if (insideInclude)
-        //        {
-        //            className = GetClassNameInsideInclude(FullCode, Line, pageStart);
-        //            Debug.WriteLine("ClassName= " + className);
-        //        }
-        //        else 
-        //        {
-        //            className = GetClassNameOutsideInclude(FullCode, Line, pageStart);
-        //            Debug.WriteLine("ClassName= " + className);
-        //        }
-
-        //        Line = Line - _offset;
-        //        PageName = pageName;
-        //        ClassName = className;
-        //    }
-
-        //    private bool IsInsideIncludeBlock(string[] lines, int lineIndex, int pageIndex)
-        //    {
-        //        bool inIncludeBlock = false;
-
-        //        for (int i = lineIndex; i <= lines.Count()-1; i++)
-        //        {
-        //            var line = lines[i].Trim();
-
-        //            if (line.StartsWith("//+include") && line.Contains("end"))
-        //            {
-        //                return true;
-        //            }
-        //        }
-
-        //        return false;
-        //    }
-
-        //    private string GetClassNameInsideInclude(string[] lines, int lineIndex, int pageIndex)
-        //    {
-        //        string searchString = "public class ";
-        //        for (int i = lineIndex; i >= pageIndex; i--)
-        //        {
-        //            var line = lines[i].Trim();
-        //           // Debug.WriteLine(i + ". " + line);
-        //            if (line.StartsWith(searchString))
-        //            {
-        //                _offset = i;
-        //                var rest = line.Substring(searchString.Length).Trim();
-        //                Debug.WriteLine(i + ".found");
-
-        //                return rest.Split(new[] { ' ', '{', ':' }, StringSplitOptions.RemoveEmptyEntries)[0];
-        //            }
-        //        }
-        //        return null;
-        //    }
-
-        //    private string GetClassNameOutsideInclude(string[] lines, int lineIndex, int pageIndex)
-        //    {
-        //        string searchString = "public class ";
-        //        bool inIncludeBlock = false;
-        //        _offset = lineIndex+1;
-        //        for (int i = lineIndex; i >= pageIndex; i--)
-        //        {
-        //            var line = lines[i].Trim();
-        //            Debug.WriteLine(i + ". " + line);
-
-        //            if (!inIncludeBlock) _offset--;
-        //                if (line.StartsWith("//+include") && line.Contains("end"))
-        //                inIncludeBlock = true;
-        //            if (line.StartsWith("//+include") && line.Contains("start"))
-        //                inIncludeBlock = false;
-
-        //            if (!inIncludeBlock && line.StartsWith(searchString))
-        //            {
-
-        //                var rest = line.Substring(searchString.Length).Trim();
-        //                return rest.Split(new[] { ' ', '{', ':' }, StringSplitOptions.RemoveEmptyEntries)[0];
-        //            }
-        //        }
-        //        return null;
-        //    }
-
-
-
-
-        //}
-
-        //public static List<ErrorFragment> ErrorList = new();
-
-    
         static string ReplaceCodeInclude(Match m, string pathToPage = "")
         {
             if (!m.Groups[1].Success)
@@ -783,52 +479,8 @@ using System.Text.Json;
                    + "\r\n";
             }
         }
-        internal static void CsScript_Init()
-        {
-            if (csScript != null)
-            {
-                try
-                {
-                    //SCAN UDL.Client.ResetClients();
-                    QB.Net.Ak.Client.ResetClients();
-                    //SCAN  Net.AK.Server.ResetClients();
-                    QB.Root.ResetObjectDict();
-                    QB.Root.ResetWidgetDict();
-                    //SCAN         Main.Qb.Automation.Signalgenerator.SignalGenList.Clear();
-                    // System.Threading.Thread.Sleep(1000);
 
-                    csScript._InitClasses(null);
-                    //QB.Root.UpdateBoxBounds();
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("#EX CsScript: " + ex.Message + (QB.Logger.ShowStackTrace ? ex.StackTrace : ""));
-                }
-            }
-        }
-
-        internal static async Task<bool> RunCsScript_Run()
-        {
-            if (csScript != null)
-            {
-                try
-                {
-                    //Main.Qb.Root.ResetObjectDict();
-                    //Main.Qb.Root.ResetWidgetDict();
-                    //Main.Qb.Automation.SignalGen.SignalGenList.Clear();
-                    csScript._RunClasses(null);
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("#EX RunCsScript_Run: " + ex.Message + (QB.Logger.ShowStackTrace ? ex.StackTrace : ""));
-                    QB.Logger.Error("#EX in RunCsScript_Run: " + ex.ToString());
-                    return false;
-                }
-            }
-            return false;
-        }
-
+ 
         internal static void CsScript_Destroy()
         {
             if (csScript != null)
@@ -848,314 +500,9 @@ using System.Text.Json;
             }
         }
 
-
-
-        private static void DotNetProjectAssemblyReferenceLoader(object sender, DoWorkEventArgs e)
-        {
-            // Add some common assemblies for reflection (any custom assemblies could be added using various Add overloads instead)
-            SyntaxEditorHelper.AddCommonDotNetSystemAssemblyReferences(CsScriptAssembly);
-        }
-
-        static ActiproSoftware.UI.WinForms.Controls.SyntaxEditor.SyntaxEditor syntaxEditorMain = null;
         internal static string ProgramMainCode;
         internal static string MethodMainCode_2step;
-        internal static void UpdateProjectAssemblyQbRoot(string sender)
-        {
-            ProgramMainCode = @"using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static QbRoot;
-using log4net;
 
-[Serializable]
-public class QbScript
-{
-public static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
-static QbScript()
-{
-//log4net.Repository.ILoggerRepository repository = log4net.LogManager.GetRepository(System.Reflection.Assembly.GetCallingAssembly());
-//var fileInfo = new System.IO.FileInfo(@""log4net.config"");
-//log4net.Config.XmlConfigurator.Configure(repository, fileInfo);
-
-log4net.Repository.Hierarchy.Hierarchy hierarchy = (log4net.Repository.Hierarchy.Hierarchy)log4net.LogManager.GetRepository();
-hierarchy.Root.RemoveAllAppenders(); //start anew...
-//RollingFileAppender
-var rollerPatternLayout = new log4net.Layout.PatternLayout();
-rollerPatternLayout.ConversionPattern = ""%date [%thread] %-5level %logger - %message%newline"";
-rollerPatternLayout.ActivateOptions();
-log4net.Appender.RollingFileAppender roller = new log4net.Appender.RollingFileAppender();
-roller.AppendToFile = false;
-roller.File = ""qbook.log""/*{logfilename}*/;
-roller.Layout = rollerPatternLayout;
-roller.MaxSizeRollBackups = 5; 
-roller.MaximumFileSize = ""10MB"";
-roller.RollingStyle = log4net.Appender.RollingFileAppender.RollingMode.Size;
-roller.StaticLogFileName = true;
-roller.ActivateOptions();
-hierarchy.Root.AddAppender(roller);
-
-//UdpAppender
-var udpPatternLayout = new log4net.Layout.PatternLayout();
-udpPatternLayout.ConversionPattern = ""%date [%thread] %-5level %logger - %message%newline"";
-udpPatternLayout.ActivateOptions();
-var udpAppender = new log4net.Appender.UdpAppender();
-udpAppender.RemoteAddress = new System.Net.IPAddress(new byte[] { 127, 0, 0, 1 });
-udpAppender.RemotePort = 39999;
-udpAppender.Layout = udpPatternLayout;
-udpAppender.ActivateOptions();
-hierarchy.Root.AddAppender(udpAppender);
-
-hierarchy.Root.Level = log4net.Core.Level.All;
-hierarchy.Configured = true;
-
-ILog logger = log4net.LogManager.GetLogger(hierarchy.Name, ""qbLogger"");
-}
-
-public void _InitClasses(string[] args)
-{
-  log.Debug(""_InitClasses()"");
-  try
-  {
-    AppDomain.CurrentDomain.UnhandledException += (sender,e)
-      => FatalExceptionObject(e.ExceptionObject);
-
-//SCAN    Application.ThreadException += (sender,e)
-//SCAN      => FatalExceptionHandler.Handle(e.Exception);
-
-/*{execPageInitList}*/
-
-  }
-  catch (Exception huh)
-  {
-    FatalExceptionHandler.Handle(huh);
-  }
-}
-
-public void _RunClasses(string[] args)
-{
-  log.Debug(""_RunClasses()"");  try
-  {
-  //  AppDomain.CurrentDomain.UnhandledException += (sender,e)
-  //    => FatalExceptionObject(e.ExceptionObject);
-  //  Application.ThreadException += (sender,e)
-  //    => FatalExceptionHandler.Handle(e.Exception);
-
-/*{execPageRunList}*/
-    
-  }
-  catch (Exception huh)
-  {
-    FatalExceptionHandler.Handle(huh);
-  }
-}
-
-public void _DestroyClasses(string[] args)
-{
-  log.Debug(""_DestroyClasses()"");  try
-  {
-  //  AppDomain.CurrentDomain.UnhandledException += (sender,e)
-  //    => FatalExceptionObject(e.ExceptionObject);
-  //  Application.ThreadException += (sender,e)
-  //    => FatalExceptionHandler.Handle(e.Exception);
-
-/*{execPageDestroyList}*/
-    
-  }
-  catch (Exception huh)
-  {
-    FatalExceptionHandler.Handle(huh);
-  }
-}
-
-static void FatalExceptionObject(object exceptionObject) {
-  var huh = exceptionObject as Exception;
-  if (huh == null) 
-  {
-    huh = new NotSupportedException(
-      ""Unhandled exception doesn't derive from System.Exception: ""
-      + exceptionObject.ToString());
-  }
-  FatalExceptionHandler.Handle(huh);
-}
-} //\public class Program
-
-static System.Text.RegularExpressions.Regex cssSourceCodeRegex = new System.Text.RegularExpressions.Regex(
-  @""\b(?<filename>[A-Z]\:.*\d+\.[0-9a-z]+\-[0-9a-z]{4}\-[0-9a-z]{4}\-[0-9a-z]{4}\-[0-9a-z]+.tmp)\:line (?<linenr>\d+)"", System.Text.RegularExpressions.RegexOptions.Compiled);
-static class FatalExceptionHandler 
-{
-  public static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-  public static void Handle(Exception ex)
-  {
-    string stackTrace = ex.StackTrace;
-    int endOfStackPos = stackTrace.IndexOf(""--- End of stack trace"");
-    if (endOfStackPos > 0)
-        stackTrace = stackTrace.Substring(0, endOfStackPos).TrimEnd();
-    log.Debug(""#EX#FATAL: "" + ex.Message + "" => StackTrace:"" + stackTrace);
-    var m = cssSourceCodeRegex.Match(stackTrace);
-    if (m.Success)
-    {
-        try 
-        {
-            int.TryParse(m.Groups[""linenr""].Value, out int linenr);
-            string line = System.IO.File.ReadAllLines(m.Groups[""filename""].Value).Skip(linenr-1).First();
-            log.Debug("">>failed source code:"" + line);
-        }
-        catch (Exception ex1)
-        {
-            log.Debug(""#EX getting source code information..."" + ex1.Message);
-        }
-    }
-    QB.Logger.Error(""#EX#FATAL: "" + ex.Message + "" => StackTrace:"" + stackTrace);
-    //MessageBox.Show(""#EX#FATAL: "" + ex.Message + "" => StackTrace:"" + ex.StackTrace, ""FATAL"");
-  }
-} //class QbScript
-
-static public class QbRoot
-{
-/*{staticClassList}*/
-}
-";
-
-            MethodMainCode_2step = @"using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static QbRoot;
-
-
-public void Main(string[] args)
-{
-/*{newPageList}*/
-/*{execPageInitList}*/
-          
-/*{execPageRunList}*/
-
-/*{execPageDestroyList}*/
-}
-
-public void Main1(string[] args)
-{
-/*{newPageList}*/
-}
-
-
-public void Test()
-{
-var @class_main = new @class_main();
-}
-";
-
-
-            bool autoAddRootCode = false;
-            if (autoAddRootCode)
-            {
-                if (syntaxEditorMain == null)
-                {
-                    syntaxEditorMain = new ActiproSoftware.UI.WinForms.Controls.SyntaxEditor.SyntaxEditor();
-                    syntaxEditorMain.Document.Language = qbook.Core.CsScriptLanguage;
-                }
-            }
-
-            if (autoAddRootCode)
-            {
-                //HACK: (temporarily) add all pages' CsScript so all symbols are mutually known
-                foreach (var page in qbook.Core.ThisBook.Main.Objects)
-                {
-                    //var codeEditorTemp =
-                    page.MySyntaxEditor = new ActiproSoftware.UI.WinForms.Controls.SyntaxEditor.SyntaxEditor();
-                    page.MySyntaxEditor.Document.Language = qbook.Core.CsScriptLanguage;
-                    page.MySyntaxEditor.Document.SetHeaderAndFooterText(page.CsCodeHeader, page.CsCodeFooter);
-                    page.MySyntaxEditor.Text = page.CsCode;
-                    page.CsCodeSourceFileKey = qbook.Core.CsScriptAssembly.SourceFiles.Last().Key;
-                }
-            }
-
-            //Main.Qb.CsScriptAssembly.AssemblyReferences.AddFrom(@".\libs\qbookCsScript.dll");
-
-            List<string> staticClassList = new List<string>();
-            foreach (var page in qbook.Core.ThisBook.Main.Objects)
-            {
-                if (string.IsNullOrEmpty(page.Name))
-                    continue;
-
-                staticClassList.Add($"public static @class_{page.Name} {page.Name} = new @class_{page.Name}();");
-            }
-            ProgramMainCode = ProgramMainCode.Replace("/*{staticClassList}*/", String.Join("\r\n", staticClassList));
-
-            List<string> newPageList = new List<string>();
-            List<string> execPageInitList = new List<string>();
-            List<string> execPageRunList = new List<string>();
-            List<string> execPageDestroyList = new List<string>();
-            foreach (var page in qbook.Core.ThisBook.Main.Objects)
-            {
-                if (string.IsNullOrEmpty(page.Name))
-                    continue;
-
-                newPageList.Add($"var @class_{page.Name} = new @class_{page.Name}();");
-                //execPageInitList.Add($"@class_{page.Name}.Init();");
-                //execPageRunList.Add($"@class_{page.Name}.Run();");
-                execPageInitList.Add("try { QbRoot."
-                    + page.Name
-                    + ".Initialize(); } catch (Exception ex) { QB.Logger.Error(\"#EX in class " + page.Name + ".Initialize(): \" + ex.ToString()); }");
-                execPageRunList.Add("try { QbRoot."
-                    + page.Name
-                    + ".Run(); } catch (Exception ex) { QB.Logger.Error(\"#EX in class " + page.Name + ".Run(): \" + ex.ToString()); }");
-                execPageDestroyList.Add("try { QbRoot."
-                    + page.Name
-                    + ".Destroy(); } catch (Exception ex) { QB.Logger.Error(\"#EX in class " + page.Name + ".Destroy(): \" + ex.ToString()); }");
-
-                string key = "QbRoot." + page.Name;
-                if (!Root.ClassDict.ContainsKey(key))
-                    Root.ClassDict.Add(key, page);
-            }
-            ProgramMainCode = ProgramMainCode.Replace("/*{newPageList}*/", String.Join("\r\n", newPageList));
-            ProgramMainCode = ProgramMainCode.Replace("/*{execPageInitList}*/", String.Join("\r\n", execPageInitList));
-            ProgramMainCode = ProgramMainCode.Replace("/*{execPageRunList}*/", String.Join("\r\n", execPageRunList));
-            ProgramMainCode = ProgramMainCode.Replace("/*{execPageDestroyList}*/", String.Join("\r\n", execPageDestroyList));
-            //set logfilename and remove every log older than 7 days
-            //ProgramMainCode = ProgramMainCode.Replace("\"qbook.log\"/*{logfilename}*/", "\"" + Main.Qb.Book.LogFilename.Replace("{date}",DateTime.Now.ToString("yyyy-MM-dd_HHmmss")).Replace('\\', '/') + "\""); 
-            ProgramMainCode = ProgramMainCode.Replace("\"qbook.log\"/*{logfilename}*/", "\"" + qbook.Core.ThisBook.LogFilename + "\"");
-            string logDir = Path.GetDirectoryName(qbook.Core.ThisBook.LogFilename);
-            //  if (logDir.Length > 1)
-            try
-            {
-                DirectoryInfo directory = new DirectoryInfo(logDir);
-                var filesToDelete = directory.GetFiles("qbook.*.log")
-                    .Where(file => file.LastWriteTime < DateTime.Now.AddDays(-7));
-                foreach (var fileToDelete in filesToDelete)
-                {
-                    try
-                    {
-                        fileToDelete.Delete();
-                    }
-                    catch (Exception ex)
-                    {
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-            }
-
-            MethodMainCode_2step = MethodMainCode_2step.Replace("/*{newPageList}*/", String.Join("\r\n", newPageList));
-            MethodMainCode_2step = MethodMainCode_2step.Replace("/*{execPageInitList}*/", String.Join("\r\n", execPageInitList));
-            MethodMainCode_2step = MethodMainCode_2step.Replace("/*{execPageRunList}*/", String.Join("\r\n", execPageRunList));
-            MethodMainCode_2step = MethodMainCode_2step.Replace("/*{execPageDestroyList}*/", String.Join("\r\n", execPageDestroyList));
-
-
-            //Main.Qb.CsScriptAssembly.SourceFiles.Add(new )
-            //HALE: add the main source file progammatically
-            //don't know how to do it properly, so for now, i add a SyntaxEditor control and set it's .Document property...
-
-            if (autoAddRootCode)
-            {
-                syntaxEditorMain.Text = ProgramMainCode;
-            }
-        }
 
 
 
@@ -1188,10 +535,6 @@ var @class_main = new @class_main();
             {
             }
         }
-        //public static void Dispose(object sender, EventArgs e)
-        //{
-        //    ScriptingEngine.Cleanup();
-        //}
 
         static void IdleThread()
         {
@@ -1236,17 +579,6 @@ var @class_main = new @class_main();
                 _logForm.Show();
             }
             _logForm.BringToFront();
-        }
-
-        static FormCsScript _csScriptForm = null;
-        internal static void ShowCsScriptingForm()
-        {
-            if (_csScriptForm == null || _csScriptForm.IsDisposed || !_csScriptForm.IsHandleCreated)
-            {
-                _csScriptForm = new FormCsScript();
-                _csScriptForm.Show();
-            }
-            _csScriptForm.BringToFront();
         }
 
         static internal bool VerifyDeveloperLicense()
@@ -1397,7 +729,6 @@ var @class_main = new @class_main();
         }
 
         internal static MruFilesManager MruFilesManager = new MruFilesManager();
-
         internal static void CleanupBeforeLoad()
         {
             BookRuntime.DestroyAll();
@@ -1444,8 +775,8 @@ var @class_main = new @class_main();
             // 6) Klassen-/Dicts leeren
             try
             {
-                QB.Root.ResetObjectDict();
-                QB.Root.ResetWidgetDict();
+                QB.Root.ResetAllDicts();
+
             }
             catch { }
 
@@ -1454,8 +785,6 @@ var @class_main = new @class_main();
             GC.WaitForPendingFinalizers();
             GC.Collect();
         }
-
-
         internal static async Task OpenQbookAsync(string fullPath = @"T:\qSave")
         {
             try
@@ -1578,7 +907,6 @@ var @class_main = new @class_main();
             }
 
         }
-
         internal static void XmlToFolder()
         {
             Debug.WriteLine("Reset Roslyn");
@@ -1666,13 +994,6 @@ var @class_main = new @class_main();
             }
 
         }
-
-        public class PageInfo
-        {
-            public string Name { get; set; } = "";
-            public string PagePath { get; set; } = "";
-            public string ObjectPath { get; set; } = "";
-        }
         public class PageDefinition
         {
             public string Name { get; set; }
@@ -1685,7 +1006,6 @@ var @class_main = new @class_main();
             public string Section { get; set; }
             public string Url { get; set; }
         }
-
         internal static oPage oPageFromString(string json)
         {
             var data = JsonConvert.DeserializeObject(json, typeof(PageDefinition)) as PageDefinition;

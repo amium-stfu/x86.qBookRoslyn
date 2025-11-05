@@ -1,4 +1,7 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using log4net;
+using log4net.Appender;
+using log4net.Layout;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using QB;
 using System;
@@ -16,10 +19,10 @@ namespace qbook
 {
     public static class BookRuntime
     {
+        #region Page Dynamic Instance Management
+
         private static Type? _programType;
-
         public static bool IsRuntimeReady => _programType != null && qbook.Core.ActiveCsAssembly != null;
-
         public static void BindAllPagesToAssembly(Assembly asm)
         {
             _programType = asm.GetType("QB.Program");
@@ -36,21 +39,17 @@ namespace qbook
                 page.DynInitialized = false;
             }
         }
-
         public static void EnsureInit(oPage page)
         {
             if (page?.DynInstance == null || page.DynInitialized) return;
             page.DynInstance.GetType().GetMethod("Init")?.Invoke(page.DynInstance, null);
             page.DynInitialized = true;
         }
-
         public static void ExecuteRender(oPage page)
         {
             if (page?.DynInstance == null) return;
             page.DynInstance.GetType().GetMethod("Render")?.Invoke(page.DynInstance, null);
         }
-
-       
         public static void InitializeAll()
         {
             GlobalExceptions.InitRuntimeErrors();
@@ -88,7 +87,6 @@ namespace qbook
                 }
             }
         }
-
         public static void RunAll()
         {
             if (!IsRuntimeReady)
@@ -117,8 +115,6 @@ namespace qbook
             }
 
         }
-
-
         public static void DestroyAll()
         {
 
@@ -214,7 +210,7 @@ namespace qbook
             // 4️⃣ QBook-Projektwurzel neu erzeugen
             try
             {
-                Core.UpdateProjectAssemblyQbRoot("PageRuntime.DestroyAll");
+        
                 QB.Logger.Info("Core.UpdateProjectAssemblyQbRoot() executed.");
             }
             catch (Exception ex)
@@ -222,25 +218,17 @@ namespace qbook
                 QB.Logger.Warn($"UpdateProjectAssemblyQbRoot failed: {ex.Message}");
             }
 
-            QB.Root.ResetWidgetDict();
-            QB.Root.ResetObjectDict();
-
+            QB.Root.ResetAllDicts();
             QB.Logger.Info("=== PageRuntime.DestroyAll() completed ===");
         }
 
+        #endregion
+
+        #region Bilding the Assembly
 
         private static int _buildVersion = 0;
         private static ProjectId? _lastProjectId;
         private static int _lastDocumentCount = 0;
-
-        private static bool WorkspaceLooksValid()
-        {
-            var ws = Core.Roslyn?.GetWorkspace;
-            var projId = Core.Roslyn?.GetProjectId;
-            if (ws == null || projId == null) return false;
-            var proj = ws.CurrentSolution.GetProject(projId);
-            return proj != null && proj.Documents.Any(d => d.Name == "Program.cs");
-        }
 
 
         public static List<string> ErrorFiles = new List<string>();
@@ -250,7 +238,6 @@ namespace qbook
         public static int BuildDuration = 0;
         public static string BuildResult = "";
         public static bool BuildSuccess = false;
-
         public static async Task BuildBookAssembly(bool rebuild = false)
         {
             BuildSuccess = true;
@@ -503,6 +490,16 @@ namespace qbook
             BuildResult = $"[Rebuild] Build success ({BuildDuration}ms)";
 
         }
+
+        #endregion
+
+        #region Load / Save Book
+
+        #endregion
+
+        #region Logging
+
+        #endregion
 
     }
 }

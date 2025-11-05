@@ -61,7 +61,7 @@ namespace qbook
 
         void Edit()
         {
-            EditObjectForm.Edit(Bounds.X, Bounds.Y, newPage);
+           
 
 
             //    string text = "page " + ((sender as oIcon).Parent.Objects.Where(item => item is oPage).ToList().Count + 1);

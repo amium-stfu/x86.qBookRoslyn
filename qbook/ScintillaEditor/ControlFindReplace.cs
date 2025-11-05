@@ -1,4 +1,4 @@
-﻿using ActiproSoftware.UI.WinForms.Drawing;
+﻿
 using CSScripting;
 using Microsoft.Extensions.Options;
 using Microsoft.Office.Interop.Outlook;

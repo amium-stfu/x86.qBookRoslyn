@@ -14,7 +14,7 @@ namespace qbook
             if (!qbook.Core.ThisBook.DesignMode)
             {
                 oControl newItem = new oTag("Tag", "", bounds.X, bounds.Y);
-                EditObjectForm.Edit((int)bounds.X, (int)bounds.Y, newItem);
+                
                 qbook.Core.SelectedLayer.Add(newItem);
                 qbook.Core.ThisBook.Modified = true;
                 qbook.Core.ThisBook.Main.UnSelectTag();
@@ -74,7 +74,7 @@ namespace qbook
 
         void Edit()
         {
-            EditObjectForm.Edit(Bounds.X, Bounds.Y, newItem);
+          
             qbook.Core.SelectedLayer.Add(newItem);
             qbook.Core.ThisBook.Modified = true;
             qbook.Core.ThisBook.Main.UnSelectTag();

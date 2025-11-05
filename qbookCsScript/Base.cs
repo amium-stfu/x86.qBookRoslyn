@@ -192,7 +192,6 @@ namespace QB
             lock (Root.ModuleDict)
                 ModuleDict.Clear();
         }
-
         public static void ResetWidgetDict()
         {
             //do some necessary cleanup (especially timers, callbacks, ...)
@@ -204,6 +203,54 @@ namespace QB
                 }
                 ControlDict.Clear();
             }
+        }
+
+        public static void ResetModuleDict()
+        {
+            //do some necessary cleanup (especially timers, callbacks, ...)
+            lock (ModuleDict)
+            {
+                foreach (var o in ModuleDict.Values)
+                {
+                    o.Destroy();
+                }
+                ModuleDict.Clear();
+            }
+        }
+
+        public static void ResetSignalDict()
+        {
+            //do some necessary cleanup (especially timers, callbacks, ...)
+            lock (SignalDict)
+            {
+                foreach (var o in SignalDict.Values)
+                {
+                    o.Destroy();
+                }
+                SignalDict.Clear();
+            }
+        }
+
+        public static void ResetMessageDict()
+        {
+            //do some necessary cleanup (especially timers, callbacks, ...)
+            lock (MessageDict)
+            {
+                foreach (var o in MessageDict.Values)
+                {
+                    o.Destroy();
+                }
+                MessageDict.Clear();
+            }
+        }
+
+        public static void ResetAllDicts()
+        {
+            ResetObjectDict();
+            ResetWidgetDict();
+            ResetModuleDict();
+            ResetSignalDict();
+            ResetMessageDict();
         }
 
         public static void InvalidateBoxBounds()

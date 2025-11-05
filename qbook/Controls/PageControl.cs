@@ -702,39 +702,39 @@ namespace qbook
             }
 
             //      if (moveOrEdit && !moved && Studio.File.DesignMode)
-            if (edit && (Core.ThisBook.DesignMode || Core.ThisBook.TagMode))
-            {
-                if (selectedItem is oTag)
-                {
+            //if (edit && (Core.ThisBook.DesignMode || Core.ThisBook.TagMode))
+            //{
+            //    if (selectedItem is oTag)
+            //    {
 
 
-                    EditObjectForm.Edit(x, y, selectedItem);
-                    Core.ThisBook.Modified = true;
-                }
-                else
-                {
-                    EditObjectForm.Edit(x, y, selectedItem);
-                    Core.ThisBook.Modified = true;
-                }
-            }
-            if (settings && (Core.ThisBook.DesignMode || Core.ThisBook.TagMode))
-            {
-                if (selectedItem is oTag)
-                {
-                    EditObjectForm.Edit(x, y, selectedItem);
-                    Core.ThisBook.Modified = true;
-                }
-                else
-                {
-                    EditObjectForm.Edit(x, y, selectedItem);
-                    Core.ThisBook.Modified = true;
-                }
+                 
+            //        Core.ThisBook.Modified = true;
+            //    }
+            //    else
+            //    {
+            //        EditObjectForm.Edit(x, y, selectedItem);
+            //        Core.ThisBook.Modified = true;
+            //    }
+            //}
+            //if (settings && (Core.ThisBook.DesignMode || Core.ThisBook.TagMode))
+            //{
+            //    if (selectedItem is oTag)
+            //    {
+            //        EditObjectForm.Edit(x, y, selectedItem);
+            //        Core.ThisBook.Modified = true;
+            //    }
+            //    else
+            //    {
+            //        EditObjectForm.Edit(x, y, selectedItem);
+            //        Core.ThisBook.Modified = true;
+            //    }
 
 
 
-                //  SettingsForm.Edit(Parent.Location.X + Location.X + e.Location.X + 30, Parent.Location.Y + Location.Y+100, selectedItem);
-                //  Qb.File.Modified = true;
-            }
+            //    //  SettingsForm.Edit(Parent.Location.X + Location.X + e.Location.X + 30, Parent.Location.Y + Location.Y+100, selectedItem);
+            //    //  Qb.File.Modified = true;
+            //}
 
             selectOrNew = false;
             moveOrEdit = false;
