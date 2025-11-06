@@ -34,6 +34,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web.UI.WebControls;
 using System.Windows.Forms;
+using static IronPython.Modules.PythonCsvModule;
 using AccessibilityCode = Microsoft.CodeAnalysis.Accessibility;
 using RoslynDocument = Microsoft.CodeAnalysis.Document;
 
@@ -145,6 +146,7 @@ namespace qbook
         // NEU: Erweiterte Reset-Variante
         public void Reset(bool hard = false, IEnumerable<object>? externalDocHolders = null)
         {
+           
             try
             {
                 // Eventhandler lösen
@@ -223,98 +225,30 @@ namespace qbook
                 _adhocWs = new AdhocWorkspace(s_host);
         }
 
-        public void CreateProject()
+
+        private static List<MetadataReference> AddLoadedAssembliesAsReferences()
         {
-
-      
-
-            if (_adhocWs == null)
-            {
-                _adhocWs = new AdhocWorkspace(s_host);
-            }
-            else
-            {
-                try { _adhocWs.ClearSolution(); } catch { }
-            }
-
-            var projectId = ProjectId.CreateNewId();
-
-            _projectId = projectId;
-
-            List<MetadataReference> references = new List<MetadataReference>();
-
-            // Basisreferenzen aus dem laufenden .NET
-            references.Add(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
-            references.Add(MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location));
-            references.Add(MetadataReference.CreateFromFile(typeof(System.Windows.Forms.Form).Assembly.Location));
-            references.Add(MetadataReference.CreateFromFile(typeof(System.Drawing.Point).Assembly.Location));
-
-            string netstandardPath = Path.Combine(RuntimeEnvironment.GetRuntimeDirectory(), "netstandard.dll");
-            if (File.Exists(netstandardPath))
-                references.Add(MetadataReference.CreateFromFile(netstandardPath));
-
-            // Zusätzliche DLLs aus libs/, aber nur managed Assemblies
-            string baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libs");
-            if (Directory.Exists(baseDir))
-            {
-                foreach (string dllPath in Directory.GetFiles(baseDir, "*.dll"))
-                {
-                    try
-                    {
-                        using var fs = new FileStream(dllPath, FileMode.Open, FileAccess.Read);
-                        using var pe = new System.Reflection.PortableExecutable.PEReader(fs);
-                        if (!pe.HasMetadata)
-                        {
-                            continue;
-                        }
-
-                        references.Add(MetadataReference.CreateFromFile(dllPath));
-                        //     Debug.WriteLine($"[Roslyn] +Reference: {Path.GetFileName(dllPath)}");
-                    }
-                    catch (System.Exception ex)
-                    {
-                        Debug.WriteLine($"[Roslyn] Skip invalid: {Path.GetFileName(dllPath)} ({ex.Message})");
-                    }
-                }
-            }
-
-
-
-
-
             var refs = new List<MetadataReference>();
-            refs.AddRange(GetOrBuildDefaultReferences());
-            if (references != null)
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
             {
-                // de-duplicate by file path if possible
-                var existingPaths = new HashSet<string>(refs.OfType<PortableExecutableReference>().Select(r => r.FilePath!), StringComparer.OrdinalIgnoreCase);
-                foreach (var r in references.OfType<PortableExecutableReference>())
+                try
                 {
-                    if (r.FilePath is string fp && existingPaths.Contains(fp)) continue;
-                    refs.Add(r);
+                    string? location = asm.Location;
+                    if (string.IsNullOrEmpty(location)) continue; // Dynamische oder Ref-Assemblies ohne Pfad ignorieren
+                    if (!seen.Add(location)) continue; // Duplikate vermeiden
+
+                    refs.Add(MetadataReference.CreateFromFile(location));
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[Roslyn] Skip assembly {asm.FullName}: {ex.Message}");
                 }
             }
 
-            var projectInfo = ProjectInfo.Create(
-                projectId,
-                VersionStamp.Create(),
-                "InMemoryProject",
-                "InMemoryAssembly",
-                LanguageNames.CSharp,
-                metadataReferences: refs,
-                parseOptions: new CSharpParseOptions(LanguageVersion.Preview),
-                compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-            );
-
-            _adhocWs.AddProject(projectInfo);
-
-            _project = _adhocWs.CurrentSolution.GetProject(projectId);
-
-
+            return refs;
         }
-
-        private List<MetadataReference> _referenceCache = new();
-
         private static List<MetadataReference> GetOrBuildDefaultReferences()
         {
             lock (s_refLock)
@@ -384,6 +318,91 @@ namespace qbook
                 return refs;
             }
         }
+        public void CreateProject()
+        {
+            if (_adhocWs == null)
+                _adhocWs = new AdhocWorkspace(s_host);
+            else
+                try { _adhocWs.ClearSolution(); } catch { }
+
+            var projectId = ProjectId.CreateNewId();
+            _projectId = projectId;
+
+            var references = new List<MetadataReference>();
+
+            // 1. Alle geladenen Assemblies hinzufügen
+            references.AddRange(AddLoadedAssembliesAsReferences());
+
+            // 2. netstandard.dll hinzufügen
+            string runtimeDir = RuntimeEnvironment.GetRuntimeDirectory();
+            string netstandardPath = Path.Combine(runtimeDir, "netstandard.dll");
+
+
+            foreach (var dllPath in Directory.GetFiles(runtimeDir, "*.dll"))
+            {
+                try
+                {
+                    references.Add(MetadataReference.CreateFromFile(dllPath));
+                    Debug.WriteLine($"[Roslyn] Added System DLL: {Path.GetFileName(dllPath)}");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[Roslyn] Skip {dllPath}: {ex.Message}");
+                }
+            }
+
+
+            string baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libs");
+            if (Directory.Exists(baseDir))
+            {
+                foreach (string dllPath in Directory.GetFiles(baseDir, "*.dll"))
+                {
+                    try
+                    {
+                        using var fs = new FileStream(dllPath, FileMode.Open, FileAccess.Read);
+                        using var pe = new System.Reflection.PortableExecutable.PEReader(fs);
+                        if (!pe.HasMetadata) continue; // unmanaged DLL überspringen
+                        references.Add(MetadataReference.CreateFromFile(dllPath));
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[Roslyn] Skip invalid: {Path.GetFileName(dllPath)} ({ex.Message})");
+                    }
+                }
+            }
+
+            // 5. Merge mit Default-Referenzen und Duplikate entfernen
+            var refs = new List<MetadataReference>();
+            refs.AddRange(GetOrBuildDefaultReferences());
+            var existingPaths = new HashSet<string>(refs.OfType<PortableExecutableReference>().Select(r => r.FilePath!), StringComparer.OrdinalIgnoreCase);
+            foreach (var r in references.OfType<PortableExecutableReference>())
+            {
+                if (r.FilePath is string fp && existingPaths.Contains(fp)) continue;
+                refs.Add(r);
+                Debug.WriteLine($"[Roslyn] +Ref: {r.Display}");
+
+            }
+
+            var projectInfo = ProjectInfo.Create(
+                projectId,
+                VersionStamp.Create(),
+                "InMemoryProject",
+                "InMemoryAssembly",
+                LanguageNames.CSharp,
+                metadataReferences: refs,
+                parseOptions: new CSharpParseOptions(LanguageVersion.Preview),
+                compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+            );
+
+            _adhocWs.AddProject(projectInfo);
+            _project = _adhocWs.CurrentSolution.GetProject(projectId);
+        }
+
+
+
+        private List<MetadataReference> _referenceCache = new();
+
+        
 
         public async Task RebuildProjectWithActiveFilesAsync()
         {

@@ -369,8 +369,6 @@ namespace qbook.ScintillaEditor
 
         }
 
- 
-      
 
         public async Task SaveProjectAsync(string newFile = @"T:\qSave")
         {

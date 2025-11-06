@@ -50,12 +50,23 @@ namespace qbook
         {
 
 
-            GlobalExceptions.SafeInvoke("Main", () =>
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+                GlobalExceptions.Handle((Exception)e.ExceptionObject, "Unhandled");
+
+            TaskScheduler.UnobservedTaskException += (s, e) =>
             {
+                GlobalExceptions.Handle(e.Exception, "Unobserved Task");
+                e.SetObserved();
+            };
+
+            Application.ThreadException += (s, e) =>
+                GlobalExceptions.Handle(e.Exception, "UI Thread");
 
 
 
-                if (false) //testing
+
+
+            if (false) //testing
                 {
                     log4net.Repository.Hierarchy.Hierarchy hierarchy = (log4net.Repository.Hierarchy.Hierarchy)log4net.LogManager.GetRepository();
 
@@ -153,8 +164,6 @@ namespace qbook
 
                 Thread.CurrentThread.CurrentUICulture = new CultureInfo("en-US");
                 Application.Run(LandingPage = new MainForm(args));
-
-            });
 
 
         }

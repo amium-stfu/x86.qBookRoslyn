@@ -453,7 +453,7 @@ namespace qbook
                 foreach (oCode sub in page.SubCodes.Values)
                 {
                     if (sub.Active)
-                        sub.RoslynDoc = Core.Roslyn.GetDocumentByFilename(sub.Filename);
+                        sub.RoslynDocument = Core.Roslyn.GetDocumentByFilename(sub.Filename);
                 }
             }
 

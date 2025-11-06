@@ -868,7 +868,7 @@ namespace qbook
 
         async void ShowOpenQbookFileDialog(object sender)
         {
-            qbook.Core.ShowOpenQbookFileDialog(sender);
+            await qbook.Core.ShowOpenQbookFileDialog(sender);
         }
 
         void ShowMruList(object sender)
@@ -1536,14 +1536,14 @@ namespace qbook
         private async void newToolStripMenuItem_Click(object sender, EventArgs e)
         {
            await NewQbook(this);
-         //  await Core.SaveInFolder();
+         
         }
 
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
         {
 
             ShowOpenQbookFileDialog(this);
-            //MRU
+
         }
 
         private void openRecentToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1551,9 +1551,9 @@ namespace qbook
             ShowMruList(this);
         }
 
-        private void saveToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void saveToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Save(this);
+            await Save(this);
         }
 
         private void pDFcurrentPageToolStripMenuItem_Click(object sender, EventArgs e)

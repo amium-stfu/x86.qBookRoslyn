@@ -49,6 +49,7 @@ namespace qbook.ScintillaEditor
 
         public DataTable Output = new DataTable();
         public DataTable MethodesClasses = new DataTable();
+        public oCode Target;
         public bool HasErrors => Output.Rows.Count > 0;
 
         private readonly System.Windows.Forms.Timer _chordTimer = new() { Interval = 1500 };
@@ -56,6 +57,7 @@ namespace qbook.ScintillaEditor
 
         public oPage Page { get; set; }
         public RoslynDocument KeyRoslynDoc;
+        
         public bool Active { get; set; } = true;
         public RoslynDocument RoslynDoc;
         public string Filename;
@@ -1008,7 +1010,6 @@ namespace qbook.ScintillaEditor
                 }
             }
         }
-
         public void CopyWithFoldedBlockSupport()
         {
             int selStart = SelectionStart;
@@ -1096,6 +1097,69 @@ namespace qbook.ScintillaEditor
                 pos = SearchInTarget(find);
             }
         }
+
+
+        #region Roslyn Integration
+
+        public void UpdateDocument()
+        {
+            try
+            {
+                Target.Code = Text;
+
+                if(!Target.Active) return;
+
+                var docId = Target.RoslynDocument.Id;
+                var doc = Core.Workspace.CurrentSolution.GetDocument(docId);
+                var newText = SourceText.From(Text);
+
+                var updatedDoc = doc.WithText(newText);
+                if (Core.Workspace.TryApplyChanges(updatedDoc.Project.Solution))
+                    Target.RoslynDocument = Core.Workspace.CurrentSolution.GetDocument(docId);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("UpdateDocument failed: " + ex.Message);
+            }
+        }
+
+
+        #endregion
+
+
+        #region Custom Events
+
+        public void LockNecessary()
+        {
+            ResetHideProteced();
+            var lines = Text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+            int startLine = -1;
+            int endLine = -1;
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (startLine == -1 && lines[i].Contains("//<CodeStart>"))
+                    startLine = i;
+
+                if (startLine != -1 && lines[i].Contains("//<CodeEnd>"))
+                {
+                    endLine = i;
+                    break;
+                }
+            }
+
+            if (startLine != -1 && endLine != -1)
+            {
+                // Zeilen außerhalb des SubCode-Bereichs ausblenden
+                HideProtectLines(0, startLine); // Zeilen vor SubCode
+                HideProtectLines(endLine, Lines.Count - 1); // Zeilen nach SubCode
+                Debug.WriteLine("StartLine " + startLine);
+                Debug.WriteLine("EndLine " + endLine + ".." + Lines.Count);
+            }
+        }
+
+
+        #endregion
 
     }
     public static class SimpleIndentFormatter

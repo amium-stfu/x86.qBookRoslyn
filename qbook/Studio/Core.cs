@@ -551,7 +551,6 @@ using System.Text.Json;
             }
         }
 
-
         public static BindingList<LogEntry> LogItems = new BindingList<LogEntry>();
         static int _LogCount = 0;
         public static void AddLog(char type, string text, string style = null)
@@ -733,7 +732,7 @@ using System.Text.Json;
         {
             BookRuntime.DestroyAll();
 
-            // 1) Editor schließen
+            //1) Editor schließen
             if (_editor != null)
             {
                 try
@@ -746,13 +745,13 @@ using System.Text.Json;
                 _editor = null;
             }
 
-            // 2) Script zerstören
+            //2) Script zerstören
             try { CsScript_Destroy(); } catch { }
 
-            // 3) BookRuntime freigeben
+            //3) BookRuntime freigeben
             try { BookRuntime.DestroyAll(); } catch { }
 
-            // 4) AppDomain für Script entladen (falls verwendet)
+            //4) AppDomain für Script entladen (falls verwendet)
             try
             {
                 var scriptDomainField = typeof(Core).GetField("scriptDomain", BindingFlags.NonPublic | BindingFlags.Static);
@@ -761,18 +760,20 @@ using System.Text.Json;
             }
             catch { }
 
-            // 5) Roslyn hart zurücksetzen
+            //5) Roslyn hart zurücksetzen
             try
             {
                 if (Roslyn != null)
                 {
+                    // Explicitly dispose Roslyn workspace
+                    try { Roslyn.GetWorkspace?.Dispose(); } catch { }
                     Roslyn.Reset(hard: true, externalDocHolders: Array.Empty<object>());
                     Roslyn = null;
                 }
             }
             catch { }
 
-            // 6) Klassen-/Dicts leeren
+            //6) Klassen-/Dicts leeren
             try
             {
                 QB.Root.ResetAllDicts();
@@ -780,12 +781,12 @@ using System.Text.Json;
             }
             catch { }
 
-            // 7) GC-Fenster
+            //7) GC-Fenster
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
         }
-        internal static async Task OpenQbookAsync(string fullPath = @"T:\qSave")
+        public static async Task OpenQbookAsync(string fullPath = @"T:\qSave")
         {
             try
             {
@@ -987,7 +988,7 @@ using System.Text.Json;
 
                     if (includes.Contains(subClass.Key))
                     {
-                        page.SubCodes[subFileName].RoslynDoc = Core.Roslyn.AddDocument(subFileName, subCode);
+                        page.SubCodes[subFileName].RoslynDocument = Core.Roslyn.AddDocument(subFileName, subCode);
                         page.Includes.Add(subFileName);
                     }
                 }
@@ -1096,7 +1097,7 @@ using System.Text.Json;
 
             if (Directory.Exists(uri))
             {
-                string backupFile = Core.ThisBook.Filename.Replace(".qbook", "") + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".code";
+                string backupFile = Core.ThisBook.Filename.Replace(".qbook", "") + "_" + DateTime.Now.ToString("yyyyMMdd_HHmms") + ".code";
                 string backupUri = Path.Combine(Core.ThisBook.BackupDirectory, backupFile);
                 Directory.Move(uri, backupUri);
             }
@@ -1322,35 +1323,13 @@ using System.Text.Json;
 
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
-                    OpenQbookAsync(openFileDialog.FileName);
+                    Debug.WriteLine(openFileDialog.FileName);
+                    
+                    await OpenQbookAsync(openFileDialog.FileName);
              
                 }
             }
         }
-        internal static void ShowNewQbookFileDialog(object sender)
-        {
-            if (qbook.Core.ThisBook != null && qbook.Core.ThisBook.Modified)
-            {
-                DialogResult result = MessageBox.Show("save " + qbook.Core.ThisBook.Filename + "?", "qBook NOT SAVED", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (result == DialogResult.Yes)
-                    qbook.Core.SaveInFolder();
-            }
-
-            var fileContent = string.Empty;
-            var filePath = string.Empty;
-
-            using (OpenFileDialog openFileDialog = new OpenFileDialog())
-            {
-                openFileDialog.Filter = "qbook files (*.qbook)|*.qbook|All files (*.*)|*.*";
-                openFileDialog.FilterIndex = 1;
-
-                if (openFileDialog.ShowDialog() == DialogResult.OK)
-                {
-                   
-                    OpenQbookAsync(openFileDialog.FileName);
-                   
-                }
-            }
-        }
+  
     }
 }

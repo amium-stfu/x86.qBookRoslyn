@@ -624,9 +624,22 @@ namespace QB
 
                 // Elapsed(this);
 
+              
                 if (OnElapsed != null)
-                    OnElapsed(this, new TimerEventArgs());
-        }
+                {
+                    //try
+                    //{
+                    //    OnElapsed(this, new TimerEventArgs());
+                    //}
+                    //catch (Exception ex)
+                    //{
+                    //    GlobalExceptions.Handle(ex, "OnElapsed delegate");
+                    //}
+                    _doOnElapsed();
+                }
+         
+
+            }
             catch (Exception ex)
             {
                 //QB.Logger.Error($"#ex in timer.elapsed({this.Name},{this.Interval}): " + ex.Message + (QB.Logger.ShowStackTrace ? ex.StackTrace : ""));
@@ -636,7 +649,30 @@ namespace QB
 }
 
         public delegate void OnElapsedDelegate(Timer t, TimerEventArgs ea);
+
         public OnElapsedDelegate OnElapsed;
+
+        // System.Action OnElapsed;
+
+        void _doOnElapsed()
+        {
+
+            foreach (var handler in OnElapsed.GetInvocationList())
+            {
+                try
+                {
+                    handler.DynamicInvoke(this, new TimerEventArgs());
+                }
+                catch (Exception ex)
+                {
+                    GlobalExceptions.Handle(ex, $"Timer.Elapsed({Name})");
+
+                }
+             
+            }
+        }
+
+        public OnElapsedDelegate _onElapsed;
 
         /*
         public virtual void Elapsed(Timer s)

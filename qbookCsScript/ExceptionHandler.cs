@@ -27,7 +27,7 @@ namespace QB
         public static void Handle(Exception ex, string source)
         {
             if (ex == null) return;
-
+           // Debug.WriteLine($"Global catch:");
             // Timeout speziell behandeln
             if (ex is TimeoutException)
             {

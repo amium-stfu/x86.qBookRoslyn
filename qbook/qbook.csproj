@@ -132,6 +132,9 @@
   <PropertyGroup>
     <TargetZone>LocalIntranet</TargetZone>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject>qbook.Program</StartupObject>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Autofac, Version=8.2.0.0, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
       <HintPath>..\packages\Autofac.8.2.0\lib\netstandard2.0\Autofac.dll</HintPath>
@@ -1126,69 +1129,82 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <Deterministic>false</Deterministic>
-    <PostBuildEvent>@echo off
+    <PostBuildEvent>
+@echo off
 setlocal enabledelayedexpansion
 
-set LOGFILE="B:\x86.qBookRoslyn\qbook\bin\Debug\postbuild.log"
+set LOGFILE="$(SolutionDir)qbook\bin\Debug\postbuild.log"
 echo PostBuild gestartet &gt; %25LOGFILE%25
 set EXITCODE=0
 
 rem Entferne alte lib-Verzeichnisse
 echo Entferne libs-Verzeichnisse &gt;&gt; %25LOGFILE%25
-if exist "B:\x86.qBookRoslyn\qbook\bin\Debug\libs\" RD /S /Q "B:\x86.qBookRoslyn\qbook\bin\Debug\libs\"
-if exist "B:\x86.qBookRoslyn\qbook\bin\Debug\libs.cef\" RD /S /Q "B:\x86.qBookRoslyn\qbook\bin\Debug\libs.cef\"
+if exist "$(SolutionDir)qbook\bin\Debug\libs\" RD /S /Q "$(SolutionDir)qbook\bin\Debug\libs\"
+if exist "$(SolutionDir)qbook\bin\Debug\libs.cef\" RD /S /Q "$(SolutionDir)qbook\bin\Debug\libs.cef\"
 
 rem ROBOCOPY CEF-Dateien
 echo ROBOCOPY CEF-Dateien &gt;&gt; %25LOGFILE%25
-ROBOCOPY "B:\x86.qBookRoslyn\qbook\bin\Debug" "B:\x86.qBookRoslyn\qbook\bin\Debug\libs.cef" CefSharp*.* libcef.dll libEGL.dll libGLESv2.dll chrome.elf chrome_100_percent.pak chrome_200_percent.pak resources.pak vk_swiftshader.dll vk_swiftshader_icd.json vulkan-1.dll OpenCvSharp*.* d3dcompiler_47.dll /IS /MOVE /PURGE /R:0 /W:0
+ROBOCOPY "$(SolutionDir)qbook\bin\Debug" "$(SolutionDir)qbook\bin\Debug\libs.cef" CefSharp*.* libcef.dll libEGL.dll libGLESv2.dll chrome.elf chrome_100_percent.pak chrome_200_percent.pak resources.pak vk_swiftshader.dll vk_swiftshader_icd.json vulkan-1.dll OpenCvSharp*.* d3dcompiler_47.dll /IS /MOVE /PURGE /R:0 /W:0
 echo ROBOCOPY CEF-Dateien ExitCode: %25errorlevel%25 &gt;&gt; %25LOGFILE%25
 if %25errorlevel%25 gtr 4 set EXITCODE=%25errorlevel%25
 
-ROBOCOPY "B:\x86.qBookRoslyn\qbook\bin\Debug\x86" "B:\x86.qBookRoslyn\qbook\bin\Debug\libs.cef\x86" /E /IS /MOVE /PURGE /R:0 /W:0
+ROBOCOPY "$(SolutionDir)qbook\bin\Debug\x86" "$(SolutionDir)qbook\bin\Debug\libs.cef\x86" /E /IS /MOVE /PURGE /R:0 /W:0
 echo ROBOCOPY x86 ExitCode: %25errorlevel%25 &gt;&gt; %25LOGFILE%25
 if %25errorlevel%25 gtr 4 set EXITCODE=%25errorlevel%25
 
-ROBOCOPY "B:\x86.qBookRoslyn\qbook\bin\Debug\x64" "B:\x86.qBookRoslyn\qbook\bin\Debug\libs.cef\x64" /E /IS /MOVE /PURGE /R:0 /W:0
+ROBOCOPY "$(SolutionDir)qbook\bin\Debug\x64" "$(SolutionDir)qbook\bin\Debug\libs.cef\x64" /E /IS /MOVE /PURGE /R:0 /W:0
 echo ROBOCOPY x64 ExitCode: %25errorlevel%25 &gt;&gt; %25LOGFILE%25
 if %25errorlevel%25 gtr 4 set EXITCODE=%25errorlevel%25
 
-ROBOCOPY "B:\x86.qBookRoslyn\qbook\bin\Debug\dll" "B:\x86.qBookRoslyn\qbook\bin\Debug\libs.cef\dll" /E /IS /MOVE /PURGE /R:0 /W:0
+ROBOCOPY "$(SolutionDir)qbook\bin\Debug\dll" "$(SolutionDir)qbook\bin\Debug\libs.cef\dll" /E /IS /MOVE /PURGE /R:0 /W:0
 echo ROBOCOPY dll ExitCode: %25errorlevel%25 &gt;&gt; %25LOGFILE%25
 if %25errorlevel%25 gtr 4 set EXITCODE=%25errorlevel%25
 
-ROBOCOPY "B:\x86.qBookRoslyn\qbook\bin\Debug\locales" "B:\x86.qBookRoslyn\qbook\bin\Debug\libs.cef\locales" /E /IS /MOVE /PURGE /R:0 /W:0
+ROBOCOPY "$(SolutionDir)qbook\bin\Debug\locales" "$(SolutionDir)qbook\bin\Debug\libs.cef\locales" /E /IS /MOVE /PURGE /R:0 /W:0
 echo ROBOCOPY locales ExitCode: %25errorlevel%25 &gt;&gt; %25LOGFILE%25
 if %25errorlevel%25 gtr 4 set EXITCODE=%25errorlevel%25
 
 rem Lösche icudtl.dat falls vorhanden
 echo Lösche icudtl.dat &gt;&gt; %25LOGFILE%25
-if exist "B:\x86.qBookRoslyn\qbook\bin\Debug\icudtl.dat" del "B:\x86.qBookRoslyn\qbook\bin\Debug\icudtl.dat"
+if exist "$(SolutionDir)qbook\bin\Debug\icudtl.dat" del "$(SolutionDir)qbook\bin\Debug\icudtl.dat"
 
 rem ROBOCOPY allgemeine Dateien
 echo ROBOCOPY allgemeine Dateien &gt;&gt; %25LOGFILE%25
-ROBOCOPY "B:\x86.qBookRoslyn\qbook\bin\Debug" "B:\x86.qBookRoslyn\qbook\bin\Debug\libs" /XF *.exe qbookStudio.pdb qbookStudio.exe.config log4net.config *.manifest *.pdf qbookStudio.application /E /XD libs libs.cef assets CsSnippets dnSpy html qbooks qbooks.backup /IS /MOVE /PURGE /R:0 /W:0
+ROBOCOPY "$(SolutionDir)qbook\bin\Debug" "$(SolutionDir)qbook\bin\Debug\libs" /XF *.exe qbookStudio.pdb qbookStudio.exe.config log4net.config *.manifest *.pdf qbookStudio.application /E /XD libs libs.cef assets CsSnippets dnSpy html qbooks qbooks.backup /IS /MOVE /PURGE /R:0 /W:0
 echo ROBOCOPY libs ExitCode: %25errorlevel%25 &gt;&gt; %25LOGFILE%25
 if %25errorlevel%25 gtr 4 set EXITCODE=%25errorlevel%25
 
 rem Erstelle Zielverzeichnisse
 echo Erstelle Zielverzeichnisse &gt;&gt; %25LOGFILE%25
-if not exist "B:\x86.qBookRoslyn\qbook\bin\Debug\libs\x86" md "B:\x86.qBookRoslyn\qbook\bin\Debug\libs\x86"
-if not exist "B:\x86.qBookRoslyn\qbook\bin\Debug\libs\x64" md "B:\x86.qBookRoslyn\qbook\bin\Debug\libs\x64"
+if not exist "$(SolutionDir)qbook\bin\Debug\libs\x86" md "$(SolutionDir)qbook\bin\Debug\libs\x86"
+if not exist "$(SolutionDir)qbook\bin\Debug\libs\x64" md "$(SolutionDir)qbook\bin\Debug\libs\x64"
 
 rem Verschiebe SQLite.Interop.dll falls vorhanden
 echo Verschiebe SQLite.Interop.dll &gt;&gt; %25LOGFILE%25
-if exist "B:\x86.qBookRoslyn\qbook\bin\Debug\libs.cef\x86\SQLite.Interop.dll" move "B:\x86.qBookRoslyn\qbook\bin\Debug\libs.cef\x86\SQLite.Interop.dll" "B:\x86.qBookRoslyn\qbook\bin\Debug\libs\x86"
-if exist "B:\x86.qBookRoslyn\qbook\bin\Debug\libs.cef\x64\SQLite.Interop.dll" move "B:\x86.qBookRoslyn\qbook\bin\Debug\libs.cef\x64\SQLite.Interop.dll" "B:\x86.qBookRoslyn\qbook\bin\Debug\libs\x64"
+if exist "$(SolutionDir)qbook\bin\Debug\libs.cef\x86\SQLite.Interop.dll" move "$(SolutionDir)qbook\bin\Debug\libs.cef\x86\SQLite.Interop.dll" "$(SolutionDir)qbook\bin\Debug\libs\x86"
+if exist "$(SolutionDir)qbook\bin\Debug\libs.cef\x64\SQLite.Interop.dll" move "$(SolutionDir)qbook\bin\Debug\libs.cef\x64\SQLite.Interop.dll" "$(SolutionDir)qbook\bin\Debug\libs\x64"
+
+
+
+
+powershell -ExecutionPolicy Bypass -File "$(SolutionDir)dynamic_postbuild.ps1"  -SolutionDir "$([System.String]::Copy('$(SolutionDir)').TrimEnd('\'))"  -Configuration "$(ConfigurationName)"
+
+
+
 
 rem Abschlussprüfung
 echo Abschlussprüfung &gt;&gt; %25LOGFILE%25
+
 if %25EXITCODE%25 leq 4 (
     echo PostBuild erfolgreich &gt;&gt; %25LOGFILE%25
     exit 0
 ) else (
     echo Fehler im PostBuild: %25EXITCODE%25 &gt;&gt; %25LOGFILE%25
     exit %25EXITCODE%25
-)</PostBuildEvent>
+)
+
+
+</PostBuildEvent>
   </PropertyGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>

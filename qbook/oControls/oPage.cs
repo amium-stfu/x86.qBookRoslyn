@@ -13,7 +13,7 @@ namespace qbook
     public class oCode
     {
         public bool Active { get; set; } = true;
-        public RoslynDocument RoslynDoc;
+        public RoslynDocument RoslynDocument;
         public string Code;
         public string Filename;
 
@@ -21,7 +21,7 @@ namespace qbook
         {
             this.Filename = filename;
             this.Active = active;
-            this.RoslynDoc = doc;
+            this.RoslynDocument = doc;
             this.Code = code;
         }
     }
