@@ -6,6 +6,8 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
+
 
 
 
@@ -24,6 +26,7 @@ namespace QB
         public static bool StartFullScreen = false;
         public static bool HidePageControlBar = false;
 
+        
 
         /// <summary>
         /// Returns the filename (including extension) of the active qbook
@@ -64,7 +67,9 @@ namespace QB
             {
                 try
                 {
+      
                     return Root.ActiveQbook.DataDirectory;
+                   
                 }
                 catch (Exception ex)
                 {

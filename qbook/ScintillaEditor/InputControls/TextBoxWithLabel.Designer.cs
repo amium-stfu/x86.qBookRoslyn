@@ -72,6 +72,7 @@
             this.textBoxValue.TabIndex = 1;
             this.textBoxValue.Text = "Test";
             this.textBoxValue.Click += new System.EventHandler(this.textBoxValue_Click);
+            this.textBoxValue.KeyDown += new System.Windows.Forms.KeyEventHandler(this.textBoxValue_KeyDown);
             // 
             // TextBoxWithLabel
             // 

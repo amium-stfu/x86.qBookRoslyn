@@ -6,6 +6,7 @@ using log4net;
 using log4net.Appender;
 using log4net.Layout;
 using Microsoft.CodeAnalysis;
+using Microsoft.Office.Core;
 using Microsoft.VisualStudio.SolutionPersistence.Model;
 using Newtonsoft.Json;
 using QB; //qbookCsScript
@@ -26,13 +27,15 @@ using System.Printing;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Policy;
+using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
 using System.Xml;
-using System.Text.Json;
+using static Community.CsharpSqlite.Sqlite3;
 using static IronPython.Modules._ast;
 using static IronPython.Runtime.Exceptions.PythonExceptions;
 using static log4net.Appender.ColoredConsoleAppender;
@@ -68,8 +71,6 @@ namespace qbook
 
         //2025-09_23 STFU: new location for ProgramMainCode
         public static string ProgramWorkingDir = null;
-
-
         public static void Move<T>(List<T> list, int oldIndex, int newIndex)
         {
             // exit if positions are equal or outside array
@@ -353,8 +354,6 @@ using System.Text.Json;
 
             return usingsCode;
         }
-
-
         internal static string CsScriptCombineCode(Book book = null)
         {
             if (book == null)
@@ -411,9 +410,6 @@ using System.Text.Json;
 
             return code;
         }
-
-
-
 
         static AppDomain scriptDomain = null;
 
@@ -480,7 +476,6 @@ using System.Text.Json;
             }
         }
 
- 
         internal static void CsScript_Destroy()
         {
             if (csScript != null)
@@ -502,10 +497,6 @@ using System.Text.Json;
 
         internal static string ProgramMainCode;
         internal static string MethodMainCode_2step;
-
-
-
-
 
         //HALE:20230919 static UdpLogger udpLogger = null;
         //HALE:20230919 static public string UdpLoggerStatus = null;
@@ -542,8 +533,8 @@ using System.Text.Json;
             while (true)
             {
                 //try to reach a 200ms cycle 
-                long ticks = DateTime.Now.Ticks;
-                long sleepMs = (DateTime.Now.Ticks - ticks) / TimeSpan.TicksPerMillisecond;
+                long ticks = System.DateTime.Now.Ticks;
+                long sleepMs = (System.DateTime.Now.Ticks - ticks) / TimeSpan.TicksPerMillisecond;
                 sleepMs -= 180;
                 if (sleepMs < 0)
                     sleepMs = 10;
@@ -555,9 +546,9 @@ using System.Text.Json;
         static int _LogCount = 0;
         public static void AddLog(char type, string text, string style = null)
         {
-            AddLog(DateTime.Now, type, text, style);
+            AddLog(System.DateTime.Now, type, text, style);
         }
-        public static void AddLog(DateTime timestamp, char type, string text, string style = null)
+        public static void AddLog(System.DateTime timestamp, char type, string text, string style = null)
         {
             lock (LogItems)
             {
@@ -585,86 +576,43 @@ using System.Text.Json;
             //TEMP LICENSE-HACK:
             return true;
 
-            try
-            {
-                DateTime? devLicenseExpires = MainForm.GetLicenseExpires("qbookD:");
-                if (devLicenseExpires == null)
-                {
-                    MessageBox.Show($"You do not have a developer license.\r\nPlease contact amium to aquire a developer license.", "NO DEVELOPER LICENSE", MessageBoxButtons.OK, MessageBoxIcon.Hand);
-                    return false;
-                }
-                if ((DateTime)devLicenseExpires < DateTime.Now)
-                {
-                    MessageBox.Show($"Your developer license expired on {((DateTime)devLicenseExpires).ToString("yyyy-MM-dd")}.\r\nPlease contact amium to aquire/update your developer license.", "DEVELOPER LICENSE EXPIRED", MessageBoxButtons.OK, MessageBoxIcon.Hand);
-                    return false;
-                }
-                return true;
-            }
-            catch
-            {
-            }
-
-            return false;
         }
 
-        public static FormScintillaEditor _editor = null;
 
-        internal async static Task ShowFormScintillaEditor(oPage page = null)
+        private static readonly object _lock = new object();
+        public static FormCodeExplorer Explorer;
+
+        internal static async Task ShowCodeExploror(oPage page = null)
         {
             if (!VerifyDeveloperLicense()) return;
 
-            if (_editor == null || _editor.IsDisposed || !_editor.IsHandleCreated)
+            // Form-Erstellung IMMER auf UI-Thread
+            Application.OpenForms[0].Invoke((MethodInvoker)(() =>
             {
-                _editor = null;
-                if (Application.OpenForms.Count > 0)
+                if (Explorer == null || Explorer.IsDisposed)
                 {
-                    Application.OpenForms[0].Invoke((MethodInvoker)(() =>
-                    {
-                        _editor = new FormScintillaEditor();
-                    }));
-                   
+                    Explorer = new FormCodeExplorer();
                 }
+
+                if (!Explorer.Visible)
+                    Explorer.Show();
                 else
-                {
-                    _editor = new FormScintillaEditor();
-                    
-                }
-            }
+                    Explorer.BringToFront();
+            }));
 
-
-            if (_editor.InvokeRequired)
-                _editor.Invoke((System.Action)(async () =>
-                {
-                    await _editor.CreateProjectTree();
-                   
-
-                    if (Roslyn.ErrorFiles.Count > 0)
-                        await _editor.VisualRebuild();
-                    else
-                        await _editor.OpenNodeByName(page.Name);
-
-                    _editor.Show();
-                }));
-            else
+            // Hintergrundarbeit (optional)
+            await Task.Run(() =>
             {
-                await _editor.CreateProjectTree();
-                
-
-                if (Roslyn.ErrorFiles.Count > 0)
-                    await _editor.VisualRebuild();
-                else
-                    await _editor.OpenNodeByName(page.Name);
-
-                _editor.Show();
-
-            }
+                // Hier darfst du alles machen, was nicht UI ist
+            });
         }
+
 
         public static void InitLogger()
         {
             //string logFilename = Main.Qb.Book.LogFilename.Replace("{date}", DateTime.Now.ToString("yyyy-MM-dd_HHmmss")).Replace('\\', '/');
             string logFilename = Path.Combine(qbook.Core.ThisBook.TempDirectory, ThisBook.Filename.Replace(".qbook","") +".{date}.log");
-            logFilename = logFilename.Replace("{date}", DateTime.Now.ToString("yyyy-MM-dd_HHmmss")).Replace('\\', '/');
+            logFilename = logFilename.Replace("{date}", System.DateTime.Now.ToString("yyyy-MM-dd_HHmmss")).Replace('\\', '/');
             log4net.Repository.Hierarchy.Hierarchy hierarchy = (log4net.Repository.Hierarchy.Hierarchy)log4net.LogManager.GetRepository();
             hierarchy.Root.RemoveAllAppenders(); //start anew...
 
@@ -728,64 +676,48 @@ using System.Text.Json;
         }
 
         internal static MruFilesManager MruFilesManager = new MruFilesManager();
+
         internal static void CleanupBeforeLoad()
         {
+          
+            Debug.WriteLine("CleanupBeforeLoad");
+            // Editor schließen, Script zerstören, BookRuntime freigeben wie bisher
+          
             BookRuntime.DestroyAll();
 
-            //1) Editor schließen
-            if (_editor != null)
+            if (ActualMain != null)
             {
-                try
-                {
-                    if (_editor.Visible) _editor.Hide();
-                    _editor.RemoveProjectTree();
-                    _editor.Dispose();
-                }
-                catch { }
-                _editor = null;
+                ActualMain.Objects.Clear();
+                ActualMain = null;
+                QB.Root.ActiveQbook = null;
+            }
+        
+ 
+
+            if (ThisBook != null)
+            {
+              
+
+                if (qbook.Core.ThisBook.Main == null)
+                    qbook.Core.ThisBook.Main = new oControl();
             }
 
-            //2) Script zerstören
-            try { CsScript_Destroy(); } catch { }
+            ThisBook = null;
 
-            //3) BookRuntime freigeben
-            try { BookRuntime.DestroyAll(); } catch { }
-
-            //4) AppDomain für Script entladen (falls verwendet)
-            try
+            // Roslyn nur Dokumente zurücksetzen, nicht den Host
+            Debug.WriteLine("Reset Roslyn Documents");
+            if (Roslyn != null)
             {
-                var scriptDomainField = typeof(Core).GetField("scriptDomain", BindingFlags.NonPublic | BindingFlags.Static);
-                var dom = scriptDomainField?.GetValue(null) as AppDomain;
-                if (dom != null) { AppDomain.Unload(dom); scriptDomainField.SetValue(null, null); }
+                Debug.WriteLine("Roslyn ResetDocumentsOnly");
+                Roslyn.ResetDocumentsOnly();
             }
-            catch { }
 
-            //5) Roslyn hart zurücksetzen
-            try
-            {
-                if (Roslyn != null)
-                {
-                    // Explicitly dispose Roslyn workspace
-                    try { Roslyn.GetWorkspace?.Dispose(); } catch { }
-                    Roslyn.Reset(hard: true, externalDocHolders: Array.Empty<object>());
-                    Roslyn = null;
-                }
-            }
-            catch { }
-
-            //6) Klassen-/Dicts leeren
-            try
-            {
-                QB.Root.ResetAllDicts();
-
-            }
-            catch { }
-
-            //7) GC-Fenster
+            Debug.WriteLine("Clear Dicts");
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
         }
+
         public static async Task OpenQbookAsync(string fullPath = @"T:\qSave")
         {
             try
@@ -795,7 +727,6 @@ using System.Text.Json;
                 string filename = fullPath.GetFileName();
                 string directory = fullPath.GetDirName();
 
-
                 MainForm.SetStatusText("opening qbook: " + fullPath);
                 MruFilesManager.Add(fullPath);
                 Properties.Settings.Default.MruFileList = MruFilesManager.GetMruCsvString();
@@ -803,13 +734,7 @@ using System.Text.Json;
 
                 QB.Root.ActiveQbook = null;
 
-                if(ThisBook!=null)
-                {
-                    if (qbook.Core.ThisBook.Main == null)
-                        qbook.Core.ThisBook.Main = new oControl();  
-                }
-
-                ThisBook = null;
+              
 
                 string backupDir = fullPath.Replace(".qbook", ".backup");
                 if (!Directory.Exists(backupDir))
@@ -817,88 +742,61 @@ using System.Text.Json;
 
                 string dataDir = "";
                 string settingsDir = "";
-                bool fromXml = false;
+                Debug.WriteLine("Check if XML");
                 if (IsXml(fullPath))
                 {
-                    fromXml = true;
+                    Debug.WriteLine("XML detected");
                     ThisBook = Book.Deserialize(fullPath);
-                    ThisBook.PageOrder.Clear();
-                    dataDir = ThisBook.DataDirectory;
-                    settingsDir = ThisBook.SettingsDirectory;
-                    XmlToFolder();
+                    await XmlToFolder(fullPath);
                     QB.Logger.Info($"Opening qbook: {fullPath} from XML-File");
-
-                    File.Copy(fullPath, Path.Combine(backupDir, filename), true);
-
+                    File.Copy(fullPath, Path.Combine(backupDir, filename), true); 
                 }
                 else
                 {
-                    ThisBook = BookFromFolder(fullPath.Replace(".qbook", ".code"), "");
+                    Debug.WriteLine("Folder detected");
+                    QB.Logger.Info($"Opening qbook: {fullPath} from Folder");
+                    ThisBook = await BookFromFolder(fullPath.Replace(".qbook", ".code"), "");
 
-                    if (fromXml)
-                    {
-                        ThisBook.SetDataDirectory(dataDir);
-                        ThisBook.SetSettingsDirectory(settingsDir);
-                    }
                 }
+                ThisBook.DataDirectory = null;
+                ThisBook.SettingsDirectory = null;
+                ThisBook.TempDirectory = null;
 
-                GlobalExceptions.InitRuntimeErrors();
-
-                ActualMain = ThisBook.Main;
                 QB.Root.ActiveQbook = ThisBook;
-             
+                qbook.Core.ActualMain = qbook.Core.ThisBook.Main;
+                qbook.Core.ThisBook.Init();
+
 
                 InitLogger();
-                QB.Logger.Info($"Opening qbook: {fullPath}");
 
                 Book.OnStaticPropertyChangedEvent("new Book", "");
                 qbook.Core.ThisBook.DesignMode = false;
                 qbook.Core.ThisBook.TagMode = false;
                 qbook.Core.ThisBook.Recorder = false;
 
+                if (qbook.Core.ThisBook.Main == null)
+                    qbook.Core.ThisBook.Main = new oControl();
+
                 MainForm.SetStatusText("initializing qbook...");
-                ActualMain = ThisBook.Main;
-                await BookRuntime.BuildBookAssembly();
+                await BookRuntime.BuildAssembly();
 
-                bool autoBuild = true;
-              
-
-
-                qbook.Core.Init();
                 if ((qbook.Core.ActualMain?.Objects?.Count ?? 0) > 0)
                     qbook.Core.SelectedPage = qbook.Core.ActualMain.Objects[0] as oPage;
 
-
-                MainForm mainForm = (MainForm)Application.OpenForms["MainForm"];
-                mainForm.InitView = true;
-                mainForm.UpdateStartMenuItems();
                 if (Roslyn.ErrorFiles.Count > 0)
                 {
                     autoBuild = false;
                     MainForm.SetStatusText("#E Error qbook build failed!", 0);
-
                 }
                 else
                 {
                     MainForm.SetStatusText("qbook loaded successfully!", 3000);
                 }
 
-                ThisBook.Init();
-
-                
                 if ((System.Windows.Forms.Control.ModifierKeys == (Keys.Control | Keys.Shift)))
                 {
-                    //don't auto build/run if ctrl-shift are beeing held down at startup
-
                     autoBuild = false;
                 }
-
-                if (autoBuild)
-                {
-                    BookRuntime.InitializeAll();
-                    BookRuntime.RunAll();
-                }
-
             }
             catch (Exception ex)
             {
@@ -908,27 +806,30 @@ using System.Text.Json;
             }
 
         }
-        internal static void XmlToFolder()
+        static bool autoBuild = true;
+        public static void InitializeAndRun()
         {
-            Debug.WriteLine("Reset Roslyn");
+            if(autoBuild)
+            {
+                BookRuntime.InitializeAll();
+                BookRuntime.RunAll();
+            }
 
-            Roslyn = new RoslynService();
-            Roslyn.EnsureWorkspace();
+        }
 
-            Debug.WriteLine("GC Reset");
-      
-        
-          
+        internal static async Task XmlToFolder(string fullPath)
+        {
+ 
+            string root = fullPath.Replace(".qbook", ".code");
+            if (!Directory.Exists(root)) Directory.CreateDirectory(root);
 
-            Debug.WriteLine("Creating Roslyn Project");
-            Core.Roslyn.CreateProject();
+            string pageFolder = Path.Combine(root, "Pages");
+            if (!Directory.Exists(pageFolder)) Directory.CreateDirectory(pageFolder);
 
-
-            Debug.WriteLine("Processing Pages...");
-            string program = "namespace QB\r\n{\r\n\tpublic static class Program \r\n\t{\r\n";
             var roslynFiles = new List<(string fileName, string code)>();
             int pageCount = -1;
             string firstFile = null;
+   
 
             List<string> Pages = new List<string>();
 
@@ -938,25 +839,23 @@ using System.Text.Json;
             {
                 page.CodeOrder.Clear();
                 page.Includes.Clear();
-    
+
+                string pageDir = Path.Combine(root, "Pages",page.Name);
+                if (!Directory.Exists(pageDir)) Directory.CreateDirectory(pageDir);
+
                 string className = "Definition" + page.Name + ".qPage";
                 pageCount++;
                 string code = page.CsCode;
 
                 List<string> includes = CutInludesBlock(ref code);
-
                 string pageCode = "namespace Definition" + page.Name + "{\r\n//<CodeStart>\r\n";
                 pageCode += Regex.Replace(code, @"public class\s+@class_\w+", "public class qPage");
                 pageCode += "\r\n//<CodeEnd>\r\n}";
-                program += "\t\tpublic static " + className + " " + page.Name + " { get; } = new " + className + "();\r\n";
                 pageCode = ReplaceClassToDefinition(pageCode);
-
-                Pages.Add(page.Name);
-                page.Code = pageCode;
-
                 string PageFileName = $"{page.Name}.qPage.cs";
-
                 page.Filename = $"{page.Name}.qPage.cs";
+                File.WriteAllText(Path.Combine(pageDir, PageFileName), pageCode);
+                page.RoslynCodeDoc = Roslyn.AddCodeDocument(PageFileName, pageCode, true);
 
                 Core.ThisBook.PageOrder.Add(page.Name);
                 page.CodeOrder.Add(PageFileName);
@@ -982,17 +881,58 @@ using System.Text.Json;
 
                     subCode = ReplaceClassToDefinition(subCode);
                     string subFileName = $"{page.Name}.{subClass.Key}.cs";
-
                     page.CodeOrder.Add(subFileName);
-                    page.SubCodes[subFileName] = new oCode(subFileName, includes.Contains(subClass.Key), null, subCode);
+                    page.SubCodeDocuments[subFileName] = new CodeDocument(subFileName, subCode, false, Roslyn);
+
+                    File.WriteAllText(Path.Combine(pageDir, subFileName), subCode);
+                    Debug.WriteLine("   wrote subcode file: " + subFileName);
 
                     if (includes.Contains(subClass.Key))
                     {
-                        page.SubCodes[subFileName].RoslynDocument = Core.Roslyn.AddDocument(subFileName, subCode);
-                        page.Includes.Add(subFileName);
+                        string file = page.Name + "." + subClass.Key + ".cs";
+                        await page.SubCodeDocuments[file].Include();
+                        page.SubCodeDocuments[file].UpdateCode();
+                        page.Includes.Add(file);
                     }
                 }
             }
+
+            var sbProgram = new StringBuilder();
+            sbProgram.AppendLine("namespace QB");
+            sbProgram.AppendLine("{");
+            sbProgram.AppendLine("\tpublic static class Program");
+            sbProgram.AppendLine("\t{");
+            foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
+                sbProgram.AppendLine($"\t\tpublic static Definition{page.Name}.qPage {page.Name} {{ get; }} = new Definition{page.Name}.qPage();");
+
+            sbProgram.AppendLine("\t\tpublic static void Initialize()");
+            sbProgram.AppendLine("\t\t{");
+
+            foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
+                sbProgram.AppendLine($"\t\t\t{page.Name}.Initialize();");
+
+            sbProgram.AppendLine("\t\t}");
+
+            sbProgram.AppendLine("\t\tpublic static void Run()");
+            sbProgram.AppendLine("\t\t{");
+            foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
+                sbProgram.AppendLine($"\t\t\t{page.Name}.Run();");
+            sbProgram.AppendLine("\t\t}");
+
+            sbProgram.AppendLine("\t\tpublic static void Destroy()");
+            sbProgram.AppendLine("\t\t{");
+            foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
+                sbProgram.AppendLine($"\t\t\t{page.Name}.Destroy();");
+            sbProgram.AppendLine("\t\t}");
+
+            sbProgram.AppendLine("\t}");
+            sbProgram.AppendLine("}");
+
+            Roslyn.AddCodeDocument("Program.cs", sbProgram.ToString(), true);
+            Roslyn.AddCodeDocument("GlobalUsing.cs", "global using static QB.Program;\r\n", true);
+
+            File.WriteAllText(Path.Combine(root, "Program.cs"), sbProgram.ToString());
+            File.WriteAllText(Path.Combine(root, "GlobalUsing.cs"), "global using static QB.Program;\r\n");
 
         }
         public class PageDefinition
@@ -1023,16 +963,13 @@ using System.Text.Json;
                 Url = data.Url
             };
         }
-        internal static Book BookFromFolder(string folderPath, string bookname)
+        internal static async Task<Book> BookFromFolder(string folderPath, string bookname)
         {
-
-            Roslyn = new RoslynService();
-            Roslyn.EnsureWorkspace();
-            Roslyn.CreateProject();
-
+            Debug.WriteLine("BookFromFolder: " + folderPath);
             Book newBook = new Book();
             newBook.Main = new oControl();
 
+            Debug.WriteLine("Read Book.json");
             string bookJson = File.ReadAllText(Path.Combine(folderPath, "Book.json"));
             var qbook = JsonConvert.DeserializeObject(bookJson, typeof(qBookDefinition)) as qBookDefinition;
 
@@ -1046,37 +983,66 @@ using System.Text.Json;
             newBook.PasswordUser = qbook.PasswordUser;
             newBook.Directory = qbook.Directory;
             newBook.Filename = qbook.Filename;
-            newBook.SettingsDirectory = qbook.SettingsDirectory;
-            newBook.DataDirectory = qbook.DataDirectory;
-            newBook.TempDirectory = qbook.TempDirectory;
+
             newBook.Language = qbook.Language;
             newBook.PageOrder = qbook.PageOrder;
+            newBook.SetDataDirectory(qbook.DataDirectory);
+            newBook.SetSettingsDirectory(qbook.SettingsDirectory);
+            newBook.SetTempDirectory(qbook.TempDirectory);
 
 
             List<string> reversePageOrder = newBook.PageOrder.AsEnumerable().Reverse().ToList();
+
+            Debug.WriteLine("Processing Pages...");
+            foreach (string page in reversePageOrder)
+            {
+                Debug.WriteLine(" - " + page);
+            }
 
             List<oPage> pages = new List<oPage>();
 
             foreach (string page in reversePageOrder)
             {
                 oPage opage = null;
-              
+                Debug.WriteLine(" -- " + page);
+
+                Debug.WriteLine(" --- read page data");
                 string pageFolder = Path.Combine(folderPath, "Pages", page);
+                Debug.WriteLine(" --- page folder: " + pageFolder);
                 string oPageJson = File.ReadAllText(Path.Combine(pageFolder, "oPage.json"));
+                Debug.WriteLine(" --- deserialize page");
                 opage = oPageFromString(oPageJson);
+                Debug.WriteLine(" --- read page code");
                 string filename = page + ".qPage.cs";
+                Debug.WriteLine(" --- page code file: " + filename);
                 opage.Filename = filename;
+                Debug.WriteLine(" --- read code text");
                 opage.Code = File.ReadAllText(Path.Combine(pageFolder, filename));
-     
+                Debug.WriteLine(" --- add page code to Roslyn");
+                Roslyn.AddCodeDocument(filename, opage.Code, true);
+                Debug.WriteLine(" --- get page code document");
+                opage.RoslynCodeDoc = Roslyn.GetCodeDocument(filename);
+ 
+
                 List<string> reverseCodeOrder = opage.CodeOrder.AsEnumerable().Reverse().ToList();
 
                 foreach (string codeFile in reverseCodeOrder)
                 {
                     if (codeFile.EndsWith("qPage.cs")) continue;
-                    string subCode = File.ReadAllText(Path.Combine(pageFolder, codeFile));
-                    opage.SubCodes[codeFile] = new oCode(codeFile, opage.Includes.Contains(codeFile), null, subCode);
 
+                    Debug.WriteLine(" --- " + codeFile);
+                    string subCode = File.ReadAllText(Path.Combine(pageFolder, codeFile));
+
+                    CodeDocument doc = new CodeDocument(codeFile, subCode, false, Roslyn);
+                  
+                    opage.SubCodeDocuments[codeFile] = doc;
+                    if(opage.Includes.Contains(codeFile))
+                    {
+                        await opage.SubCodeDocuments[codeFile].Include();
+                       
+                    }
                 }
+                Debug.WriteLine(" ---- add page to book: " + opage.Name);
                 pages.Add(opage);
             }
             pages.Reverse();
@@ -1086,27 +1052,36 @@ using System.Text.Json;
                 newBook.Main.Objects.Add(p);
             }
 
-            newBook.Program = Core.Roslyn.AddDocument("Program.cs", File.ReadAllText(Path.Combine(folderPath, "Program.cs")));
-            newBook.Global = Core.Roslyn.AddDocument("GlobalUsing.cs", "global using static QB.Program;");
+            Roslyn.AddCodeDocument("Program.cs", File.ReadAllText(Path.Combine(folderPath, "Program.cs")), true);
+            Roslyn.AddCodeDocument("GlobalUsing.cs", "global using static QB.Program;", true);
+            QB.Root.ActiveQbook = newBook;
             return newBook;
 
         }
         public static async Task SaveInFolder()
         {
-            string uri = Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename.Replace(".qbook", "") + ".code");
-
-            if (Directory.Exists(uri))
+            try
             {
-                string backupFile = Core.ThisBook.Filename.Replace(".qbook", "") + "_" + DateTime.Now.ToString("yyyyMMdd_HHmms") + ".code";
-                string backupUri = Path.Combine(Core.ThisBook.BackupDirectory, backupFile);
-                Directory.Move(uri, backupUri);
+                string uri = Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename.Replace(".qbook", "") + ".code");
+
+                if (Directory.Exists(uri))
+                {
+                    string backupFile = Core.ThisBook.Filename.Replace(".qbook", "") + "_" + System.DateTime.Now.ToString("yyyyMMdd_HHmms") + ".code";
+                    string backupUri = Path.Combine(Core.ThisBook.BackupDirectory, backupFile);
+                    Directory.Move(uri, backupUri);
+                }
+
+                Directory.CreateDirectory(uri);
+                string link = "SaveDate: " + System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                File.WriteAllText(Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename), link);
+
+                await SaveProjectAsync(uri);
             }
-
-            Directory.CreateDirectory(uri);
-            string link = "SaveDate: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            File.WriteAllText(Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename), link);
-
-            await SaveProjectAsync(uri);
+            catch (Exception ex) 
+            { 
+            QB.Logger.Error("[Core] Save Failed: " + ex.Message);
+                MessageBox.Show("Save Failed");
+            }
         }
         public static async Task SaveProjectAsync(string newFile = @"T:\qSave")
         {
@@ -1150,7 +1125,7 @@ using System.Text.Json;
                 string csCode = temp.ToString();
                 System.IO.File.WriteAllText(Path.Combine(pageDir, page.Filename), csCode);
 
-                foreach(oCode sub in page.SubCodes.Values)
+                foreach(CodeDocument sub in page.SubCodeDocuments.Values)
                 {
                     temp = await Core.Roslyn.GetDocumentTextAsync(sub.Filename);
                     if(temp == null)
@@ -1165,7 +1140,6 @@ using System.Text.Json;
                     Text = page.Text,
 
                     OrderIndex = page.OrderIndex,
-
                     Hidden = page.Hidden,
                     Format = page.Format,
                     Includes = page.Includes,
@@ -1304,13 +1278,13 @@ using System.Text.Json;
                 if (result == DialogResult.Yes)
                     await SaveInFolder();
             }
-            if (_editor != null)
+            if (Explorer != null)
             {
-                if (_editor.Visible)
-                    _editor.Close();
+                if (Explorer.Visible)
+                    Explorer.Close();
 
-                _editor.Dispose();
-                _editor = null;
+                Explorer.Dispose();
+                Explorer = null;
             }
 
             var fileContent = string.Empty;

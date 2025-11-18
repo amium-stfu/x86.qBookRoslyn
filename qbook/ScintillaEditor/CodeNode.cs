@@ -104,15 +104,15 @@ namespace qbook.ScintillaEditor
                 this.PageNode = pageNode;
             }
 
-            Editor = new DocumentEditor();
+            Editor = new DocumentEditor(null, page);
             Editor.Init();
-            Editor.UpdateRoslyn = () => UpdateRoslyn();
+        
 
-            Editor.ZoomChanged += (s, e) =>
-            {
-                RosylnSignatureHelper.ListFont = GetFont();
-                RoslynAutoComplete.ListFont = GetFont();
-            };
+            //Editor.ZoomChanged += (s, e) =>
+            //{
+            //    RosylnSignatureHelper.ListFont = GetFont();
+            //    RoslynAutoComplete.ListFont = GetFont();
+            //};
 
         }
         public void Select()
@@ -122,18 +122,18 @@ namespace qbook.ScintillaEditor
             RosylnSignatureHelper.ListFont = GetFont();
             RoslynAutoComplete.ListFont = GetFont();
 
-            Editor.KeyDown -= RosylnSignatureHelper.Editor_KeyDown;
-            Editor.CharAdded -= RosylnSignatureHelper.Editor_CharAdded;
+            //Editor.KeyDown -= RosylnSignatureHelper.Editor_KeyDown;
+            //Editor.CharAdded -= RosylnSignatureHelper.Editor_CharAdded;
 
-            Editor.KeyDown += RosylnSignatureHelper.Editor_KeyDown;
-            Editor.CharAdded += RosylnSignatureHelper.Editor_CharAdded;
+            //Editor.KeyDown += RosylnSignatureHelper.Editor_KeyDown;
+            //Editor.CharAdded += RosylnSignatureHelper.Editor_CharAdded;
 
            // Editor.KeyDown -= RoslynAutoComplete.Editor_KeyDown;
-            Editor.CharAdded -= RoslynAutoComplete.Editor_CharAdded;
+         //   Editor.CharAdded -= RoslynAutoComplete.Editor_CharAdded;
 
           //  Editor.KeyDown += RoslynAutoComplete.Editor_KeyDown;
            
-            Editor.CharAdded += RoslynAutoComplete.Editor_CharAdded;
+        //    Editor.CharAdded += RoslynAutoComplete.Editor_CharAdded;
         }
         public CodeNode(string name) : base(name)
         {
@@ -148,7 +148,7 @@ namespace qbook.ScintillaEditor
                // var workspace = Adhoc.Workspace;
                 var docId = RoslynDoc.Id;
                 var doc = Adhoc.Workspace.CurrentSolution.GetDocument(docId);
-                var newText = SourceText.From(Editor.Text);
+                var newText = SourceText.From(Editor.Text, Encoding.UTF8);
                 if (Editor.ReadOnly)
                 {
                   
@@ -170,9 +170,13 @@ namespace qbook.ScintillaEditor
         }
         public async Task UpdateRoslyn()
         {
+            await Editor.UpdateRoslyn("CodeNode " + Name);
+
+            return;
             if (Type == NodeType.Book) return;
             Editor.Active = Active;
 
+            
 
             if (!Active)
             {
@@ -315,9 +319,9 @@ namespace qbook.ScintillaEditor
                 Active = true;
                 this.ImageIndex = 3; // Active icon
 
-                var sourceText = SourceText.From(Editor.Text);
+                var sourceText = SourceText.From(Editor.Text, Encoding.UTF8);
 
-                RoslynDoc = Adhoc.Workspace.AddDocument(Adhoc.Id, FileName, SourceText.From(Editor.Text));
+                RoslynDoc = Adhoc.Workspace.AddDocument(Adhoc.Id, FileName, SourceText.From(Editor.Text, Encoding.UTF8));
 
                 await UpdateRoslyn();
               //  HideIncludeBlock();
@@ -326,7 +330,7 @@ namespace qbook.ScintillaEditor
             Editor.Active = Active;
             Editor.RefreshView();
 
-            await PageNode.Editor.UpdateRoslyn();
+            await PageNode.Editor.UpdateRoslyn("CodeNode -> Page" + Name);
         }
         public async Task Rename(string newName)
         {
@@ -374,7 +378,7 @@ namespace qbook.ScintillaEditor
         {
             if (Type == NodeType.Book) return;
             var sourceText = SourceText.From(Editor.Text);
-            RoslynDoc = Adhoc.Workspace.AddDocument(Adhoc.Id, FileName, SourceText.From(Editor.Text));
+            RoslynDoc = Adhoc.Workspace.AddDocument(Adhoc.Id, FileName, SourceText.From(Editor.Text, Encoding.UTF8));
             await UpdateRoslyn();
         }
         public async Task RemoveFileFromRoslyn()
@@ -387,7 +391,6 @@ namespace qbook.ScintillaEditor
           
         }
         public string NewPageCode(string name) => newPage(name);
-
         private string newPage(string name)
         {
             return $@"namespace Definition{name} {{ //<CodeStart>

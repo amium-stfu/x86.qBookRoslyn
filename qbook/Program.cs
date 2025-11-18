@@ -2,7 +2,10 @@
 using log4net.Appender;
 using log4net.Layout;
 using QB;
+using qbook.Controls;
+using qbook.ScintillaEditor;
 using System;
+using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -50,12 +53,15 @@ namespace qbook
         {
 
 
+
+        
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
                 GlobalExceptions.Handle((Exception)e.ExceptionObject, "Unhandled");
 
             TaskScheduler.UnobservedTaskException += (s, e) =>
             {
                 GlobalExceptions.Handle(e.Exception, "Unobserved Task");
+                Debug.WriteLine("Unobserved Task Exception: " + e.Exception.Message);
                 e.SetObserved();
             };
 
@@ -153,16 +159,26 @@ namespace qbook
                     return;
                 }
 
-                //if (false)
-                //{
-                //    CancellationTokenSource Timer10CancellationTokenSource = new CancellationTokenSource(); // TimeSpan.FromSeconds(300));
-                //    Timer10CancellationTokenSource = new CancellationTokenSource(); // TimeSpan.FromSeconds(300));
-                //    var Timer10msCancellationToken = Timer10CancellationTokenSource.Token;
-                //    _ = AccurateTimer.PrecisionRepeatActionOnIntervalAsync(Action10ms(), TimeSpan.FromMilliseconds(10), Timer10msCancellationToken);
-                //    MessageBox.Show("running");
-                //}
 
-                Thread.CurrentThread.CurrentUICulture = new CultureInfo("en-US");
+
+            using (var splash = new FormSplashScreen())
+            {
+                splash.Show();
+                Application.DoEvents();
+                splash.SetStatus("Initializing Roslyn...");
+                Core.Roslyn = new RoslynService();
+                System.Threading.Thread.Sleep(300);
+                splash.SetStatus("Creating Roslyn project...");
+                Core.Roslyn.CreateProject();
+                System.Threading.Thread.Sleep(300);
+                splash.SetStatus("Initializing Roslyn diagnostics...");
+                RoslynDiagnostic.InitDiagnostic();
+                System.Threading.Thread.Sleep(300);
+
+            }
+
+
+            Thread.CurrentThread.CurrentUICulture = new CultureInfo("en-US");
                 Application.Run(LandingPage = new MainForm(args));
 
 

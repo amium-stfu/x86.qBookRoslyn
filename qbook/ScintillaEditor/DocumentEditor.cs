@@ -1,11 +1,14 @@
 ﻿
+using DevExpress.Utils.MVVM.Services;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using Microsoft.Office.Interop.Outlook;
 using Microsoft.VisualStudio.SolutionPersistence.Model;
 using QB.Controls;
 using qbook.CodeEditor;
+using qbook.ScintillaEditor.InputControls;
 using ScintillaNET;
 using System;
 using System.Collections.Generic;
@@ -13,12 +16,14 @@ using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web.UI.WebControls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Forms;
+using VPKSoft.ScintillaLexers;
 
 using static System.ComponentModel.Design.ObjectSelectorEditor;
 using RoslynDocument = Microsoft.CodeAnalysis.Document; // Alias gegen Kollision mit ScintillaNET.Document
@@ -28,8 +33,10 @@ namespace qbook.ScintillaEditor
 {
     public class DocumentEditor : Scintilla
     {
-       
-        
+
+        ControlAutoComplete AutoComplete;
+        ControlSignatureHelper SignatureHelper;
+
         class LineRange
         {
             internal int Start { get; set; }
@@ -49,84 +56,78 @@ namespace qbook.ScintillaEditor
 
         public DataTable Output = new DataTable();
         public DataTable MethodesClasses = new DataTable();
-        public oCode Target;
+        
+        public CodeDocument Target;
         public bool HasErrors => Output.Rows.Count > 0;
 
         private readonly System.Windows.Forms.Timer _chordTimer = new() { Interval = 1500 };
         public System.Windows.Forms.Timer DebounceTimer = new System.Windows.Forms.Timer();
 
         public oPage Page { get; set; }
+
         public RoslynDocument KeyRoslynDoc;
         
-        public bool Active { get; set; } = true;
+        public bool Active 
+        { 
+            get {
+                if (Target == null) return false;
+                return Target.Active; 
+            }
+            set { Target.Active = value; }
+        }
         public RoslynDocument RoslynDoc;
         public string Filename;
 
-        public Func<Task> UpdateRoslyn;
-        public async Task TriggerUpdateAsync()
-        {
-            if (UpdateRoslyn != null)
-                await UpdateRoslyn();
-        }
-
         public Func<Task> GoToDefinition;
-        public async Task TriggerGoToDefinitionAsync()
-        {
-            if (GoToDefinition != null)
-                await GoToDefinition();
-        }
-
         public Func<Task> RenameSymbol;
-        public async Task TriggerRenameSymbolAsync()
-        {
-            if (RenameSymbol != null)
-                await RenameSymbol();
-        }
+
+        public Form View { get; set; }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (RoslynAutoComplete.IsVisible == true)
+            if (AutoComplete.Visible)
             {
                 switch (keyData)
                 {
                     case Keys.Down:
-                        RoslynAutoComplete.Next();
+                        AutoComplete.Next();
                         return true;
                     case Keys.Up:
-                        RoslynAutoComplete.Previous();
+                        AutoComplete.Previous();
                         return true;
                     case Keys.Enter:
-                        RoslynAutoComplete.Commit();
+                        AutoComplete.Commit(completeText);
                         return true;
                     case Keys.Tab:
-                        RoslynAutoComplete.Commit();
+                        AutoComplete.Commit(completeText);
                         return true;
 
                     case Keys.Escape:
-                        RoslynAutoComplete.HidePopup();
+                        completeText = string.Empty;
+                        AutoComplete.Hide();
                         return true;
-                }
+                }  
             }
 
-            if (RosylnSignatureHelper.IsVisible)
+            if (SignatureHelper.Visible)
             {
                 switch (keyData)
                 {
                     case Keys.Down:
-                        RosylnSignatureHelper.Next();
+                        SignatureHelper.Next();
                         return true;
                     case Keys.Up:
-                        RosylnSignatureHelper.Previous();
+                        SignatureHelper.Previous();
                         return true;
                     case Keys.Enter:
-                        RosylnSignatureHelper.Commit();
+                        SignatureHelper.Commit();
                         return true;
                     case Keys.Tab:
-                        RosylnSignatureHelper.Commit();
+                        SignatureHelper.Commit();
                         return true;
 
                     case Keys.Escape:
-                        RosylnSignatureHelper.HidePopup();
+                        SignatureHelper.Hide();
                         return true;
 
                 }
@@ -139,11 +140,156 @@ namespace qbook.ScintillaEditor
             if (IsDisposed) return;
             if (InvokeRequired) BeginInvoke(a); else a();
         }
+
+        public DocumentEditor(CodeDocument doc, oPage page) : base()
+        {
+            Init();
+            InitFolding();
+            Page = page;
+            Target = doc;
+            Text = doc.Code;
+            EmptyUndoBuffer();
+            AutoComplete = new ControlAutoComplete(this);
+            SignatureHelper = new ControlSignatureHelper(this);
+         
+
+            this.HScrollBar = false;
+            this.VScrollBar = false;
+            this.ZoomChanged += new System.EventHandler<System.EventArgs>(this.DocumentEditor_ZoomChanged);
+            this.ResumeLayout(false);
+
+            Output.Columns.Add("Page", typeof(string));
+            Output.Columns.Add("Class", typeof(string));
+            Output.Columns.Add("Position", typeof(string));
+            Output.Columns.Add("Length", typeof(int));
+            Output.Columns.Add("Type", typeof(string));
+            Output.Columns.Add("Description", typeof(string));
+            Output.Columns.Add("Node", typeof(CodeNode));
+
+            MethodesClasses.Columns.Add("Row", typeof(int));
+            MethodesClasses.Columns.Add("Name", typeof(string));
+
+    
+
+            if (Theme.IsDark)
+                ApplyDarkTheme();
+            else
+                ApplyLightTheme();
+
+           
+           
+            CharAdded += RoslynAutoComplete_CharAdded;
+            CharAdded += SignatureHelper_CharAdded;
+            KeyDown += RoslynAutoComplete_KeyDown;
+
+            Click += (s, e) =>
+            {
+                IndicatorClearRange(16, TextLength);
+            };
+        }
+        #region AutoComplete
+        string completeText = string.Empty;
+        private async void RoslynAutoComplete_CharAdded(object sender, CharAddedEventArgs e)
+        {
+            if (!Target.Active) return;
+
+            char c = (char)e.Char;
+
+            // Sonderzeichen → Liste schließen
+            if (char.IsWhiteSpace(c) || ";){}[]".Contains(c))
+            {
+                completeText = string.Empty;
+                AutoComplete.Hide();
+                return;
+            }
+
+            // Punkt → Prefix zurücksetzen und sofort Vorschläge anzeigen
+            if (c == '.')
+            {
+                completeText = string.Empty; // Reset
+                UpdateDocument();
+
+                var suggestions = await Core.Roslyn.GetAutoCompleteSuggestionsAsync(
+                    Target.Document,
+                    Target.Code,
+                    CurrentPosition,
+                    string.Empty // kein Prefix
+                );
+
+                if (suggestions.Count > 0)
+                    AutoComplete.ShowCompletionList(suggestions);
+                else
+                    AutoComplete.Hide();
+
+                return; // WICHTIG: Hier abbrechen, damit kein weiteres Handling passiert
+            }
+
+            // Normaler Buchstabe → Prefix erweitern
+            completeText += c;
+
+            UpdateDocument();
+
+            var filteredSuggestions = await Core.Roslyn.GetAutoCompleteSuggestionsAsync(
+                Target.Document,
+                Target.Code,
+                CurrentPosition,
+                completeText
+            );
+
+            if (filteredSuggestions.Count > 0)
+                AutoComplete.ShowCompletionList(filteredSuggestions);
+           // else
+             //   Hide();
+        }
+        private async void RoslynAutoComplete_KeyDown(object sender, KeyEventArgs e)
+        {
+            if(e.KeyCode == Keys.Back && completeText.Length > 0)
+            {
+                completeText = completeText.Substring(0, completeText.Length - 1);
+                UpdateDocument(); // Synchronisiert den Editor-Inhalt mit Roslyn
+
+                var suggestions = await Core.Roslyn.GetAutoCompleteSuggestionsAsync(
+                       Target.Document,
+                       Target.Code,
+                       CurrentPosition,
+                       completeText // Prefix übergeben
+                   );
+
+                if (suggestions.Count > 0)
+                {
+                    AutoComplete.ShowCompletionList(suggestions);
+                }
+                else
+                {
+                    //  Hide();
+                }
+            }
+        }
+
+        #endregion
+
+
+        #region SignatureHelp
+
+        public async void SignatureHelper_CharAdded(object sender, CharAddedEventArgs e)
+        {
+            char c = (char)e.Char;
+            if (c == '(' || c == ',')
+                await SignatureHelper.ShowSignaturePopupAsync();
+
+            if (c == ';')
+                    SignatureHelper.Hide();
+        }
+
+        #endregion
+
+
         public void Init()
         {
 
             InitEditorContextMenu();
-            HScrollBar = false;
+      
+          //  HScrollBar = false;
             VScrollBar = false;
             BorderStyle = ScintillaNET.BorderStyle.None;
 
@@ -222,8 +368,9 @@ namespace qbook.ScintillaEditor
 
             DebounceTimer.Tick += async (s, e) =>
             {
-                await UpdateRoslyn();
                 DebounceTimer.Stop();
+                await UpdateRoslyn("DebounceTimer");
+                
             };
 
 
@@ -275,15 +422,16 @@ namespace qbook.ScintillaEditor
 
             ApplyLightTheme();
 
-            CharAdded += OnlineFormat_CharAdded;
+           // CharAdded += OnlineFormat_CharAdded;
+            CharAdded += onlineFormat_CharAdded;
+            InsertCheck += onlineFormat_InsertCheck;
             KeyDown += DocumentEditor_KeyDown;
             KeyDown += ProtectedLines_KeyDown;
-
             KeyUp += async (s, e) =>
             {
 
-                if (e.Control && e.KeyCode == Keys.Z) await UpdateRoslyn();
-                if (e.Control && e.KeyCode == Keys.V) await UpdateRoslyn();
+                if (e.Control && e.KeyCode == Keys.Z) await UpdateRoslyn("Keys CTRLZ");
+                if (e.Control && e.KeyCode == Keys.V) await UpdateRoslyn("Keys CTRLV");
             };
         }
         private void ProtectedLines_KeyDown(object sender, KeyEventArgs e)
@@ -421,13 +569,14 @@ namespace qbook.ScintillaEditor
             public const int SCI_LINEFROMPOSITION = 2166;
             public const int SCI_POSITIONFROMLINE = 2167;
             public const int SCI_FINDCOLUMN = 2456;
+            public const int SCI_COLOURISE = 4003;
         }
         private void OnlineFormat_CharAdded(object sender, CharAddedEventArgs e)
         {
    
             if (e.Char == '\n')
             {
-                BeginInvoke(new Action(() =>
+                BeginInvoke(new System.Action(() =>
                 {
                     int currentLine = LineFromPosition(CurrentPosition);
                     int newLine = currentLine;
@@ -466,6 +615,130 @@ namespace qbook.ScintillaEditor
 
             return level * indentSize;
         }
+
+        #region onlineFormat
+        /// <summary>
+        /// Beim Einfügen von Text eingreifen (hier beim Enter),
+        /// um automatisch den richtigen Einzug mit einzufügen.
+        /// </summary>
+        private void onlineFormat_InsertCheck(object sender, InsertCheckEventArgs e)
+        {
+            var sci = (Scintilla)sender;
+
+            // Reagieren wir nur auf Enter (CR/LF je nach Einstellung)
+            if (!e.Text.EndsWith("\n")) return;
+
+            // Aktuelle Zeile, in die der Umbruch eingefügt wird (neue Zeile = curLine+1)
+            int curPos = e.Position;
+            int curLine = sci.LineFromPosition(curPos);
+            var prev = sci.Lines[Math.Max(0, curLine)];        // Zeile vor der NEUEN Zeile (die, aus der wir Enter drücken)
+            var next = sci.Lines[Math.Min(curLine + 1, sci.Lines.Count - 1)];
+
+            // Basisindent = Einrückung der vorherigen Zeile
+            int targetIndent = prev.Indentation;
+
+            // Text der vorherigen Zeile ohne Zeilenende
+            string prevText = prev.Text.TrimEnd('\r', '\n');
+            string prevTrim = prevText.TrimEnd();
+
+            // Wenn vorherige Zeile mit "{" endet -> eine Stufe mehr
+            if (prevTrim.EndsWith("{"))
+                targetIndent += sci.IndentWidth;
+
+            // Blick nach vorne: Wenn die neue Zeile direkt mit '}' beginnt, wieder reduzieren
+            int lineStartPos = next.Position; // Beginn der neuen Zeile
+            int lookaheadLen = Math.Min(2, sci.TextLength - lineStartPos);
+            string lookahead = lookaheadLen > 0 ? sci.GetTextRange(lineStartPos, lookaheadLen) : string.Empty;
+
+            if (lookahead.Length > 0 && lookahead[0] == '}')
+                targetIndent = Math.Max(0, targetIndent - sci.IndentWidth);
+
+            // Whitespace-String basierend auf Tabs/Spaces erzeugen
+            string indentStr = BuildIndentString(sci, targetIndent);
+
+            // Den eingefügten Text (das Enter) um den Indent erweitern
+            // Achtung: e.Text enthält das CR/LF – wir hängen unmittelbar den Indent an
+            e.Text += indentStr;
+        }
+
+        /// <summary>
+        /// „Brace outdent“ bei Eingabe von '}' in leerer/whitespace-only Zeile.
+        /// </summary>
+        private void onlineFormat_CharAdded(object sender, CharAddedEventArgs e)
+        {
+            if (e.Char != '}') return;
+
+            var sci = (Scintilla)sender;
+            int lineIndex = sci.LineFromPosition(sci.CurrentPosition);
+            var line = sci.Lines[lineIndex];
+
+            // Nur wenn vor der '}'-Klammer nur Whitespace steht
+            string text = line.Text.TrimEnd('\r', '\n');
+            int firstNonWs = FirstNonWhitespaceIndex(text);
+            if (firstNonWs < 0) return; // leere Zeile
+
+            // Steht die '}' direkt am ersten Nicht-Whitespace?
+            if (text[firstNonWs] != '}') return;
+
+            // Zielindentation = Einrückung der vorherigen sinnvollen Zeile
+            int targetIndent = 0;
+            if (lineIndex > 0)
+            {
+                var prev = sci.Lines[lineIndex - 1];
+                targetIndent = prev.Indentation;
+
+                // Wenn vorige Zeile mit '{' endet, stehen wir auf gleicher Ebene wie die '{'-Zeile
+                string prevTrim = prev.Text.TrimEnd('\r', '\n').TrimEnd();
+                if (prevTrim.EndsWith("{"))
+                    targetIndent = Math.Max(0, targetIndent - sci.IndentWidth);
+            }
+
+            // Setze Einzug der aktuellen Zeile neu
+            line.Indentation = targetIndent;
+
+            // Cursor vor die '}' schieben (also hinter die Whitespaces)
+            int start = line.Position;
+            int i = start;
+            while (i < sci.TextLength)
+            {
+                char c = (char)sci.GetCharAt(i);
+                if (c == ' ' || c == '\t') { i++; continue; }
+                break;
+            }
+            sci.GotoPosition(i);
+        }
+
+        /// <summary>
+        /// Baut Whitespaces passend zu UseTabs/IndentWidth/TabWidth für eine gegebene Spalteneinrückung.
+        /// </summary>
+        private static string BuildIndentString(Scintilla sci, int indentationColumns)
+        {
+            if (indentationColumns <= 0) return string.Empty;
+
+            if (sci.UseTabs)
+            {
+                int tabs = indentationColumns / sci.TabWidth;
+                int spaces = indentationColumns % sci.TabWidth;
+                return new string('\t', tabs) + new string(' ', spaces);
+            }
+            else
+            {
+                return new string(' ', indentationColumns);
+            }
+        }
+
+        private static int FirstNonWhitespaceIndex(string s)
+        {
+            for (int i = 0; i < s.Length; i++)
+            {
+                if (s[i] != ' ' && s[i] != '\t') return i;
+            }
+            return -1;
+        }
+
+
+        #endregion
+
         private void DocumentEditor_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Back) DebounceTimer.Start();
@@ -485,9 +758,7 @@ namespace qbook.ScintillaEditor
                 _awaitingCtrlK = false; _chordTimer.Stop();
                 CommentSelection();
 
-                if (UpdateRoslyn != null)
-                    _ = TriggerUpdateAsync();
-
+                UpdateRoslyn("Keys CTRLK C");
                 return;
             }
             if (_awaitingCtrlK && e.Control && e.KeyCode == Keys.U)
@@ -496,15 +767,26 @@ namespace qbook.ScintillaEditor
                 _awaitingCtrlK = false; _chordTimer.Stop();
                 UncommentSelection();
 
-                if (UpdateRoslyn != null)
-                    _ = TriggerUpdateAsync();
-
+                UpdateRoslyn("Keys CTRLK U");
                 return;
             }
 
             if (e.Control && e.KeyCode == Keys.C)
             {
                 CopyWithFoldedBlockSupport();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+
+            if (e.Control && e.KeyCode == Keys.F)
+            {
+                Core.Explorer.FindReplace.Show();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+            if (e.Control && e.KeyCode == Keys.H)
+            {
+                Core.Explorer.FindReplace.Show();
                 e.Handled = true;
                 e.SuppressKeyPress = true;
             }
@@ -636,24 +918,7 @@ namespace qbook.ScintillaEditor
             Styles[ScintillaNET.Style.BraceBad].ForeColor = Color.White;
             Styles[ScintillaNET.Style.BraceBad].BackColor = Color.FromArgb(0xE5, 0x51, 0x51);
 
-            // Folding Marker Farben (neutral grau wie VS)
-            var foldFore = Color.FromArgb(0x80, 0x80, 0x80);
-            var foldBack = foldFore;
-            for (int i = Marker.FolderEnd; i <= Marker.FolderOpenMid; i++)
-            {
-                Markers[i].SetForeColor(foldFore);
-                Markers[i].SetBackColor(foldBack);
-            }
-
-            // Visual Studio Light / VS Code Light+ typische Farben:
-            // Keywords: #0000FF
-            // Strings: #A31515
-            // Comments: #008000
-            // Numbers: #098658
-            // Method: #795E26
-            // Types (Class/Struct/Interface/Enum): #267F99 (annähernd #2B91AF aus altem VS; etwas entsättigt für moderne Light Themes)
-            // Property: #001080
-            // Field: #D4D4D4 (Standard)
+     
 
             Color vsKeyword = Color.FromArgb(0x00, 0x00, 0xFF);   // Blau
             Color vsString = Color.FromArgb(0xA3, 0x15, 0x15);    // Dunkelrot
@@ -706,6 +971,16 @@ namespace qbook.ScintillaEditor
             Styles[ScintillaNET.Style.LineNumber].BackColor = Color.White;
             SetFoldMarginColor(true, Color.White);
             SetFoldMarginHighlightColor(true, Color.White);
+            Markers[Marker.Folder].SetForeColor(Color.Black);
+            Markers[Marker.FolderOpen].SetForeColor(Color.Black);
+            
+
+            // Farben und Linien für Fold-Verbindungen
+            Markers[Marker.FolderSub].SetForeColor(Color.Red);
+            Markers[Marker.FolderTail].SetForeColor(Color.Gray);
+            Markers[Marker.FolderMidTail].SetForeColor(Color.Gray);
+            Markers[Marker.FolderEnd].SetForeColor(Color.Gray);
+            Markers[Marker.FolderOpenMid].SetForeColor(Color.Gray);
 
 
             //Error Style
@@ -713,9 +988,18 @@ namespace qbook.ScintillaEditor
             Styles[STYLE_ERROR].BackColor = Color.Red;
             Styles[STYLE_ERROR].ForeColor = Color.White; // optional
 
+            var foldFore = Color.FromArgb(200, 200, 200);
+            var foldBack = Color.Black;
+            for (int i = Marker.FolderEnd; i <= Marker.FolderOpenMid; i++)
+            {
+                Markers[i].SetForeColor(foldFore);
+                Markers[i].SetBackColor(foldBack);
+            }
+
             // Autocomplete Farben
-            AutocompleteListBackColor = Color.White;
-            AutocompleteListTextColor = Color.Black;
+            //AutocompleteListBackColor = Color.White;
+            //AutocompleteListTextColor = Color.Black;
+
         }
         public void ApplyDarkTheme()
         {
@@ -741,27 +1025,7 @@ namespace qbook.ScintillaEditor
             Styles[ScintillaNET.Style.BraceBad].BackColor = Color.FromArgb(0x90, 0x2B, 0x2B);
 
             // Folding Marker (leicht kontrastreich)
-            var foldFore = Color.FromArgb(0xAA, 0xAA, 0xAA);
-            var foldBack = Color.FromArgb(0x2D, 0x2D, 0x2D);
-            for (int i = Marker.FolderEnd; i <= Marker.FolderOpenMid; i++)
-            {
-                Markers[i].SetForeColor(foldFore);
-                Markers[i].SetBackColor(foldBack);
-            }
-
-            // VS Dark / VS Code Dark+ Referenzfarben:
-            // Keyword: #569CD6
-            // String: #CE9178
-            // Comment: #6A9955
-            // Number: #B5CEA8
-            // Method: #DCDCAA
-            // Class: #4EC9B0
-            // Interface: #B8D7A3
-            // Struct: #86C691
-            // Enum: #B8D7A3
-            // Delegate: #DCDCAA (wie Method)
-            // Property: #9CDCFE
-            // Field: #D4D4D4 (Standard)
+     
 
             Color vsDarkKeyword = Color.FromArgb(0x56, 0x9C, 0xD6);
             Color vsDarkString = Color.FromArgb(0xCE, 0x91, 0x78);
@@ -819,25 +1083,66 @@ namespace qbook.ScintillaEditor
             SetFoldMarginColor(true, Color.FromArgb(25, 25, 25));
             SetFoldMarginHighlightColor(true, Color.FromArgb(25, 25, 25));
 
+            //Markers[Marker.Folder].SetForeColor(Color.Gray);
+            //Markers[Marker.FolderOpen].SetForeColor(Color.Gray);
+
+            // Farben und Linien für Fold-Verbindungen
+            //Markers[Marker.FolderSub].SetForeColor(Color.Gray);
+            //Markers[Marker.FolderTail].SetForeColor(Color.Gray);
+            //Markers[Marker.FolderMidTail].SetForeColor(Color.Gray);
+            //Markers[Marker.FolderEnd].SetForeColor(Color.Gray);
+            //Markers[Marker.FolderOpenMid].SetForeColor(Color.Gray);
+
+            var foldFore = Color.FromArgb(0xAA, 0xAA, 0xAA);
+            var foldBack = Color.FromArgb(0x2D, 0x2D, 0x2D);
+            for (int i = Marker.FolderEnd; i <= Marker.FolderOpenMid; i++)
+            {
+                Markers[i].SetForeColor(foldFore);
+                Markers[i].SetBackColor(foldBack);
+            }
+
 
             // Autocomplete
-            AutocompleteListBackColor = Color.FromArgb(0x25, 0x25, 0x25);
-            AutocompleteListTextColor = Color.FromArgb(0xD4, 0xD4, 0xD4);
+            //AutocompleteListBackColor = Color.FromArgb(0x25, 0x25, 0x25);
+            //AutocompleteListTextColor = Color.FromArgb(0xD4, 0xD4, 0xD4);
 
 
         }
-        private void InitializeComponent()
-        {
-            this.SuspendLayout();
-            // 
-            // DocumentEditor
-            // 
-            this.HScrollBar = false;
-            this.VScrollBar = false;
-            this.ZoomChanged += new System.EventHandler<System.EventArgs>(this.DocumentEditor_ZoomChanged);
-            this.ResumeLayout(false);
 
-        }
+        RoslynFoldingHelper RoslynFoldingHelper;
+        //private void InitializeComponent()
+        //{
+        //    this.SuspendLayout();
+        //    // 
+        //    // DocumentEditor
+        //    // 
+        //    this.HScrollBar = false;
+        //    this.VScrollBar = false;
+        //    this.ZoomChanged += new System.EventHandler<System.EventArgs>(this.DocumentEditor_ZoomChanged);
+        //    this.ResumeLayout(false);
+
+        //    Output.Columns.Add("Page", typeof(string));
+        //    Output.Columns.Add("Class", typeof(string));
+        //    Output.Columns.Add("Position", typeof(string));
+        //    Output.Columns.Add("Length", typeof(int));
+        //    Output.Columns.Add("Type", typeof(string));
+        //    Output.Columns.Add("Description", typeof(string));
+        //    Output.Columns.Add("Node", typeof(CodeNode));
+
+        //    MethodesClasses.Columns.Add("Row", typeof(int));
+        //    MethodesClasses.Columns.Add("Name", typeof(string));
+
+        //    RoslynFoldingHelper = new RoslynFoldingHelper();
+
+        //    ZoomChanged += (s, e) =>
+        //    {
+        //        RosylnSignatureHelper.ListFont = GetFont();
+        //        RoslynAutoComplete.ListFont = GetFont();
+        //    };
+
+
+
+        //}
         public System.Drawing.Font GetFont()
         {
             var style = Styles[ScintillaNET.Style.Default];
@@ -852,7 +1157,6 @@ namespace qbook.ScintillaEditor
         {
 
         }
-
         public void SelectRange(int pos, int length)
         {
             int lineNumber = LineFromPosition(pos);
@@ -927,11 +1231,11 @@ namespace qbook.ScintillaEditor
 
 
             var miGoto = new ToolStripMenuItem("Go To Definition (F12)");
-            miGoto.Click += async (_, __) => await TriggerGoToDefinitionAsync();
+            miGoto.Click += async (_, __) => await Core.Explorer.GoToDefinition();
             EditorContextMenu.Items.Add(miGoto);
 
             var miRename = new ToolStripMenuItem("Rename...");
-            miRename.Click += async (_, __) => await TriggerRenameSymbolAsync();
+            miRename.Click += async (_, __) => await Core.Explorer.RenameSymbol();
             EditorContextMenu.Items.Add(miRename);
 
             EditorContextMenu.Items.Add(new ToolStripSeparator());
@@ -1101,25 +1405,52 @@ namespace qbook.ScintillaEditor
 
         #region Roslyn Integration
 
+        
+
+
+        bool init = true;
         public void UpdateDocument()
         {
             try
             {
                 Target.Code = Text;
-
-                if(!Target.Active) return;
-
-                var docId = Target.RoslynDocument.Id;
-                var doc = Core.Workspace.CurrentSolution.GetDocument(docId);
-                var newText = SourceText.From(Text);
-
-                var updatedDoc = doc.WithText(newText);
-                if (Core.Workspace.TryApplyChanges(updatedDoc.Project.Solution))
-                    Target.RoslynDocument = Core.Workspace.CurrentSolution.GetDocument(docId);
+                Target.UpdateCode();
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
                 Debug.WriteLine("UpdateDocument failed: " + ex.Message);
+            }
+        }
+
+        public async Task UpdateRoslyn(string sender)
+        {
+            using (this.SuspendUpdates())
+            {
+                
+                if (Target == null) return;
+
+                if (Active)
+                {
+
+                    if (init)
+                    {
+                        await FormatDocumentAsync();
+       
+                        init = false;
+                    }
+                 
+                    UpdateDocument();
+                    LockNecessary();
+
+                    Output.Rows.Clear();
+                    var newData = await RoslynDiagnostic.ApplyAsync(this);
+                    foreach (DataRow row in newData.Rows)
+                        Output.ImportRow(row);
+
+                    await RosylnSemantic.ApplyAsync(this, Target.Document);
+                    await UpdateMethodesFromRoslynAsync();
+                }
+                LockNecessary();
             }
         }
 
@@ -1157,9 +1488,83 @@ namespace qbook.ScintillaEditor
                 Debug.WriteLine("EndLine " + endLine + ".." + Lines.Count);
             }
         }
+        public async Task UpdateMethodesFromRoslynAsync()
+        {
+            MethodesClasses.Clear();
 
+            var root = await Target.Document.GetSyntaxRootAsync();
+            if (root == null) return;
+
+            // Alle Klassen im Dokument finden
+            var classNodes = root.DescendantNodes().OfType<ClassDeclarationSyntax>();
+
+            foreach (var classNode in classNodes)
+            {
+                string className = classNode.Identifier.Text;
+
+                // Klasse eintragen
+                DataRow classRow = MethodesClasses.NewRow();
+                classRow["Row"] = classNode.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+                classRow["Name"] = "[C] " + className;
+                MethodesClasses.Rows.Add(classRow);
+
+                // Alle Methoden in der Klasse finden
+                var methodNodes = classNode.DescendantNodes().OfType<MethodDeclarationSyntax>();
+
+                foreach (var method in methodNodes)
+                {
+                    string methodName = method.Identifier.Text;
+                    string fullName = $"{className}.{methodName}";
+
+                    DataRow methodRow = MethodesClasses.NewRow();
+                    methodRow["Row"] = method.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+                    methodRow["Name"] = "[M] " + fullName;
+                    MethodesClasses.Rows.Add(methodRow);
+                }
+            }
+        }
 
         #endregion
+
+
+        #region Folding Helpers
+
+        public void InitFolding()
+        {
+            ScintillaLexers.CreateLexer(this,LexerEnumerations.LexerType.Cs);
+
+            SetProperty("fold", "1");
+            SetProperty("fold.compact", "0");         // 0 = leere Zeilen *nicht* mit einklappen
+            SetProperty("fold.preprocessor", "1");    // für #region etc.
+            SetProperty("fold.braces", "1");          // Folding für Blöcke
+            SetProperty("fold.at.else", "1");         // separates Folding für else
+            SetProperty("fold.cpp.syntax.based", "1");
+            SetProperty("fold.cpp.comment.explicit", "0"); // alle Kommentarblöcke foldbar
+
+
+            // Folding‑Margin (Pfeile wie in Visual Studio)
+            const int FOLD_MARGIN = 2;
+            Margins[FOLD_MARGIN].Type = MarginType.Symbol;
+            Margins[FOLD_MARGIN].Mask = Marker.MaskFolders;
+            Margins[FOLD_MARGIN].Sensitive = true;
+            Margins[FOLD_MARGIN].Width = 18;
+
+            Markers[Marker.Folder].Symbol = MarkerSymbol.Arrow;
+            Markers[Marker.FolderOpen].Symbol = MarkerSymbol.ArrowDown;
+            Markers[Marker.FolderSub].Symbol = MarkerSymbol.VLine;
+            Markers[Marker.FolderTail].Symbol = MarkerSymbol.LCorner;
+            Markers[Marker.FolderMidTail].Symbol = MarkerSymbol.TCorner;
+            Markers[Marker.FolderEnd].Symbol = MarkerSymbol.Arrow;
+            Markers[Marker.FolderOpenMid].Symbol = MarkerSymbol.ArrowDown;
+
+            AutomaticFold = AutomaticFold.Show | AutomaticFold.Click | AutomaticFold.Change;
+            SetFoldFlags(FoldFlags.LineAfterContracted);
+
+        }
+
+        #endregion
+
+
 
     }
     public static class SimpleIndentFormatter
@@ -1199,6 +1604,64 @@ namespace qbook.ScintillaEditor
         {
             int n = 0; foreach (var ch in s) if (ch == c) n++; return n;
         }
+    }
+
+    public static class ScintillaUpdateScopes
+    {
+        private const int WM_SETREDRAW = 0x000B; // Windows Message: Set Redraw on/off
+
+        // Scintilla messages (SCI_*):
+        private const int SCI_BEGINUNDOACTION = 2078;
+        private const int SCI_ENDUNDOACTION = 2079;
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        /// <summary>
+        ///  Friert Repaint ein und fasst Änderungen optional zu einer Undo-Aktion zusammen.
+        ///  Verwendung immer mit using: using (scintilla.SuspendUpdates()) { /* viele Änderungen */ }
+        /// </summary>
+        public static IDisposable SuspendUpdates(this Scintilla scintilla, bool coalesceUndo = true)
+        {
+            if (scintilla is null) throw new ArgumentNullException(nameof(scintilla));
+
+            // Repaint aus
+            SendMessage(scintilla.Handle, WM_SETREDRAW, IntPtr.Zero, IntPtr.Zero);
+
+            if (coalesceUndo)
+                scintilla.DirectMessage(SCI_BEGINUNDOACTION, IntPtr.Zero, IntPtr.Zero);
+
+            return new RestoreScope(scintilla, coalesceUndo);
+        }
+
+        private sealed class RestoreScope : IDisposable
+        {
+            private readonly Scintilla _scintilla;
+            private readonly bool _coalesceUndo;
+            private bool _disposed;
+
+            public RestoreScope(Scintilla scintilla, bool coalesceUndo)
+            {
+                _scintilla = scintilla;
+                _coalesceUndo = coalesceUndo;
+            }
+
+            public void Dispose()
+            {
+                if (_disposed) return;
+
+                if (_coalesceUndo)
+                    _scintilla.DirectMessage(SCI_ENDUNDOACTION, IntPtr.Zero, IntPtr.Zero);
+
+                // Repaint an + Refresh erzwingen
+                SendMessage(_scintilla.Handle, WM_SETREDRAW, new IntPtr(1), IntPtr.Zero);
+                _scintilla.Refresh();
+
+                _disposed = true;
+            }
+        }
+
+
     }
 
 

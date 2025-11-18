@@ -101,6 +101,8 @@ namespace qbook
             this.fullscreenToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.pagebarToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.logToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.newEditorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.rebuildToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.imageListMenuItems = new System.Windows.Forms.ImageList(this.components);
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.statusLabelStatus = new System.Windows.Forms.ToolStripStatusLabel();
@@ -113,7 +115,8 @@ namespace qbook
             this.toolStripStatusLabelKeyboard = new System.Windows.Forms.ToolStripStatusLabel();
             this.timerIdle = new System.Windows.Forms.Timer(this.components);
             this.pageControl = new qbook.PageControl();
-            this.testToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.runToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.initializeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.contextMenuStrip.SuspendLayout();
             this.contextMenuMru.SuspendLayout();
             this.menuStrip.SuspendLayout();
@@ -169,7 +172,10 @@ namespace qbook
             this.fullscreenToolStripMenuItem,
             this.pagebarToolStripMenuItem,
             this.logToolStripMenuItem,
-            this.testToolStripMenuItem});
+            this.newEditorToolStripMenuItem,
+            this.rebuildToolStripMenuItem,
+            this.runToolStripMenuItem,
+            this.initializeToolStripMenuItem});
             this.menuStrip.Location = new System.Drawing.Point(0, 0);
             this.menuStrip.Name = "menuStrip";
             this.menuStrip.Padding = new System.Windows.Forms.Padding(4, 1, 0, 1);
@@ -720,6 +726,20 @@ namespace qbook
             this.logToolStripMenuItem.ToolTipText = "Open Log (CTRL + L)";
             this.logToolStripMenuItem.Click += new System.EventHandler(this.logToolStripMenuItem_Click);
             // 
+            // newEditorToolStripMenuItem
+            // 
+            this.newEditorToolStripMenuItem.Image = global::qbook.Properties.Resources.coding_program_48p;
+            this.newEditorToolStripMenuItem.Name = "newEditorToolStripMenuItem";
+            this.newEditorToolStripMenuItem.Size = new System.Drawing.Size(28, 23);
+            this.newEditorToolStripMenuItem.Click += new System.EventHandler(this.newEditorToolStripMenuItem_Click);
+            // 
+            // rebuildToolStripMenuItem
+            // 
+            this.rebuildToolStripMenuItem.Name = "rebuildToolStripMenuItem";
+            this.rebuildToolStripMenuItem.Size = new System.Drawing.Size(59, 23);
+            this.rebuildToolStripMenuItem.Text = "Rebuild";
+            this.rebuildToolStripMenuItem.Click += new System.EventHandler(this.rebuildToolStripMenuItem_Click);
+            // 
             // imageListMenuItems
             // 
             this.imageListMenuItems.ImageStream = ((System.Windows.Forms.ImageListStreamer)(resources.GetObject("imageListMenuItems.ImageStream")));
@@ -845,12 +865,19 @@ namespace qbook
             this.pageControl.TabIndex = 0;
             this.pageControl.MouseMove += new System.Windows.Forms.MouseEventHandler(this.pageControl_MouseMove);
             // 
-            // testToolStripMenuItem
+            // runToolStripMenuItem
             // 
-            this.testToolStripMenuItem.Name = "testToolStripMenuItem";
-            this.testToolStripMenuItem.Size = new System.Drawing.Size(40, 23);
-            this.testToolStripMenuItem.Text = "Test";
-            this.testToolStripMenuItem.Click += new System.EventHandler(this.testToolStripMenuItem_Click);
+            this.runToolStripMenuItem.Name = "runToolStripMenuItem";
+            this.runToolStripMenuItem.Size = new System.Drawing.Size(40, 23);
+            this.runToolStripMenuItem.Text = "Run";
+            this.runToolStripMenuItem.Click += new System.EventHandler(this.runToolStripMenuItem_Click);
+            // 
+            // initializeToolStripMenuItem
+            // 
+            this.initializeToolStripMenuItem.Name = "initializeToolStripMenuItem";
+            this.initializeToolStripMenuItem.Size = new System.Drawing.Size(62, 23);
+            this.initializeToolStripMenuItem.Text = "Initialize";
+            this.initializeToolStripMenuItem.Click += new System.EventHandler(this.initializeToolStripMenuItem_Click);
             // 
             // MainForm
             // 
@@ -869,6 +896,7 @@ namespace qbook
             this.Activated += new System.EventHandler(this.MainForm_Activated);
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
             this.Load += new System.EventHandler(this.MainForm_Load);
+            this.Shown += new System.EventHandler(this.MainForm_Shown);
             this.SizeChanged += new System.EventHandler(this.Form1_SizeChanged);
             this.Paint += new System.Windows.Forms.PaintEventHandler(this.MainForm_Paint);
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.MainForm_KeyDown);
@@ -968,7 +996,10 @@ namespace qbook
         private System.Windows.Forms.ToolStripMenuItem fullscreenToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem pagebarToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem logToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem testToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem newEditorToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem rebuildToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem runToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem initializeToolStripMenuItem;
     }
 }
 

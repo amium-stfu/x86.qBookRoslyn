@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 using qbook.CodeEditor;
 using ScintillaNET;
 using System;
@@ -13,8 +14,8 @@ using System.Threading.Tasks;
 using System.Web.SessionState;
 using System.Windows.Forms;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Menu;
-using RoslynDocument = Microsoft.CodeAnalysis.Document;
 using RoslynCompletionItem = global::Microsoft.CodeAnalysis.Completion.CompletionItem;
+using RoslynDocument = Microsoft.CodeAnalysis.Document;
 
 namespace qbook.ScintillaEditor
 {
@@ -37,7 +38,9 @@ namespace qbook.ScintillaEditor
 
         private static RoslynService _roslyn;
         public static CodeNode ActiveNode;
-        private static DocumentEditor Editor => ActiveNode.Editor;
+     
+
+        public static DocumentEditor Editor;
 
         public static System.Drawing.Font ListFont;
 
@@ -101,20 +104,17 @@ namespace qbook.ScintillaEditor
             };
         }
 
-        public static async void Editor_CharAdded(object sender, CharAddedEventArgs e)
+        public static async void Editor_CharAdded(object sender, CharAddedEventArgs e, DocumentEditor editor)
         {
-
+            Editor = editor;
             char c = (char)e.Char;
             _lastTriggerChar = c;
 
-            if (ActiveNode.RoslynDoc == null)
-                return;
-
+            if (!Editor.Target.Active) return;
 
             // Prüfen, ob zuletzt "new " eingegeben wurde
             int pos = Editor.CurrentPosition;
             string lastText = Editor.GetTextRange(Math.Max(0, pos - 4), 4); // "new "
-
 
             if (lastText == "new ")
             {
@@ -127,9 +127,6 @@ namespace qbook.ScintillaEditor
                 }
                 return;
             }
-
-
-
 
             if (char.IsWhiteSpace(c) || ";){}[]".Contains(c))
             {
@@ -183,7 +180,7 @@ namespace qbook.ScintillaEditor
                 if (isTriggerChar)
                 {
                     // Document synchronisieren
-                    document = document.WithText(Microsoft.CodeAnalysis.Text.SourceText.From(Editor.Text));
+                    document = document.WithText(Microsoft.CodeAnalysis.Text.SourceText.From(Editor.Text, Encoding.UTF8));
 
                     var (items, _) = await GetCompletionsAsync(document, caret, _lastTriggerChar);
                     if (items != null && items.Length > 0)
@@ -272,7 +269,7 @@ namespace qbook.ScintillaEditor
             // 🧩 Wenn kein Cache passt (z. B. du hast das Wort vor dem '.' gelöscht),
             // dann neue Roslyn-Abfrage starten
             var document = ActiveNode.RoslynDoc?.WithText(
-                Microsoft.CodeAnalysis.Text.SourceText.From(Editor.Text));
+                Microsoft.CodeAnalysis.Text.SourceText.From(Editor.Text, Encoding.UTF8));
 
             if (document != null)
             {

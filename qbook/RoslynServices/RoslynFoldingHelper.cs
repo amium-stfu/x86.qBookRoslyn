@@ -12,53 +12,7 @@ namespace qbook.ScintillaEditor
     {
         private readonly List<string> _collapsedHeaders = new();
        
-        public void ApplyFolding(Scintilla editor)
-        {
-            if (editor == null || string.IsNullOrEmpty(editor.Text))
-                return;
-
-            var tree = CSharpSyntaxTree.ParseText(editor.Text);
-            var root = tree.GetRoot();
-            var foldingRegions = new List<(int startLine, int endLine, string name)>();
-
-            foreach (var classDecl in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
-            {
-                AddFoldingRegion(editor, classDecl, foldingRegions, $"class {classDecl.Identifier}");
-                foreach (var method in classDecl.Members.OfType<MethodDeclarationSyntax>())
-                    AddFoldingRegion(editor, method, foldingRegions, method.Identifier.Text);
-            }
-
-            foreach (var method in root.DescendantNodes().OfType<MethodDeclarationSyntax>()
-                     .Where(m => m.Parent is not ClassDeclarationSyntax))
-            {
-                AddFoldingRegion(editor, method, foldingRegions, method.Identifier.Text);
-            }
-
-            // Clear old folding
-            for (int i = 0; i < editor.Lines.Count; i++)
-            {
-                editor.Lines[i].FoldLevelFlags = FoldLevelFlags.White;
-                editor.Lines[i].FoldLevel = 1024;
-            }
-
-            // Apply new folding
-            foreach (var region in foldingRegions)
-            {
-                if (region.startLine >= editor.Lines.Count || region.endLine >= editor.Lines.Count)
-                    continue;
-
-                var headerLine = editor.Lines[region.startLine];
-                headerLine.FoldLevelFlags = FoldLevelFlags.Header;
-                headerLine.FoldLevel = 1024;
-
-                for (int i = region.startLine + 1; i <= region.endLine && i < editor.Lines.Count; i++)
-                {
-                    editor.Lines[i].FoldLevel = 1025;
-                }
-            }
-        }
-
-
+      
         public void InitializeFolding(Scintilla editor)
         {
             if (editor == null)
@@ -102,38 +56,96 @@ namespace qbook.ScintillaEditor
             editor.AutomaticFold = AutomaticFold.Show | AutomaticFold.Click | AutomaticFold.Change;
         }
 
-        private void AddFoldingRegion(Scintilla editor, SyntaxNode node, List<(int startLine, int endLine, string name)> list, string name)
+        private void AddFoldingRegion(Scintilla editor, SyntaxNode node,
+            List<(int headerLine, int endLine, string name)> list, string name)
         {
             if (node == null)
                 return;
 
-            int startLine = -1;
-            int endLine = -1;
+            int headerLine;
+            int endLine;
 
             switch (node)
             {
+                case MethodDeclarationSyntax method when method.Body != null:
+                    headerLine = editor.LineFromPosition(method.SpanStart);
 
-
-                case MethodDeclarationSyntax method:
-                    startLine = editor.LineFromPosition(method.SpanStart);
-                    endLine = editor.LineFromPosition(method.Span.End);
+                    int closeBraceLine = editor.LineFromPosition(method.Body.CloseBraceToken.Span.Start);
+                    endLine = closeBraceLine;   // WICHTIG: NICHT -1 !
                     break;
 
-
                 case ClassDeclarationSyntax cls when cls.OpenBraceToken.IsKind(SyntaxKind.OpenBraceToken):
-                    startLine = editor.LineFromPosition(cls.SpanStart); // statt cls.OpenBraceToken
-                    endLine = editor.LineFromPosition(cls.CloseBraceToken.Span.End);
+                    headerLine = editor.LineFromPosition(cls.SpanStart);
+
+                    int clsClose = editor.LineFromPosition(cls.CloseBraceToken.Span.Start);
+                    endLine = clsClose;
                     break;
 
                 default:
                     var span = node.Span;
-                    startLine = editor.LineFromPosition(span.Start);
+                    headerLine = editor.LineFromPosition(span.Start);
                     endLine = editor.LineFromPosition(span.End);
                     break;
             }
 
-            if (endLine > startLine)
-                list.Add((startLine, endLine, name));
+            if (endLine > headerLine)
+                list.Add((headerLine, endLine, name));
+        }
+
+        public void ApplyFolding(Scintilla editor)
+        {
+            if (editor == null || string.IsNullOrEmpty(editor.Text))
+                return;
+
+            var tree = CSharpSyntaxTree.ParseText(editor.Text);
+            var root = tree.GetRoot();
+            var foldingRegions = new List<(int headerLine, int endLine, string name)>();
+
+            foreach (var cls in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
+            {
+                AddFoldingRegion(editor, cls, foldingRegions, $"class {cls.Identifier}");
+                foreach (var method in cls.Members.OfType<MethodDeclarationSyntax>())
+                    AddFoldingRegion(editor, method, foldingRegions, $"method {method.Identifier.Text}");
+            }
+
+            foreach (var method in root.DescendantNodes().OfType<MethodDeclarationSyntax>()
+                     .Where(m => m.Parent is not ClassDeclarationSyntax))
+            {
+                AddFoldingRegion(editor, method, foldingRegions, method.Identifier.Text);
+            }
+
+            // Reset
+            for (int i = 0; i < editor.Lines.Count; i++)
+            {
+                editor.Lines[i].FoldLevelFlags = FoldLevelFlags.White;
+                editor.Lines[i].FoldLevel = 1024;
+            }
+
+            // Apply regions
+            foreach (var region in foldingRegions)
+            {
+                if (region.headerLine < 0 || region.endLine < 0)
+                    continue;
+                if (region.headerLine >= editor.Lines.Count || region.endLine >= editor.Lines.Count)
+                    continue;
+                if (region.endLine <= region.headerLine)
+                    continue;
+
+                var header = editor.Lines[region.headerLine];
+                header.FoldLevelFlags = FoldLevelFlags.Header;
+
+                int level = region.name.StartsWith("class") ? 1024 : 1025;
+                header.FoldLevel = level;
+
+                // Body-Level (von headerLine+1 BIS einschließlich endLine)
+                for (int i = region.headerLine + 1; i <= region.endLine && i < editor.Lines.Count; i++)
+                    editor.Lines[i].FoldLevel = level + 1;
+
+                // Die nächste Zeile NACH der '}' wieder Parent-Level
+                int nextLine = region.endLine + 1;
+                if (nextLine < editor.Lines.Count)
+                    editor.Lines[nextLine].FoldLevel = level;
+            }
         }
 
         public void SaveCollapsedFoldings(Scintilla editor)

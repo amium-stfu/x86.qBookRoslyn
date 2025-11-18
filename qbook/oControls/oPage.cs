@@ -47,9 +47,16 @@ namespace qbook
         //Roslyn
         [XmlIgnore]
         public RoslynDocument RoslynDoc;
+        [XmlIgnore]
+        public CodeDocument RoslynCodeDoc;
+
 
         [XmlIgnore]
         public Dictionary<string,oCode> SubCodes = new Dictionary<string,oCode>();
+
+        [XmlIgnore]
+        public Dictionary<string, CodeDocument> SubCodeDocuments = new Dictionary<string, CodeDocument>();
+
 
         public string Filename { get; set; }
         //

@@ -36,7 +36,7 @@ namespace qbook.ScintillaEditor
             this.btnShowFindReplaceOutput = new System.Windows.Forms.Button();
             this.panelStatus = new System.Windows.Forms.Panel();
             this.labelStatus = new System.Windows.Forms.Label();
-            this.imageList1 = new System.Windows.Forms.ImageList(this.components);
+            this.BookTreeViewIcons = new System.Windows.Forms.ImageList(this.components);
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.btnParagraph = new System.Windows.Forms.Button();
             this.btnSnippets = new System.Windows.Forms.Button();
@@ -175,23 +175,23 @@ namespace qbook.ScintillaEditor
             this.labelStatus.TabIndex = 0;
             this.labelStatus.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
             // 
-            // imageList1
+            // BookTreeViewIcons
             // 
-            this.imageList1.ImageStream = ((System.Windows.Forms.ImageListStreamer)(resources.GetObject("imageList1.ImageStream")));
-            this.imageList1.TransparentColor = System.Drawing.Color.Transparent;
-            this.imageList1.Images.SetKeyName(0, "play_red_button_icon_227850.png");
-            this.imageList1.Images.SetKeyName(1, "book_48p.png");
-            this.imageList1.Images.SetKeyName(2, "Page_48p.png");
-            this.imageList1.Images.SetKeyName(3, "C#.png");
-            this.imageList1.Images.SetKeyName(4, "ic_radio_button_off_48p.png");
-            this.imageList1.Images.SetKeyName(5, "view_hide_icon_124813.png");
-            this.imageList1.Images.SetKeyName(6, "CodeOff_Light.png");
-            this.imageList1.Images.SetKeyName(7, "foldergrey_93178.png");
-            this.imageList1.Images.SetKeyName(8, "folderorangeopen_93000.png");
-            this.imageList1.Images.SetKeyName(9, "forbidden_icon_242335.png");
-            this.imageList1.Images.SetKeyName(10, "vcsconflicting_48p.png");
-            this.imageList1.Images.SetKeyName(11, "hidden_eye_40p_black.png");
-            this.imageList1.Images.SetKeyName(12, "find_magnifying_glass_icon_176383.png");
+            this.BookTreeViewIcons.ImageStream = ((System.Windows.Forms.ImageListStreamer)(resources.GetObject("BookTreeViewIcons.ImageStream")));
+            this.BookTreeViewIcons.TransparentColor = System.Drawing.Color.Transparent;
+            this.BookTreeViewIcons.Images.SetKeyName(0, "play_red_button_icon_227850.png");
+            this.BookTreeViewIcons.Images.SetKeyName(1, "book_48p.png");
+            this.BookTreeViewIcons.Images.SetKeyName(2, "Page_48p.png");
+            this.BookTreeViewIcons.Images.SetKeyName(3, "C#.png");
+            this.BookTreeViewIcons.Images.SetKeyName(4, "ic_radio_button_off_48p.png");
+            this.BookTreeViewIcons.Images.SetKeyName(5, "view_hide_icon_124813.png");
+            this.BookTreeViewIcons.Images.SetKeyName(6, "CodeOff_Light.png");
+            this.BookTreeViewIcons.Images.SetKeyName(7, "foldergrey_93178.png");
+            this.BookTreeViewIcons.Images.SetKeyName(8, "folderorangeopen_93000.png");
+            this.BookTreeViewIcons.Images.SetKeyName(9, "forbidden_icon_242335.png");
+            this.BookTreeViewIcons.Images.SetKeyName(10, "vcsconflicting_48p.png");
+            this.BookTreeViewIcons.Images.SetKeyName(11, "hidden_eye_40p_black.png");
+            this.BookTreeViewIcons.Images.SetKeyName(12, "find_magnifying_glass_icon_176383.png");
             // 
             // btnParagraph
             // 
@@ -1006,7 +1006,7 @@ namespace qbook.ScintillaEditor
         private System.Windows.Forms.Button btnRun;
         private System.Windows.Forms.Panel panelStatus;
         private System.Windows.Forms.Label labelStatus;
-        private System.Windows.Forms.ImageList imageList1;
+        public System.Windows.Forms.ImageList BookTreeViewIcons;
         private System.Windows.Forms.ToolTip toolTip1;
         private System.Windows.Forms.Button btnParagraph;
         private System.Windows.Forms.Button btnSnippets;

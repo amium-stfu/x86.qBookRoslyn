@@ -88,14 +88,15 @@ namespace qbook.ScintillaEditor.InputControls
 
         public void ApplyTheme()
         {
-            if (Theme.IsDark)
-            {
-                ApplyDarkMode();
-            }
-            else
-            {
-                ApplyLightMode();
-            }
+
+            this.BackColor = Theme.BackColor;
+            this.ForeColor = Theme.BackColor;
+            textBoxValue.BackColor = Theme.PanelBackColor;
+            textBoxValue.ForeColor = Theme.GridForeColor;
+            label1.ForeColor = Theme.GridForeColor;
+            label1.BackColor = Theme.BackColor;
+
+
         }
 
         void ApplyDarkMode()
@@ -130,6 +131,19 @@ namespace qbook.ScintillaEditor.InputControls
             }
 
 
+        }
+
+        public event EventHandler EnterPressed;
+
+        private void textBoxValue_KeyDown(object sender, KeyEventArgs e)
+        {
+            if(e.KeyCode == Keys.Enter)
+            {
+                if(setter != null) setter(textBoxValue.Text);
+                EnterPressed?.Invoke(this, EventArgs.Empty);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
         }
     }
 }

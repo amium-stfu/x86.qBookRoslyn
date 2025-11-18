@@ -118,85 +118,94 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
-  <data name="play-black-triangle48p" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\play-black-triangle48p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="delete_cross_icon2" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\delete_cross_icon2.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="log 24p" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\log 24p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="file 24p" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\file 24p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="save_32p" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\save_32p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="cog 48p" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\cog 48p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="_find_replace_89967" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\-find-replace_89967.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="snippets_icon_237382" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\snippets_icon_237382.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="_format_indent_increase_89789" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\-format-indent-increase_89789.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="dark_theme_64p" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\dark_theme_64p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="cog_counterclockwise_48p" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\cog_counterclockwise_48p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="fullscreen 24p" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\fullscreen 24p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="cog_counterclockwise_32p" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\cog_counterclockwise_32p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="dark_theme_32p" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\dark_theme_32p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="cog_48p" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\cog_48p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="cog 48p" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\cog 48p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="cog_counterclockwise_24p" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\cog_counterclockwise_24p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="PageMenu 24p" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\PageMenu 24p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="paragraph_icon_icons_com_72298" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\paragraph_icon-icons.com_72298.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="_format_indent_increase_89789" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\-format-indent-increase_89789.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="save_24p" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\save_24p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="normalScreen 24p" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\normalScreen 24p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="arrow_load_32p" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\arrow_load_32p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="cogBig_48p" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\cogBig_48p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="amium" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\amium.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="normalScreen 24p" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\normalScreen 24p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="arrow_load_24p" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\arrow_load_24p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="arrow_load_32p" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\arrow_load_32p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="cog_48p" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\cog_48p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="save_24p" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\save_24p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="log 24p" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\log 24p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="delete_cross_icon2" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\delete_cross_icon2.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="snippets_icon_237382" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\snippets_icon_237382.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="appicon.main2" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\appicon.main2.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="seo_social_web_network_internet_340_icon_icons_com_61497" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\seo-social-web-network-internet_340_icon-icons.com_61497.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="cog_counterclockwise_32p" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\cog_counterclockwise_32p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="fullscreen 24p" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\fullscreen 24p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="dark_theme_32p" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\dark_theme_32p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="delete_cross_icon" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\delete_cross_icon.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="play-black-triangle48p" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\play-black-triangle48p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="PageMenu 24p" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\PageMenu 24p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="save_32p" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\save_32p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="file 24p" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\file 24p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="_find_replace_89967" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\-find-replace_89967.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="amium" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\amium.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="HiddenCode_p48" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\HiddenCode_p48.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="coding-program_48p" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\coding-program_48p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="cog_counterclockwise_48p" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\cog_counterclockwise_48p.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="editor.main" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\editor.main.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
 </root>

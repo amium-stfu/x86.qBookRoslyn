@@ -30,19 +30,90 @@ using System.Reflection;
 using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.UI.WebControls;
+using System.Windows.Controls;
 using System.Windows.Forms;
 using static IronPython.Modules.PythonCsvModule;
+using static qbook.RoslynService;
 using AccessibilityCode = Microsoft.CodeAnalysis.Accessibility;
 using RoslynDocument = Microsoft.CodeAnalysis.Document;
+using System.Data;
 
 namespace qbook
 {
+    public class CodeDocument
+    {
+
+        public string Filename { get; }
+        public string Code { get; set; }
+        public RoslynDocument? Document => Core.Roslyn.GetDocumentByFilename(Filename);
+
+        public DocumentId? Id => Document?.Id;
+
+        private readonly RoslynService _roslyn;
+
+        public bool Active
+        {
+            get;
+            set;
+        }
+
+        public CodeDocument(string filename, string code, bool active, RoslynService roslyn)
+        {
+            Filename = filename;
+            Code = code;
+            _roslyn = roslyn;
+            Active = active;
+        }
+
+        public async Task<string> GetTextAsync()
+        {
+            if (Document != null)
+            {
+                var code = await Document.GetTextAsync();
+                return code.ToString();
+            }
+            return Code;
+        }
+        public void UpdateCode()
+        {
+            var newText = SourceText.From(Code, Encoding.UTF8);
+            if (Document != null)
+            {
+                var updatedDoc = Document.WithText(newText);
+                _roslyn.GetWorkspace.TryApplyChanges(updatedDoc.Project.Solution);
+
+            }
+        }
+
+        public void Exclude()
+        {
+            if (Document != null)
+            {
+                _roslyn.ExcludeDocument(Document.Id);
+            }
+            Active = false;
+        }
+
+        public async Task Include()
+        {
+            if (Document == null)
+            {
+                await _roslyn.IncludeDocument(Filename, Code);
+            }
+            Active = true;
+        }
+    }
+
+
+
     public sealed partial class RoslynService
     {
 
+        DataTable? Dummy = new DataTable();
         private MSBuildWorkspace? _ws;
         private Project? _project;
         private readonly SemaphoreSlim _loadSemaphore = new(1, 1);
@@ -58,7 +129,8 @@ namespace qbook
 
         private bool _useInMemory = true;
         private AdhocWorkspace? _adhocWs;
-        private Dictionary<string, DocumentId> _docMap = new();
+
+        private readonly Dictionary<string, CodeDocument> _docMap = new();
 
         // NEW: cache a single MEF host to avoid repeatedly allocating composition containers
         private static readonly HostServices s_host = CreateMefHost();
@@ -121,6 +193,77 @@ namespace qbook
 
         private EventHandler<WorkspaceDiagnosticEventArgs>? _workspaceFailedHandler;
 
+
+        public void ResetDocumentsOnly()
+        {
+            if (_adhocWs == null || _projectId == null)
+                return;
+
+            var solution = _adhocWs.CurrentSolution;
+            var project = solution.GetProject(_projectId);
+            if (project == null)
+                return;
+
+            foreach (var doc in project.Documents.ToList())
+            {
+                solution = solution.RemoveDocument(doc.Id);
+            }
+
+            _adhocWs.TryApplyChanges(solution);
+            _docMap.Clear();
+        }
+
+        //public void ResetDocumentsOnly()
+        //{
+        //    if (_adhocWs == null)
+        //        _adhocWs = new AdhocWorkspace(s_host);
+
+        //    try
+        //    {
+        //        // Projekt entfernen, statt ClearSolution()
+        //        if (_projectId != null)
+        //        {
+        //            var newSolution = _adhocWs.CurrentSolution.RemoveProject(_projectId);
+        //            _adhocWs.TryApplyChanges(newSolution);
+        //        }
+
+        //        // Neues Projekt mit gecachten Referenzen
+        //        var projectInfo = ProjectInfo.Create(
+        //            _projectId ?? ProjectId.CreateNewId(),
+        //            VersionStamp.Create(),
+        //            "InMemoryProject",
+        //            "InMemoryAssembly",
+        //            LanguageNames.CSharp,
+        //            metadataReferences: _referenceCache ?? GetOrBuildDefaultReferences(),
+        //            parseOptions: new CSharpParseOptions(LanguageVersion.Preview),
+        //            compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+        //        );
+
+        //        _adhocWs.AddProject(projectInfo);
+        //        _projectId = projectInfo.Id;
+        //        _project = _adhocWs.CurrentSolution.GetProject(_projectId);
+        //        _docMap.Clear();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        QB.Logger.Error("[Roslyn] ResetDocumentsOnly failed: " + ex.Message);
+        //    }
+        //}
+
+        public async Task ReloadDocumentsAsync(IEnumerable<(string fileName, string code)> files)
+        {
+            ResetDocumentsOnly();
+
+            foreach (var (fileName, code) in files)
+            {
+                AddCodeDocument(fileName, code, true);
+            }
+        }
+
+
+
+
+
         public void Reset()
         {
 
@@ -146,7 +289,7 @@ namespace qbook
         // NEU: Erweiterte Reset-Variante
         public void Reset(bool hard = false, IEnumerable<object>? externalDocHolders = null)
         {
-           
+
             try
             {
                 // Eventhandler lösen
@@ -225,6 +368,70 @@ namespace qbook
                 _adhocWs = new AdhocWorkspace(s_host);
         }
 
+        public class ReferenceCacheFile
+        {
+            public List<string> References { get; set; } = new();
+            public string AppVersion { get; set; } = "1.0";
+        }
+
+
+
+        private string ReferenceCachePath =>
+        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RoslynReferenceCache.json");
+
+        private bool TryLoadReferenceCache(out List<MetadataReference> refs)
+        {
+            refs = new();
+
+            try
+            {
+                if (!File.Exists(ReferenceCachePath))
+                    return false;
+
+                var json = File.ReadAllText(ReferenceCachePath);
+                var data = JsonSerializer.Deserialize<ReferenceCacheFile>(json);
+                if (data == null || data.References.Count == 0)
+                    return false;
+
+                foreach (var path in data.References)
+                {
+                    if (!File.Exists(path))
+                        return false; // Cache ungültig → neu erzeugen
+
+                    refs.Add(MetadataReference.CreateFromFile(path));
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        private void SaveReferenceCache(IEnumerable<MetadataReference> refs)
+        {
+            try
+            {
+                var file = new ReferenceCacheFile();
+
+                foreach (var r in refs.OfType<PortableExecutableReference>())
+                {
+                    if (!string.IsNullOrWhiteSpace(r.FilePath))
+                        file.References.Add(r.FilePath);
+                }
+
+                var json = JsonSerializer.Serialize(file, new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
+
+                File.WriteAllText(ReferenceCachePath, json);
+            }
+            catch
+            {
+                // Ignorieren – Cache ist optional
+            }
+        }
 
         private static List<MetadataReference> AddLoadedAssembliesAsReferences()
         {
@@ -328,68 +535,58 @@ namespace qbook
             var projectId = ProjectId.CreateNewId();
             _projectId = projectId;
 
-            var references = new List<MetadataReference>();
+            List<MetadataReference> references;
 
-            // 1. Alle geladenen Assemblies hinzufügen
-            references.AddRange(AddLoadedAssembliesAsReferences());
-
-            // 2. netstandard.dll hinzufügen
-            string runtimeDir = RuntimeEnvironment.GetRuntimeDirectory();
-            string netstandardPath = Path.Combine(runtimeDir, "netstandard.dll");
-
-
-            foreach (var dllPath in Directory.GetFiles(runtimeDir, "*.dll"))
+            // ✅ 1. Versuchen, Cache zu laden
+            if (TryLoadReferenceCache(out references))
             {
-                try
-                {
-                    references.Add(MetadataReference.CreateFromFile(dllPath));
-                    Debug.WriteLine($"[Roslyn] Added System DLL: {Path.GetFileName(dllPath)}");
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[Roslyn] Skip {dllPath}: {ex.Message}");
-                }
+                Debug.WriteLine("[Roslyn] Reference cache loaded.");
             }
-
-
-            string baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libs");
-            if (Directory.Exists(baseDir))
+            else
             {
-                foreach (string dllPath in Directory.GetFiles(baseDir, "*.dll"))
+                Debug.WriteLine("[Roslyn] Building references (no cache available)...");
+
+                references = new List<MetadataReference>();
+
+                // deine bisherigen Logiken (Basisreferenzen, AppDomain, netstandard usw.)
+                references.Add(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
+                references.Add(MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location));
+                references.Add(MetadataReference.CreateFromFile(typeof(System.Windows.Forms.Form).Assembly.Location));
+                references.Add(MetadataReference.CreateFromFile(typeof(System.Drawing.Point).Assembly.Location));
+                references.Add(MetadataReference.CreateFromFile(typeof(Microsoft.CSharp.RuntimeBinder.Binder).Assembly.Location));
+                references.AddRange(AddLoadedAssembliesAsReferences());
+
+                string runtimeDir = RuntimeEnvironment.GetRuntimeDirectory();
+                foreach (var dllPath in Directory.GetFiles(runtimeDir, "*.dll"))
                 {
-                    try
+                    if (!IsManagedAssembly(dllPath)) continue;
+                    try { references.Add(MetadataReference.CreateFromFile(dllPath)); }
+                    catch { }
+                }
+
+                string baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libs");
+                if (Directory.Exists(baseDir))
+                {
+                    foreach (var dllPath in Directory.GetFiles(baseDir, "*.dll"))
                     {
-                        using var fs = new FileStream(dllPath, FileMode.Open, FileAccess.Read);
-                        using var pe = new System.Reflection.PortableExecutable.PEReader(fs);
-                        if (!pe.HasMetadata) continue; // unmanaged DLL überspringen
-                        references.Add(MetadataReference.CreateFromFile(dllPath));
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"[Roslyn] Skip invalid: {Path.GetFileName(dllPath)} ({ex.Message})");
+                        if (!IsManagedAssembly(dllPath)) continue;
+                        try { references.Add(MetadataReference.CreateFromFile(dllPath)); }
+                        catch { }
                     }
                 }
+
+                // ✅ 2. Cache speichern
+                SaveReferenceCache(references);
             }
 
-            // 5. Merge mit Default-Referenzen und Duplikate entfernen
-            var refs = new List<MetadataReference>();
-            refs.AddRange(GetOrBuildDefaultReferences());
-            var existingPaths = new HashSet<string>(refs.OfType<PortableExecutableReference>().Select(r => r.FilePath!), StringComparer.OrdinalIgnoreCase);
-            foreach (var r in references.OfType<PortableExecutableReference>())
-            {
-                if (r.FilePath is string fp && existingPaths.Contains(fp)) continue;
-                refs.Add(r);
-                Debug.WriteLine($"[Roslyn] +Ref: {r.Display}");
-
-            }
-
+            // ✅ Projekt erstellen
             var projectInfo = ProjectInfo.Create(
                 projectId,
                 VersionStamp.Create(),
                 "InMemoryProject",
                 "InMemoryAssembly",
                 LanguageNames.CSharp,
-                metadataReferences: refs,
+                metadataReferences: references,
                 parseOptions: new CSharpParseOptions(LanguageVersion.Preview),
                 compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
             );
@@ -400,9 +597,10 @@ namespace qbook
 
 
 
+
         private List<MetadataReference> _referenceCache = new();
 
-        
+
 
         public async Task RebuildProjectWithActiveFilesAsync()
         {
@@ -486,7 +684,7 @@ namespace qbook
 
                 _adhocWs.TryApplyChanges(withPath.Project.Solution);
                 _project = _adhocWs.CurrentSolution.GetProject(_projectId)!;
-                _docMap[fileName] = withPath.Id;
+                _docMap[fileName] = new CodeDocument(fileName, code, true, this);
             }
             Debug.WriteLine("[Diag] Id  =" + _project?.Id);
             Debug.WriteLine("[Diag] Docs=" + _project?.Documents.Count());
@@ -536,7 +734,7 @@ namespace qbook
             await RebuildProjectWithActiveFilesAsync();
         }
 
-        public RoslynDocument AddDocument(string filename, string code)
+        public CodeDocument AddCodeDocument(string filename, string code, bool active)
         {
             if (_adhocWs == null || _projectId == null)
                 throw new InvalidOperationException("Workspace/Project not initialized.");
@@ -548,8 +746,63 @@ namespace qbook
 
             _adhocWs.TryApplyChanges(withPath.Project.Solution);
             _project = _adhocWs.CurrentSolution.GetProject(_projectId)!;
-            _docMap[filename] = withPath.Id;
-            return withPath;
+
+            lock (_docMap)
+            {
+                _docMap[filename] = new CodeDocument(filename, code, active, this);
+            }
+
+            return _docMap[filename];
+        }
+
+     
+
+        public void RemoveCodeDocument(string filename)
+        {
+            if (_adhocWs == null || _projectId == null)
+                throw new InvalidOperationException("Workspace/Project not initialized.");
+            var doc = _adhocWs.CurrentSolution.Projects
+                .SelectMany(p => p.Documents)
+                .FirstOrDefault(d => d.Name == filename);
+            if (doc == null) return;
+            var newSolution = _adhocWs.CurrentSolution.RemoveDocument(doc.Id);
+            if (_adhocWs.TryApplyChanges(newSolution))
+            {
+                _project = _adhocWs.CurrentSolution.GetProject(_projectId);
+            }
+            lock (_docMap)
+            {
+                _docMap.Remove(filename);
+            }
+        }
+
+        internal void ExcludeDocument(DocumentId id)
+        {
+            if (_adhocWs == null || _projectId == null)
+                throw new InvalidOperationException("Workspace/Project not initialized.");
+
+            var doc = _adhocWs.CurrentSolution.GetDocument(id);
+            if (doc == null) return;
+
+            var filename = doc.Name;
+            var newSolution = _adhocWs.CurrentSolution.RemoveDocument(id);
+            if (_adhocWs.TryApplyChanges(newSolution))
+            {
+                _project = _adhocWs.CurrentSolution.GetProject(_projectId);
+            }
+
+            lock (_docMap)
+            {
+                _docMap.Remove(filename);
+            }
+        }
+        public CodeDocument GetCodeDocument(string fileName)
+        {
+            lock (_docMap)
+            {
+                _docMap.TryGetValue(fileName, out var codeDoc);
+                return codeDoc;
+            }
         }
 
         public async Task IncludeDocument(string fileName, string code)
@@ -561,7 +814,7 @@ namespace qbook
             if (existingDoc != null)
                 return; // Schon vorhanden
 
-            _adhocWs.AddDocument(projectId, fileName, SourceText.From(code));
+            _adhocWs.AddDocument(projectId, fileName, SourceText.From(code, Encoding.UTF8));
             _project = _adhocWs.CurrentSolution.GetProject(projectId);
             var compilation = await _project.GetCompilationAsync();
         }
@@ -576,7 +829,8 @@ namespace qbook
                 return; // Schon vorhanden
 
             var sourceText = await roslynDoc.GetTextAsync();
-            _adhocWs.AddDocument(projectId, fileName, sourceText);
+            var encoded = SourceText.From(sourceText.ToString(), Encoding.UTF8);
+            _adhocWs.AddDocument(projectId, fileName, encoded);
             _project = _adhocWs.CurrentSolution.GetProject(projectId);
             var compilation = await _project.GetCompilationAsync();
         }
@@ -608,8 +862,6 @@ namespace qbook
             return new AdhocWorkspace(host);
         }
 
-
-
         public RoslynDocument? GetDocumentByFilename(string fileName)
         {
             return _adhocWs.CurrentSolution.Projects
@@ -621,7 +873,7 @@ namespace qbook
         {
             if (doc == null) return;
 
-            var sourceText = SourceText.From(text);
+            var sourceText = SourceText.From(text, Encoding.UTF8);
             var updatedDoc = doc.WithText(sourceText);
 
             _adhocWs.TryApplyChanges(updatedDoc.Project.Solution);
@@ -967,7 +1219,7 @@ namespace qbook
 
         public List<string> ErrorFiles = new List<string>();
 
-        Stopwatch buildWatch = new Stopwatch(); 
+        Stopwatch buildWatch = new Stopwatch();
 
         public int BuildDuration = 0;
         public string BuildResult = "";
@@ -1030,7 +1282,7 @@ namespace qbook
             foreach (CodeNode node in projectTree.Nodes[0].Nodes)
             {
                 Debug.WriteLine(node.Name);
-                
+
                 if (node.Type == CodeNode.NodeType.Page)
                 {
                     bool hidden = node.Page.Hidden;
@@ -1039,7 +1291,7 @@ namespace qbook
                     {
                         if (htmlItem.MyControl != null)
                         {
-                          htmlItem.MyControl.Dispose();
+                            htmlItem.MyControl.Dispose();
                         }
                     }
 
@@ -1154,7 +1406,7 @@ namespace qbook
                     try
                     {
                         references.Add(MetadataReference.CreateFromFile(asmPath));
-                      //  Debug.WriteLine($"[Roslyn] +Reference: {asmName}");
+                        //  Debug.WriteLine($"[Roslyn] +Reference: {asmName}");
                     }
                     catch (Exception ex)
                     {
@@ -1172,7 +1424,6 @@ namespace qbook
                 Debug.WriteLine(node.Text);
                 if (node.Type == CodeNode.NodeType.Page)
                 {
-
                     node.RoslynDoc = GetDocumentByFilename(node.FileName);
                     node.Adhoc.Workspace = GetWorkspace;
                     node.Adhoc.Id = GetProjectId;
@@ -1195,10 +1446,17 @@ namespace qbook
                 }
             }
             BuildResult = "[Rebuild] Building assembly...";
-           // await BuildAssemblyAsync();
+            // await BuildAssemblyAsync();
         }
         public async Task<Assembly?> BuildAssemblyAsync()
         {
+            Debug.WriteLine("=== Build Assembly");
+            Debug.WriteLine("[Diag] Id  =" + _project?.Id);
+            Debug.WriteLine("[Diag] Docs=" + _project?.Documents.Count());
+            Debug.WriteLine("[Diag] Has Program.cs=" + (_project?.Documents.Any(d => d.Name == "Program.cs")));
+
+           
+
             lock (_buildLock)
             {
                 if (_isBuildingAssembly) return null;
@@ -1256,12 +1514,17 @@ namespace qbook
                         .Distinct()
                         .ToList();
 
-                    QB.Logger.Error("[Roslyn] Emit failed:\n" +
+                    string log =
+
+                    "[Roslyn] Emit failed:\n" +
                         string.Join("\n", diags.Select(d =>
                         {
                             var span = d.Location.GetMappedLineSpan();
                             return $"{Path.GetFileName(span.Path)}({span.StartLinePosition.Line + 1},{span.StartLinePosition.Character + 1}): {d.Id}: {d.GetMessage()}";
-                        })));
+                        }));
+
+                    QB.Logger.Error(log);
+                    Debug.WriteLine(log);
 
                     BuildSuccess = false;
                     return null;
@@ -1304,6 +1567,138 @@ namespace qbook
                 return false;
             }
         }
+
+
+        #region Auto-Complete
+        public async Task<IReadOnlyList<string>> GetAutoCompleteSuggestionsAsync(RoslynDocument document, string text, int caretPosition, char? triggerChar = null)
+        {
+            if (document == null) return Array.Empty<string>();
+
+            // Dokument aktualisieren
+            var updatedDoc = document.WithText(SourceText.From(text, Encoding.UTF8));
+
+            // Completions abrufen
+            var (items, _) = await GetCompletionsAsync(updatedDoc, caretPosition);
+            if (items == null || items.Length == 0) return Array.Empty<string>();
+
+            // Nur DisplayText zurückgeben, sortiert und ohne Duplikate
+            return items
+                .Select(i => i.DisplayText)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(s => s)
+                .ToList();
+        }
+
+        public async Task<IReadOnlyList<string>> GetAutoCompleteSuggestionsAsync(
+            RoslynDocument document,
+            string text,
+            int caretPosition,
+            string prefix)
+        {
+            if (document == null) return Array.Empty<string>();
+
+            var updatedDoc = document.WithText(SourceText.From(text, Encoding.UTF8));
+            var (items, _) = await GetCompletionsAsync(updatedDoc, caretPosition);
+
+            if (items == null || items.Length == 0) return Array.Empty<string>();
+
+            return items
+                .Select(i => i.DisplayText)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Where(s => string.IsNullOrEmpty(prefix) || s.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(s => s)
+                .ToList();
+        }
+
+        #endregion
+
+        #region Signature Help
+
+        public class SignatureParameter
+        {
+            public string Name { get; set; }
+            public string Type { get; set; }
+            public string DefaultValue { get; set; }
+            public string CurrentValue { get; set; }
+        }
+
+        public async Task<IReadOnlyList<SignatureParameter>> GetSignatureParametersAsync(RoslynDocument document, int caretPosition)
+        {
+            if (document == null) return Array.Empty<SignatureParameter>();
+
+            var tree = await document.GetSyntaxTreeAsync();
+            if (tree == null) return Array.Empty<SignatureParameter>();
+
+            var root = await tree.GetRootAsync();
+            var token = root.FindToken(Math.Max(0, caretPosition - 1));
+            var node = token.Parent;
+
+            while (node != null)
+            {
+                if (node is InvocationExpressionSyntax inv && inv.ArgumentList != null)
+                    return await ExtractParametersAsync(inv.ArgumentList, document, inv);
+
+                if (node is ObjectCreationExpressionSyntax obj && obj.ArgumentList != null)
+                    return await ExtractParametersAsync(obj.ArgumentList, document, obj);
+
+                node = node.Parent;
+            }
+
+            return Array.Empty<SignatureParameter>();
+        }
+
+        private async Task<IReadOnlyList<SignatureParameter>> ExtractParametersAsync(ArgumentListSyntax argumentList, RoslynDocument doc, SyntaxNode node)
+        {
+            var model = await doc.GetSemanticModelAsync();
+            if (model == null) return Array.Empty<SignatureParameter>();
+
+            IMethodSymbol? methodSymbol = null;
+
+            if (node is InvocationExpressionSyntax inv)
+            {
+                var info = model.GetSymbolInfo(inv);
+                methodSymbol = info.Symbol as IMethodSymbol ?? info.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault();
+            }
+            else if (node is ObjectCreationExpressionSyntax obj)
+            {
+                var type = model.GetTypeInfo(obj).Type as INamedTypeSymbol ??
+                           model.GetSymbolInfo(obj.Type).Symbol as INamedTypeSymbol;
+                methodSymbol = type?.InstanceConstructors.FirstOrDefault();
+            }
+
+            if (methodSymbol == null) return Array.Empty<SignatureParameter>();
+
+            var usedParams = argumentList.Arguments
+                .Select(arg => arg.NameColon?.Name.Identifier.ValueText)
+                .Where(name => !string.IsNullOrEmpty(name))
+                .ToHashSet();
+
+            var list = new List<SignatureParameter>();
+            foreach (var param in methodSymbol.Parameters)
+            {
+                if (usedParams.Contains(param.Name)) continue;
+
+                string defaultValue = param.HasExplicitDefaultValue ? param.ExplicitDefaultValue?.ToString() ?? "null" : "????";
+                string type = param.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+                string currentValue = argumentList.Arguments.FirstOrDefault(a => a.NameColon?.Name.Identifier.ValueText == param.Name)?.Expression.ToString() ?? defaultValue;
+
+                list.Add(new SignatureParameter
+                {
+                    Name = param.Name,
+                    Type = type,
+                    DefaultValue = defaultValue,
+                    CurrentValue = currentValue
+                });
+            }
+
+            return list;
+        }
+
+
+        #endregion
+
+
+
 
 
 

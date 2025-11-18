@@ -30,7 +30,6 @@ namespace qbook
         [XmlIgnore]
         public RoslynDocument Global;
 
-
         public string PasswordAdmin { get; set; } = null; //overrides the default Admin-Password
         public string PasswordService { get; set; } = null; //overrides the default Service-Password
         public string PasswordUser { get; set; } = null; //overrides the default User-Password
@@ -75,6 +74,8 @@ namespace qbook
             }
         }
 
+ 
+
         public string _Filename;
         [XmlIgnore]
         public string Filename
@@ -93,6 +94,11 @@ namespace qbook
                 }
             }
         }
+
+        public void SetDataDirectory(string dir) { _DataDirectory = dir; }
+        public void SetSettingsDirectory(string dir) { _SettingsDirectory = dir; }
+        public void SetTempDirectory(string dir) { _TempDirectory = dir; }
+
 
         static Regex NameVersionExtRegex = new Regex(@"(?<name>.*?)(\.v(?<version>\d.*))?(?<ext>\.qbook)");
         string _DataDirectory = null;
@@ -128,13 +134,9 @@ namespace qbook
             }
             set
             {
-                _DataDirectory = null;// value;
+                _DataDirectory = value; // nicht auf null setzen
             }
         }
-
-        public void SetDataDirectory(string dir) { _DataDirectory = dir; }
-        public void SetSettingsDirectory(string dir) { _SettingsDirectory = dir; }
-
 
         string _BackupDirectory = null;
         public string BackupDirectory
@@ -206,7 +208,7 @@ namespace qbook
             }
             set
             {
-                _SettingsDirectory = null;// value;
+                _SettingsDirectory = value;
             }
         }
 

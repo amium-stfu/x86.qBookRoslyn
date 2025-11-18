@@ -168,6 +168,8 @@ namespace QB
             try
             {
                 RuntimeError error;
+
+                Debug.WriteLine("Log Error: " + context + " " + ex.Message);
                 //var sb = new StringBuilder();
                 //sb.AppendLine($"[EX] Context={context}");
                 int depth = 0;

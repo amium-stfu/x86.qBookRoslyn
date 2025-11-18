@@ -41,6 +41,7 @@ namespace QB
         public static Dictionary<string, Signal> SignalDict = new Dictionary<string, Signal>();
 
         public static Dictionary<string, Message> MessageDict = new Dictionary<string, Message>();
+
         public static dynamic ActiveQbook = null;        
               
 
@@ -299,7 +300,6 @@ namespace QB
                 }
             }
         }
-
         public static void AddControl(string id, Controls.Control c)
         {
             lock (ControlDict)

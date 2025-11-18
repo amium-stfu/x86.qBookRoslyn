@@ -656,21 +656,15 @@ namespace QB
 
         void _doOnElapsed()
         {
-
-            foreach (var handler in OnElapsed.GetInvocationList())
+            foreach (OnElapsedDelegate handler in OnElapsed.GetInvocationList())
             {
-                try
+                GlobalExceptions.SafeInvoke($"Timer.Elapsed({Name})", () =>
                 {
-                    handler.DynamicInvoke(this, new TimerEventArgs());
-                }
-                catch (Exception ex)
-                {
-                    GlobalExceptions.Handle(ex, $"Timer.Elapsed({Name})");
-
-                }
-             
+                    handler(this, new TimerEventArgs());
+                });
             }
         }
+
 
         public OnElapsedDelegate _onElapsed;
 

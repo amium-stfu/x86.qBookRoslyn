@@ -172,6 +172,13 @@
     <Reference Include="Dapper.Extensions.SQLite, Version=5.2.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Dapper.Extensions.SQLite.5.2.0\lib\netstandard2.0\Dapper.Extensions.SQLite.dll</HintPath>
     </Reference>
+    <Reference Include="DevExpress.Data.Desktop.v25.1, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
+    <Reference Include="DevExpress.Data.v25.1, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
+    <Reference Include="DevExpress.Drawing.v25.1, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
+    <Reference Include="DevExpress.Printing.v25.1.Core, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
+    <Reference Include="DevExpress.Sparkline.v25.1.Core, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
+    <Reference Include="DevExpress.Utils.v25.1, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
+    <Reference Include="DevExpress.XtraEditors.v25.1, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL" />
     <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>..\packages\EntityFramework.6.5.1\lib\net45\EntityFramework.dll</HintPath>
     </Reference>
@@ -380,8 +387,8 @@
     <Reference Include="RichTextBoxEx, Version=1.0.6541.36291, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\RichTextBoxEx.1.0.0\lib\RichTextBoxEx.dll</HintPath>
     </Reference>
-    <Reference Include="Scintilla.NET, Version=6.0.1.0, Culture=neutral, PublicKeyToken=0221e70ba618311e, processorArchitecture=MSIL">
-      <HintPath>..\packages\Scintilla5.NET.6.0.1\lib\net462\Scintilla.NET.dll</HintPath>
+    <Reference Include="Scintilla.NET, Version=5.3.2.7, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Scintilla.NET.5.3.2.7\lib\net45\Scintilla.NET.dll</HintPath>
     </Reference>
     <Reference Include="ShellBrowser, Version=5.4.0.175, Culture=neutral, PublicKeyToken=54688575bb3fe70e, processorArchitecture=MSIL" />
     <Reference Include="SQLitePCLRaw.batteries_v2, Version=2.1.11.2622, Culture=neutral, PublicKeyToken=8226ea5df37bcae9, processorArchitecture=MSIL">
@@ -432,6 +439,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System.Core" />
+    <Reference Include="System.Data.Linq" />
     <Reference Include="System.Data.SqlClient, Version=4.6.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Data.SqlClient.4.9.0\lib\net462\System.Data.SqlClient.dll</HintPath>
     </Reference>
@@ -641,19 +649,38 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="UIAutomationClient" />
+    <Reference Include="VPKSoft.ScintillaLexers.NET, Version=1.1.16.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\VPKSoft.ScintillaLexers.NET.1.1.16\lib\net462\VPKSoft.ScintillaLexers.NET.dll</HintPath>
+    </Reference>
     <Reference Include="WindowsBase" />
     <Reference Include="ZstdSharp, Version=0.8.5.0, Culture=neutral, PublicKeyToken=8d151af33a4ad5cf, processorArchitecture=MSIL">
       <HintPath>..\packages\ZstdSharp.Port.0.8.5\lib\net462\ZstdSharp.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="FileHelper.cs" />
-    <Compile Include="ScintillaEditor\BitmapTools.cs" />
-    <Compile Include="ScintillaEditor\ControlFindReplace.cs">
-      <SubType>UserControl</SubType>
+    <Compile Include="Controls\FormSplashScreen.cs">
+      <SubType>Form</SubType>
     </Compile>
-    <Compile Include="ScintillaEditor\ControlFindReplace.Designer.cs">
-      <DependentUpon>ControlFindReplace.cs</DependentUpon>
+    <Compile Include="Controls\FormSplashScreen.Designer.cs">
+      <DependentUpon>FormSplashScreen.cs</DependentUpon>
+    </Compile>
+    <Compile Include="FileHelper.cs" />
+    <Compile Include="RoslynServices\RoslynAutoCompleteProvider.cs" />
+    <Compile Include="ScintillaEditor\BitmapTools.cs" />
+    <Compile Include="ScintillaEditor\BookTreeView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="ScintillaEditor\FormExplorerSplashScreen.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ScintillaEditor\FormExplorerSplashScreen.Designer.cs">
+      <DependentUpon>FormExplorerSplashScreen.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ScintillaEditor\FormFindReplace.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ScintillaEditor\FormFindReplace.Designer.cs">
+      <DependentUpon>FormFindReplace.cs</DependentUpon>
     </Compile>
     <Compile Include="Controls\AboutDialog.cs">
       <SubType>Form</SubType>
@@ -742,6 +769,25 @@
     <Compile Include="License\HardwareInfo.cs" />
     <Compile Include="License\License2.cs" />
     <Compile Include="License\Licensing.cs" />
+    <Compile Include="ScintillaEditor\FormCodeExplorer.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ScintillaEditor\FormCodeExplorer.Designer.cs">
+      <DependentUpon>FormCodeExplorer.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ScintillaEditor\ScintillaFoldingExtensions.cs" />
+    <Compile Include="ScintillaEditor\FormBookTree.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ScintillaEditor\FormBookTree.Designer.cs">
+      <DependentUpon>FormBookTree.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ScintillaEditor\FormCodeEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ScintillaEditor\FormCodeEditor.Designer.cs">
+      <DependentUpon>FormCodeEditor.cs</DependentUpon>
+    </Compile>
     <Compile Include="ScintillaEditor\FormPopup.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -755,6 +801,8 @@
       <DependentUpon>FormScintillaEditor.cs</DependentUpon>
     </Compile>
     <Compile Include="ScintillaEditor\CodeNode.cs" />
+    <Compile Include="ScintillaEditor\InputControls\ControlAutoComplete.cs" />
+    <Compile Include="ScintillaEditor\InputControls\ControlSignatureHelper.cs" />
     <Compile Include="ScintillaEditor\InputControls\ControlTab.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -767,6 +815,7 @@
     <Compile Include="ScintillaEditor\InputControls\TextBoxWithLabel.Designer.cs">
       <DependentUpon>TextBoxWithLabel.cs</DependentUpon>
     </Compile>
+    <Compile Include="ScintillaEditor\Snippets.cs" />
     <Compile Include="Studio\BookRuntime.cs" />
     <Compile Include="ScintillaEditor\PopupControl.cs" />
     <Compile Include="RoslynServices\RoslynAutoComplete.cs" />
@@ -909,8 +958,14 @@
     <Compile Include="Controls\PageControl.Designer.cs">
       <DependentUpon>PageControl.cs</DependentUpon>
     </Compile>
-    <EmbeddedResource Include="ScintillaEditor\ControlFindReplace.resx">
-      <DependentUpon>ControlFindReplace.cs</DependentUpon>
+    <EmbeddedResource Include="Controls\FormSplashScreen.resx">
+      <DependentUpon>FormSplashScreen.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ScintillaEditor\FormExplorerSplashScreen.resx">
+      <DependentUpon>FormExplorerSplashScreen.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ScintillaEditor\FormFindReplace.resx">
+      <DependentUpon>FormFindReplace.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Controls\AboutDialog.resx">
       <DependentUpon>AboutDialog.cs</DependentUpon>
@@ -973,6 +1028,15 @@
     </EmbeddedResource>
     <EmbeddedResource Include="ScintillaEditor\DocumentEditor.resx">
       <DependentUpon>DocumentEditor.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ScintillaEditor\FormBookTree.resx">
+      <DependentUpon>FormBookTree.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ScintillaEditor\FormCodeEditor.resx">
+      <DependentUpon>FormCodeEditor.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ScintillaEditor\FormCodeExplorer.resx">
+      <DependentUpon>FormCodeExplorer.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="ScintillaEditor\FormScintillaEditor.resx">
       <DependentUpon>FormScintillaEditor.cs</DependentUpon>
@@ -1069,6 +1133,9 @@
     <None Include="Resources\cogBig_48p.png" />
     <None Include="Resources\play-black-triangle48p.png" />
     <None Include="Resources\HiddenCode_p48.png" />
+    <None Include="Resources\coding-program_48p.png" />
+    <None Include="Resources\appicon.main2.png" />
+    <None Include="Resources\editor.main.png" />
     <Content Include="ThirdPartyNotices.txt" />
     <Content Include="udlg.ico" />
   </ItemGroup>
@@ -1130,81 +1197,7 @@
   <PropertyGroup>
     <Deterministic>false</Deterministic>
     <PostBuildEvent>
-@echo off
-setlocal enabledelayedexpansion
-
-set LOGFILE="$(SolutionDir)qbook\bin\Debug\postbuild.log"
-echo PostBuild gestartet &gt; %25LOGFILE%25
-set EXITCODE=0
-
-rem Entferne alte lib-Verzeichnisse
-echo Entferne libs-Verzeichnisse &gt;&gt; %25LOGFILE%25
-if exist "$(SolutionDir)qbook\bin\Debug\libs\" RD /S /Q "$(SolutionDir)qbook\bin\Debug\libs\"
-if exist "$(SolutionDir)qbook\bin\Debug\libs.cef\" RD /S /Q "$(SolutionDir)qbook\bin\Debug\libs.cef\"
-
-rem ROBOCOPY CEF-Dateien
-echo ROBOCOPY CEF-Dateien &gt;&gt; %25LOGFILE%25
-ROBOCOPY "$(SolutionDir)qbook\bin\Debug" "$(SolutionDir)qbook\bin\Debug\libs.cef" CefSharp*.* libcef.dll libEGL.dll libGLESv2.dll chrome.elf chrome_100_percent.pak chrome_200_percent.pak resources.pak vk_swiftshader.dll vk_swiftshader_icd.json vulkan-1.dll OpenCvSharp*.* d3dcompiler_47.dll /IS /MOVE /PURGE /R:0 /W:0
-echo ROBOCOPY CEF-Dateien ExitCode: %25errorlevel%25 &gt;&gt; %25LOGFILE%25
-if %25errorlevel%25 gtr 4 set EXITCODE=%25errorlevel%25
-
-ROBOCOPY "$(SolutionDir)qbook\bin\Debug\x86" "$(SolutionDir)qbook\bin\Debug\libs.cef\x86" /E /IS /MOVE /PURGE /R:0 /W:0
-echo ROBOCOPY x86 ExitCode: %25errorlevel%25 &gt;&gt; %25LOGFILE%25
-if %25errorlevel%25 gtr 4 set EXITCODE=%25errorlevel%25
-
-ROBOCOPY "$(SolutionDir)qbook\bin\Debug\x64" "$(SolutionDir)qbook\bin\Debug\libs.cef\x64" /E /IS /MOVE /PURGE /R:0 /W:0
-echo ROBOCOPY x64 ExitCode: %25errorlevel%25 &gt;&gt; %25LOGFILE%25
-if %25errorlevel%25 gtr 4 set EXITCODE=%25errorlevel%25
-
-ROBOCOPY "$(SolutionDir)qbook\bin\Debug\dll" "$(SolutionDir)qbook\bin\Debug\libs.cef\dll" /E /IS /MOVE /PURGE /R:0 /W:0
-echo ROBOCOPY dll ExitCode: %25errorlevel%25 &gt;&gt; %25LOGFILE%25
-if %25errorlevel%25 gtr 4 set EXITCODE=%25errorlevel%25
-
-ROBOCOPY "$(SolutionDir)qbook\bin\Debug\locales" "$(SolutionDir)qbook\bin\Debug\libs.cef\locales" /E /IS /MOVE /PURGE /R:0 /W:0
-echo ROBOCOPY locales ExitCode: %25errorlevel%25 &gt;&gt; %25LOGFILE%25
-if %25errorlevel%25 gtr 4 set EXITCODE=%25errorlevel%25
-
-rem Lösche icudtl.dat falls vorhanden
-echo Lösche icudtl.dat &gt;&gt; %25LOGFILE%25
-if exist "$(SolutionDir)qbook\bin\Debug\icudtl.dat" del "$(SolutionDir)qbook\bin\Debug\icudtl.dat"
-
-rem ROBOCOPY allgemeine Dateien
-echo ROBOCOPY allgemeine Dateien &gt;&gt; %25LOGFILE%25
-ROBOCOPY "$(SolutionDir)qbook\bin\Debug" "$(SolutionDir)qbook\bin\Debug\libs" /XF *.exe qbookStudio.pdb qbookStudio.exe.config log4net.config *.manifest *.pdf qbookStudio.application /E /XD libs libs.cef assets CsSnippets dnSpy html qbooks qbooks.backup /IS /MOVE /PURGE /R:0 /W:0
-echo ROBOCOPY libs ExitCode: %25errorlevel%25 &gt;&gt; %25LOGFILE%25
-if %25errorlevel%25 gtr 4 set EXITCODE=%25errorlevel%25
-
-rem Erstelle Zielverzeichnisse
-echo Erstelle Zielverzeichnisse &gt;&gt; %25LOGFILE%25
-if not exist "$(SolutionDir)qbook\bin\Debug\libs\x86" md "$(SolutionDir)qbook\bin\Debug\libs\x86"
-if not exist "$(SolutionDir)qbook\bin\Debug\libs\x64" md "$(SolutionDir)qbook\bin\Debug\libs\x64"
-
-rem Verschiebe SQLite.Interop.dll falls vorhanden
-echo Verschiebe SQLite.Interop.dll &gt;&gt; %25LOGFILE%25
-if exist "$(SolutionDir)qbook\bin\Debug\libs.cef\x86\SQLite.Interop.dll" move "$(SolutionDir)qbook\bin\Debug\libs.cef\x86\SQLite.Interop.dll" "$(SolutionDir)qbook\bin\Debug\libs\x86"
-if exist "$(SolutionDir)qbook\bin\Debug\libs.cef\x64\SQLite.Interop.dll" move "$(SolutionDir)qbook\bin\Debug\libs.cef\x64\SQLite.Interop.dll" "$(SolutionDir)qbook\bin\Debug\libs\x64"
-
-
-
-
-powershell -ExecutionPolicy Bypass -File "$(SolutionDir)dynamic_postbuild.ps1"  -SolutionDir "$([System.String]::Copy('$(SolutionDir)').TrimEnd('\'))"  -Configuration "$(ConfigurationName)"
-
-
-
-
-rem Abschlussprüfung
-echo Abschlussprüfung &gt;&gt; %25LOGFILE%25
-
-if %25EXITCODE%25 leq 4 (
-    echo PostBuild erfolgreich &gt;&gt; %25LOGFILE%25
-    exit 0
-) else (
-    echo Fehler im PostBuild: %25EXITCODE%25 &gt;&gt; %25LOGFILE%25
-    exit %25EXITCODE%25
-)
-
-
-</PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
@@ -1223,6 +1216,7 @@ if %25EXITCODE%25 leq 4 (
     <Error Condition="!Exists('..\packages\chromiumembeddedframework.runtime.win-x86.141.0.11\build\chromiumembeddedframework.runtime.win-x86.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\chromiumembeddedframework.runtime.win-x86.141.0.11\build\chromiumembeddedframework.runtime.win-x86.props'))" />
     <Error Condition="!Exists('..\packages\CefSharp.Common.141.0.110\build\CefSharp.Common.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\CefSharp.Common.141.0.110\build\CefSharp.Common.props'))" />
     <Error Condition="!Exists('..\packages\CefSharp.Common.141.0.110\build\CefSharp.Common.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\CefSharp.Common.141.0.110\build\CefSharp.Common.targets'))" />
+    <Error Condition="!Exists('..\packages\Scintilla.NET.5.3.2.7\build\scintilla.net.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Scintilla.NET.5.3.2.7\build\scintilla.net.targets'))" />
   </Target>
   <PropertyGroup>
     <PreBuildEvent>rem --- automatically update Version in AssemblyInfo.cs ---
@@ -1243,4 +1237,5 @@ powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File $(Projec
     <Copy SourceFiles="@(BuildHostFiles)" DestinationFolder="$(OutDir)libs\BuildHost-netcore" SkipUnchangedFiles="true" Condition="Exists('%(BuildHostFiles.Identity)')" />
   </Target>
   <Import Project="..\packages\CefSharp.Common.141.0.110\build\CefSharp.Common.targets" Condition="Exists('..\packages\CefSharp.Common.141.0.110\build\CefSharp.Common.targets')" />
+  <Import Project="..\packages\Scintilla.NET.5.3.2.7\build\scintilla.net.targets" Condition="Exists('..\packages\Scintilla.NET.5.3.2.7\build\scintilla.net.targets')" />
 </Project>

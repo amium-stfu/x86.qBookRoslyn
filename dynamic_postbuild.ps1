@@ -17,7 +17,7 @@ $RuntimeDir = [System.Runtime.InteropServices.RuntimeEnvironment]::GetRuntimeDir
 $ErrorActionPreference = "Stop"
 
 # Zielverzeichnis für DLLs
-$targetLibs = Join-Path $SolutionDir "qbook\\bin\\$Configuration\\libs"
+$targetLibs = Join-Path $SolutionDir "qbook\\bin\\$Configuration"
 if (!(Test-Path $targetLibs)) {
     New-Item -ItemType Directory -Path $targetLibs | Out-Null
 }
@@ -66,4 +66,4 @@ foreach ($dll in $requiredDlls) {
 
 
 Log "PostBuild completed successfully"
-notepad $logFile
+

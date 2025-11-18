@@ -58,10 +58,11 @@ namespace qbook.CodeEditor
             this.scintilla = editor;
           
             scintilla.TextChanged += (s, e) => UpdateScrollBar();
-            scintilla.KeyDown += (s, e) => SyncScrollBar();
-            scintilla.MouseWheel += (s, e) => SyncScrollBar();
-            scintilla.MouseMove += (s, e) => SyncScrollBar();
-            scintilla.Resize += (s, e) => { UpdateScrollBar(); SyncScrollBar(); };
+            scintilla.KeyDown += (s, e) => UpdateScrollBar();
+            scintilla.MouseWheel += (s, e) => UpdateScrollBar();
+            scintilla.MouseMove += (s, e) => UpdateScrollBar();
+            scintilla.Resize += (s, e) => UpdateScrollBar();
+            scintilla.ZoomChanged += (s, e) => UpdateScrollBar();
             UpdateScrollBar();
 
 
@@ -72,7 +73,7 @@ namespace qbook.CodeEditor
             g.Clear(scrollBarPanel.BackColor);
         }
 
-        private void UpdateScrollBar()
+        public void UpdateScrollBar()
         {
             try
             {

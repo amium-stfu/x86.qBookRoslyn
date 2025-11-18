@@ -68,6 +68,18 @@ namespace QB.Logging
                 QB.Logger.Error($"SQLlogger '{Name}' already contains Key: '" + name + "'");
         }
 
+        public void AddSignal(Signal signal, int period) 
+        {
+            Add(signal.Name, signal.Text, signal.Unit, signal.DefaultDisplayFormat, period, () => signal.Value);
+
+        }
+
+        public void AddStringSignal(StringSignal signal, int period)
+        {
+            Add(signal.Name, signal.Text, "", "", period, () => signal.Value);
+
+        }
+
         public bool Init()
         {
             initDb = true;

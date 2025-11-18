@@ -20,6 +20,7 @@ using System.Web;
 using System.Windows.Forms;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 using qbook.CodeEditor;
+using qbook.ScintillaEditor;
 
 namespace qbook
 {
@@ -534,12 +535,12 @@ namespace qbook
                   
                     IconsAdd(new oIcon(page, qbook.Icon.Text, Pens.LightSlateGray, itemText, x + h, y, xs, h, null));
 
-                    if (QB.Book.AccessLevel >= QB.AccessLevel.Admin)
-                    {
-                        IconsAdd(new oIcon(page, qbook.Icon.PageFunction, Pens.LightSlateGray, "Code", x + bw - h * 2, y, h, (float)(h * 0.5),EditText));
-                        IconsAdd(new oIcon(page, qbook.Icon.PageFunction, Pens.LightSlateGray, page.Format, x + bw - h * 2, y + (float)(h * 0.5), h, (float)(h * 0.5), SwitchFormat));
+                    //if (QB.Book.AccessLevel >= QB.AccessLevel.Admin)
+                    //{
+                    //    IconsAdd(new oIcon(page, qbook.Icon.PageFunction, Pens.LightSlateGray, "Code", x + bw - h * 2, y, h, (float)(h * 0.5),EditText));
+                    //    IconsAdd(new oIcon(page, qbook.Icon.PageFunction, Pens.LightSlateGray, page.Format, x + bw - h * 2, y + (float)(h * 0.5), h, (float)(h * 0.5), SwitchFormat));
 
-                    }
+                    //}
            
                 }
 
@@ -855,7 +856,7 @@ namespace qbook
 
             }
 
-            await Core._editor.NewBook();
+           // await Core._editor.NewBook();
             Core.InitLogger();
             if (Debugger.IsAttached)
                 QB.Book.AccessLevel = QB.AccessLevel.Admin;
@@ -869,6 +870,7 @@ namespace qbook
         async void ShowOpenQbookFileDialog(object sender)
         {
             await qbook.Core.ShowOpenQbookFileDialog(sender);
+            Core.InitializeAndRun();
         }
 
         void ShowMruList(object sender)
@@ -1124,7 +1126,7 @@ namespace qbook
 
                     //oPage page = (sender as oIcon).Parent as oPage;
 
-                     Core.ShowFormScintillaEditor((sender as oIcon).Parent as oPage);
+                     Core.ShowCodeExploror((sender as oIcon).Parent as oPage);
 
            
                   //  Core.ShowFormCodeEditor((sender as oIcon).Parent as oPage);
@@ -1281,7 +1283,7 @@ namespace qbook
             //AssemblyBuildDateTimeString = (new DateTime(2000, 1, 1).AddDays(AssemblyVersion.Build).AddSeconds(AssemblyVersion.MinorRevision * 2)).ToString("yyyy-MM-dd") + "." + AssemblyVersion.MinorRevision;
 
 
-            AssemblyBuildDateTimeString = (new DateTime(AssemblyVersion.Major, AssemblyVersion.Minor, AssemblyVersion.Build).AddSeconds(AssemblyVersion.MinorRevision * 2)).ToString("yyyy-MM-dd") + "." + AssemblyVersion.MinorRevision;
+       //     AssemblyBuildDateTimeString = (new DateTime(AssemblyVersion.Major, AssemblyVersion.Minor, AssemblyVersion.Build).AddSeconds(AssemblyVersion.MinorRevision * 2)).ToString("yyyy-MM-dd") + "." + AssemblyVersion.MinorRevision;
 
             //2025-04-06 stfu Workaround
             //if (AssemblyVersion.Major > 0 && AssemblyVersion.Minor > 0 && AssemblyVersion.Build > 0)
@@ -1348,9 +1350,6 @@ namespace qbook
             this.timer100ms.Enabled = true;
             //});
 
-            Application.DoEvents();
-            InitMainForm();
-            Application.DoEvents();
         }
 
         private void StatusStrip_MouseEnter(object sender, EventArgs e)
@@ -1411,7 +1410,7 @@ namespace qbook
             //}
         }
 
-        private void InitMainForm()
+        private async Task InitMainForm()
         {
             //MessageBox.Show("InitMainForm()");
             var args = _ProgramArgs;
@@ -1455,7 +1454,9 @@ namespace qbook
 
             if (directory != null && filename != null)
             {
-                qbook.Core.OpenQbookAsync(Path.Combine(directory, filename));
+ 
+                await Core.OpenQbookAsync(Path.Combine(directory, filename));
+
                 if (qbook.Core.ThisBook != null)
                 {
                     qbook.Core.ThisBook.PropertyChanged -= Book_PropertyChanged;
@@ -1465,6 +1466,7 @@ namespace qbook
                     UpdateMenuBar();
                     //@SCAN       Bounds = Main.Qb.Book.Bounds;
                 }
+                Core.InitializeAndRun();
             }
             this.timer100ms.Enabled = true;
         }
@@ -2520,7 +2522,46 @@ namespace qbook
 
         private void testToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Core.ThisBook.PageOrder.Reverse();
+           FormBookTree f = new FormBookTree();
+           // FormCodeExplorer f = new FormCodeExplorer();
+            f.Show();
+        }
+
+        private async void newEditorToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
+            await Core.ShowCodeExploror();
+        }
+
+        private async void rebuildToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            await BookRuntime.BuildAssembly();
+           // await Task.Delay(100);
+            BookRuntime.InitializeAll();
+
+        }
+
+        bool InitShown = false;
+        private async void MainForm_Shown(object sender, EventArgs e)
+        {
+            if (!InitShown)
+            {
+                InitShown = true;
+              //  Application.DoEvents();
+                InitMainForm();
+                Application.DoEvents();
+
+            }
+        }
+
+        private void runToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            BookRuntime.RunAll();
+        }
+
+        private void initializeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            BookRuntime.InitializeAll();
         }
     }
 

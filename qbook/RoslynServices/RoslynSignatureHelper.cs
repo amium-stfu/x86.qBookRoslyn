@@ -17,7 +17,7 @@ namespace qbook.CodeEditor
 
         private static RoslynService _roslyn;
         public static CodeNode ActiveNode;
-        private static DocumentEditor Editor => ActiveNode.Editor;
+        public static DocumentEditor Editor;
 
         static FormPopup popup;
         public static Font ListFont;
@@ -260,10 +260,9 @@ namespace qbook.CodeEditor
             return Editor.GetTextRange(start, pos - start);
         }
 
-        public static async void Editor_CharAdded(object sender, CharAddedEventArgs e)
+        public static async void Editor_CharAdded(object sender, CharAddedEventArgs e, DocumentEditor editor)
         {
-            if (ActiveNode.RoslynDoc == null)
-                return;
+            Editor = editor;
 
             char c = (char)e.Char;
             if (c == '(' || c == ',')
@@ -273,8 +272,9 @@ namespace qbook.CodeEditor
                 Hide();
         }
 
-        public static void Editor_KeyDown(object sender, KeyEventArgs e)
+        public static void Editor_KeyDown(object sender, KeyEventArgs e, DocumentEditor editor)
         {
+            Editor = editor;
             if (popup == null || !popup.Visible)
                 return;
 

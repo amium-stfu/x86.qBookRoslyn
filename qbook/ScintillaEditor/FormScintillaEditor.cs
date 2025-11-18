@@ -33,6 +33,9 @@ namespace qbook.ScintillaEditor
 
     public partial class FormScintillaEditor : Form
     {
+       
+        
+
 
         CodeNode RootNode;
         CodeNode ProgramNode;
@@ -42,7 +45,7 @@ namespace qbook.ScintillaEditor
         public DataTable TblFindReplaceOutputs = new DataTable();
 
         DataTable tblBuildDiagnosic = new DataTable();
-        private ControlFindReplace _findReplaceControl;
+        private FormFindReplace _findReplaceControl;
 
         public FormScintillaEditor()
         {
@@ -61,7 +64,6 @@ namespace qbook.ScintillaEditor
 
             RoslynDiagnostic.InitDiagnostic();
             RosylnSignatureHelper.Init(Core.Roslyn);
-           
             RoslynAutoComplete.Init(Core.Roslyn);
           
 
@@ -88,6 +90,11 @@ namespace qbook.ScintillaEditor
 
         }
 
+
+        public void ClearTabs()
+        {
+            PanelTabs.Controls.Clear();
+        }
 
         #region TreeView
 
@@ -142,7 +149,7 @@ namespace qbook.ScintillaEditor
             ProjectTree.Nodes.Clear();
 
             ProjectTree.BeginUpdate();
-            ProjectTree.ImageList = imageList1;
+            ProjectTree.ImageList = BookTreeViewIcons;
             ProjectTree.Nodes.Clear();
 
      
@@ -472,9 +479,67 @@ namespace qbook.ScintillaEditor
             // 4️⃣ Projektbeschreibung schreiben
             string projectJson = JsonConvert.SerializeObject(project, Formatting.Indented);
             File.WriteAllText(Path.Combine(newFile, "Book.json"), projectJson);
-
-          
+ 
         }
+
+        class Node : System.Windows.Forms.TreeNode
+        {
+            public DocumentEditor Editor;
+            public Node(string name) : base(name) { }
+        }
+
+        class PageEditor
+        {
+            public DocumentEditor PageRoot;
+            public List<DocumentEditor> SubCodes;
+
+            public PageEditor(DocumentEditor page, List<DocumentEditor> subs)
+            {
+                PageRoot = page;
+                SubCodes = subs;
+            } 
+        }
+
+        Dictionary<string, PageEditor> PageEditors = new Dictionary<string, PageEditor>();
+        public async Task SetProjectTree()
+        {
+            PageEditors.Clear();
+
+            Debug.WriteLine("Creating ProjectTree");
+            PanelTabs.Controls.Clear();
+            ProjectTree.BeginUpdate();
+            ProjectTree.ImageList = BookTreeViewIcons;
+            ProjectTree.Nodes.Clear();
+            Node Root = new Node(Core.ThisBook.Filename.Replace(".qbook", ""));
+            RootNode.ImageIndex = 1;
+            ProjectTree.Font = new Font("Calibri", 12);
+            ProjectTree.Nodes.Add(Root);
+
+            foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
+            {
+                Node pageNode = new Node(page.Name);
+                pageNode.Editor = new DocumentEditor(page.RoslynCodeDoc, page);
+     
+                List<DocumentEditor> subEditors = new List<DocumentEditor>();
+                foreach (CodeDocument doc in page.SubCodeDocuments.Values)
+                {
+                    Node subNode = new Node(doc.Filename);
+                    subNode.Editor = new DocumentEditor(doc, page);
+                    subEditors.Add(subNode.Editor);
+
+                    pageNode.Nodes.Add(subNode);
+                }
+
+                PageEditors[page.Name] = new PageEditor(pageNode.Editor, subEditors);
+
+
+            }
+
+            ProjectTree.EndUpdate();
+
+        }
+
+
 
         public async Task CreateProjectTree(bool rebuild = false)
         {
@@ -483,7 +548,7 @@ namespace qbook.ScintillaEditor
             if(!rebuild)
             PanelTabs.Controls.Clear();
             ProjectTree.BeginUpdate();
-            ProjectTree.ImageList = imageList1;
+            ProjectTree.ImageList = BookTreeViewIcons;
             ProjectTree.Nodes.Clear();
             RootNode = new CodeNode(Core.ThisBook.Filename.Replace(".qbook",""));
             RootNode.ImageIndex = 1;
@@ -906,26 +971,6 @@ namespace qbook.ScintillaEditor
             dataGridViewBuildOutput.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             dataGridViewBuildOutput.AllowUserToAddRows = false;
             dataGridViewBuildOutput.DefaultCellStyle.BackColor = Color.Tomato;
-
-            //dataGridViewBuildOutput.CellFormatting += (s, e) =>
-            //{
-            //    if (dataGridViewBuildOutput.Columns[e.ColumnIndex].Name == "Type")
-            //    {
-            //        string severity = e.Value?.ToString();
-            //        switch (severity)
-            //        {
-            //            case "Error":
-            //                dataGridViewBuildOutput.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.Tomato;
-            //                break;
-            //            case "Warning":
-            //                dataGridViewBuildOutput.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.LightYellow;
-            //                break;
-            //            case "Info":
-            //                dataGridViewBuildOutput.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.LightBlue;
-            //                break;
-            //        }
-            //    }
-            //};
             dataGridViewBuildOutput.CellClick += (s, e)  =>
             {
                 if (e.RowIndex >= 0)
@@ -1648,8 +1693,8 @@ namespace qbook.ScintillaEditor
                 panelEditor.Controls.Add(_findReplaceControl);
 
             _findReplaceControl.Location = new Point(panelEditor.Width - _findReplaceControl.Width, 0); // Rechts oben
-            if (!Theme.IsDark) _findReplaceControl.LightTheme();
-            if (Theme.IsDark) _findReplaceControl.DarkTheme();
+            //if (!Theme.IsDark) _findReplaceControl.LightTheme();
+            //if (Theme.IsDark) _findReplaceControl.DarkTheme();
             _findReplaceControl.Editor = SelectedNode.Editor;
             _findReplaceControl.BringToFront();
             _findReplaceControl.Visible = true;
@@ -1658,33 +1703,33 @@ namespace qbook.ScintillaEditor
         }
         private void ShowSearchBar()
         {
-           if (SelectedNode == null) return;
+           //if (SelectedNode == null) return;
 
-            if (_findReplaceControl == null)
-            {
-                _findReplaceControl = new ControlFindReplace(this, Core.Roslyn, dataGridViewFindReplace);
-                panelEditor.Controls.Add(_findReplaceControl);
-            }
+           // if (_findReplaceControl == null)
+           // {
+           //     _findReplaceControl = new ControlFindReplace(Root);
+           //     panelEditor.Controls.Add(_findReplaceControl);
+           // }
 
-            ShowFindReplaceControl();
-            _findReplaceControl.ShowFind();
-            _findReplaceControl.FocusFind();
+           // ShowFindReplaceControl();
+           // _findReplaceControl.ShowFind();
+           // _findReplaceControl.FocusFind();
         }
         private void ShowReplaceBar()
         {
-            if (SelectedNode == null) return;
+            //if (SelectedNode == null) return;
 
           
 
-            if (_findReplaceControl == null)
-            {
-                _findReplaceControl = new ControlFindReplace(this, Core.Roslyn, dataGridViewFindReplace);
-                panelEditor.Controls.Add(_findReplaceControl);
-            }
+            //if (_findReplaceControl == null)
+            //{
+            //    _findReplaceControl = new ControlFindReplace(this, Core.Roslyn, dataGridViewFindReplace);
+            //    panelEditor.Controls.Add(_findReplaceControl);
+            //}
 
-            ShowFindReplaceControl();
-            _findReplaceControl.ShowReplace();
-            _findReplaceControl.FocusFind();
+            //ShowFindReplaceControl();
+            //_findReplaceControl.ShowReplace();
+            //_findReplaceControl.FocusFind();
         }
         public static string ShowInputDialog(string prompt, string title, string defaultValue = "")
         {
@@ -1965,32 +2010,7 @@ namespace qbook.ScintillaEditor
 
         private async void btnRebuild_Click(object sender, EventArgs e)
         {
-            //string nodeName = "none";
-            //ResetTreeViewNodes(collapse: true);
-
-            //if (SelectedNode != null)
-            //nodeName = SelectedNode.Name;
-            //var task = BookRuntime.BuildBookAssembly(rebuild:true);
-            //while (!task.IsCompleted)
-            //{
-            //    SetStatusText(BookRuntime.BuildResult);
-            //    await Task.Delay(100);
-            //}
-            //await task;
-            //await CreateProjectTree();
-            //if (nodeName != "none")
-            //    await OpenNodeByName(nodeName);
-
-            //if (!BookRuntime.BuildSuccess)
-            //{
-            //    ProjectTree.SelectedNode = null;
-            //    ShowBuildErrors();
-            //    return;
-            //}
-            //SetStatusText(BookRuntime.BuildResult);
-
             bool result = await VisualRebuild();
-
 
             if (result)
             {
@@ -2009,7 +2029,8 @@ namespace qbook.ScintillaEditor
 
             if (SelectedNode != null)
                 nodeName = SelectedNode.Name;
-            var task = BookRuntime.BuildBookAssembly(rebuild: true);
+            //var task = BookRuntime.BuildBookAssembly(rebuild: true);
+            var task = BookRuntime.BuildBookAssembly();
             while (!task.IsCompleted)
             {
                 SetStatusText(BookRuntime.BuildResult);
@@ -2224,6 +2245,7 @@ namespace qbook.ScintillaEditor
         {
             await Core.SaveInFolder();
 
+
  
         }
 
@@ -2273,12 +2295,10 @@ namespace qbook.ScintillaEditor
 
 
 
-    public static class Theme
-    {
-        public enum EditorTheme { Light, Dark }
-        public static EditorTheme Current = EditorTheme.Light;
-        public static bool IsDark => Current == EditorTheme.Dark;
-    }
+    
+
+
+    
 
     internal static class DwmTitleBar
     {
@@ -2361,7 +2381,6 @@ namespace qbook.ScintillaEditor
                 }
             }
         }
-
         private void ProjectTree_ItemDrag(object sender, ItemDragEventArgs e)
         {
             DoDragDrop(e.Item, DragDropEffects.Move);
@@ -2435,7 +2454,6 @@ namespace qbook.ScintillaEditor
                 Invalidate();
             }
         }
-
         private bool IsChildNode(System.Windows.Forms.TreeNode parent, System.Windows.Forms.TreeNode child)
         {
             while (child.Parent != null)

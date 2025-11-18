@@ -37,8 +37,6 @@ public static class RosylnSemantic
     public static async Task ApplyAsync(Scintilla editor, RoslynDocument doc)
     {
 
-
-
         if (doc == null) return;
         var text = await doc.GetTextAsync();
         var span = new TextSpan(0, text.Length);
