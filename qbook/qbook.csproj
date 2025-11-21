@@ -665,6 +665,8 @@
       <DependentUpon>FormSplashScreen.cs</DependentUpon>
     </Compile>
     <Compile Include="FileHelper.cs" />
+    <Compile Include="Net\PipeCom.cs" />
+    <Compile Include="Net\PipeCommands.cs" />
     <Compile Include="RoslynServices\RoslynAutoCompleteProvider.cs" />
     <Compile Include="ScintillaEditor\BitmapTools.cs" />
     <Compile Include="ScintillaEditor\BookTreeView.cs">
@@ -845,6 +847,8 @@
     </Compile>
     <Compile Include="Studio\BookThread.cs" />
     <Compile Include="Studio\Helpers.cs" />
+    <Compile Include="Net\PipeCommandManager.cs" />
+    <Compile Include="Studio\RuntimeWatchdog.cs" />
     <Compile Include="UdpLogListener.cs" />
     <None Include="..\.editorconfig">
       <Link>.editorconfig</Link>

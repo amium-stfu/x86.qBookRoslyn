@@ -55,18 +55,18 @@ namespace qbook
 
 
         
-            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
-                GlobalExceptions.Handle((Exception)e.ExceptionObject, "Unhandled");
+            //AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+            //    GlobalExceptions.Handle((Exception)e.ExceptionObject, "Unhandled");
 
-            TaskScheduler.UnobservedTaskException += (s, e) =>
-            {
-                GlobalExceptions.Handle(e.Exception, "Unobserved Task");
-                Debug.WriteLine("Unobserved Task Exception: " + e.Exception.Message);
-                e.SetObserved();
-            };
+            //TaskScheduler.UnobservedTaskException += (s, e) =>
+            //{
+            //    GlobalExceptions.Handle(e.Exception, "Unobserved Task");
+            //    Debug.WriteLine("Unobserved Task Exception: " + e.Exception.Message);
+            //    e.SetObserved();
+            //};
 
-            Application.ThreadException += (s, e) =>
-                GlobalExceptions.Handle(e.Exception, "UI Thread");
+            //Application.ThreadException += (s, e) =>
+            //    GlobalExceptions.Handle(e.Exception, "UI Thread");
 
 
 
@@ -176,6 +176,8 @@ namespace qbook
                 System.Threading.Thread.Sleep(300);
 
             }
+
+            Core.InitPipeCom();
 
 
             Thread.CurrentThread.CurrentUICulture = new CultureInfo("en-US");

@@ -40,7 +40,6 @@ namespace qbook.ScintillaEditor
 
 
             GridViewDiagnosticOutput = new DataGridView();
-          
             gridViewRuntimeOutput = new DataGridView();
 
             InitGridViews();
@@ -281,9 +280,6 @@ namespace qbook.ScintillaEditor
                 gridViewRuntimeOutput.Columns["Col"].Visible = false;
 
                 gridViewRuntimeOutput.Columns["Reason"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-
-
             };
             gridViewRuntimeOutput.AllowUserToResizeColumns = false;
 
@@ -586,25 +582,25 @@ namespace qbook.ScintillaEditor
             {
                 btnBuildOutput.ForeColor = Color.FromArgb(40, 40, 40);
                 btnEditorOutput.ForeColor = Color.FromArgb(40, 40, 40);
-                btnShowFindReplaceOutput.ForeColor = Color.FromArgb(40, 40, 40);
+                btnComLogOutput.ForeColor = Color.FromArgb(40, 40, 40);
 
                 Color sel = Color.FromArgb(220, 220, 220);
                 Color usel = Color.FromArgb(190, 190, 190);
                 btnEditorOutput.BackColor = isEditor ? sel : usel;
                 btnBuildOutput.BackColor = isBuild ? sel : usel;
-                btnShowFindReplaceOutput.BackColor = isFindReplace ? sel : usel;
+                btnComLogOutput.BackColor = isFindReplace ? sel : usel;
             }
             else
             {
                 btnBuildOutput.ForeColor = Color.FromArgb(230, 230, 230);
                 btnEditorOutput.ForeColor = Color.FromArgb(230, 230, 230);
-                btnShowFindReplaceOutput.ForeColor = Color.FromArgb(230, 230, 230);
+                btnComLogOutput.ForeColor = Color.FromArgb(230, 230, 230);
 
                 Color sel = Color.FromArgb(70, 70, 70);
                 Color usel = Color.FromArgb(50, 50, 50);
                 btnEditorOutput.BackColor = isEditor ? sel : usel;
                 btnBuildOutput.BackColor = isBuild ? sel : usel;
-                btnShowFindReplaceOutput.BackColor = isFindReplace ? sel : usel;
+                btnComLogOutput.BackColor = isFindReplace ? sel : usel;
             }
         }
 

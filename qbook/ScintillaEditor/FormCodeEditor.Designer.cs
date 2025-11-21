@@ -44,35 +44,37 @@
             this.btnFindReplace = new System.Windows.Forms.Button();
             this.btnFind = new System.Windows.Forms.Button();
             this.btnFormat = new System.Windows.Forms.Button();
+            this.vBarEditor = new qbook.CodeEditor.ScintillaVerticalBar();
+            this.hBarEditor = new qbook.CodeEditor.ScintillaHorizontalBar();
             this.panelSplitter3 = new System.Windows.Forms.Panel();
             this.panelEditor = new System.Windows.Forms.Panel();
+            this.PanelTabs = new qbook.ScintillaEditor.DoubleBufferedPanel();
+            this.panel2 = new System.Windows.Forms.Panel();
             this.TablePanelOutputs = new System.Windows.Forms.TableLayoutPanel();
             this.panelOutputs = new System.Windows.Forms.Panel();
-            this.btnShowFindReplaceOutput = new System.Windows.Forms.Button();
+            this.btnComLogOutput = new System.Windows.Forms.Button();
             this.btnBuildOutput = new System.Windows.Forms.Button();
             this.btnEditorOutput = new System.Windows.Forms.Button();
             this.panelSplitter2 = new System.Windows.Forms.Panel();
             this.panelSplitter4 = new System.Windows.Forms.Panel();
+            this.vBarOutputs = new qbook.CodeEditor.GridViewVerticalBar();
             this.panelOutput = new System.Windows.Forms.Panel();
             this.dataGridViewFindReplace = new System.Windows.Forms.DataGridView();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.ContainerLeft = new System.Windows.Forms.SplitContainer();
             this.tblViewMethodes = new System.Windows.Forms.TableLayoutPanel();
             this.gridViewMethodes = new System.Windows.Forms.DataGridView();
+            this.vBarMethodes = new qbook.CodeEditor.GridViewVerticalBar();
             this.panel1 = new System.Windows.Forms.Panel();
             this.tbMethodeFilter = new System.Windows.Forms.TextBox();
             this.lblMethodes = new System.Windows.Forms.Label();
-            this.vBarMethodes = new qbook.CodeEditor.GridViewVerticalBar();
-            this.vBarEditor = new qbook.CodeEditor.ScintillaVerticalBar();
-            this.hBarEditor = new qbook.CodeEditor.ScintillaHorizontalBar();
-            this.PanelTabs = new qbook.ScintillaEditor.DoubleBufferedPanel();
-            this.vBarOutputs = new qbook.CodeEditor.GridViewVerticalBar();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
             this.EditorLayoutPanel.SuspendLayout();
             this.panelFunctions.SuspendLayout();
+            this.PanelTabs.SuspendLayout();
             this.TablePanelOutputs.SuspendLayout();
             this.panelOutputs.SuspendLayout();
             this.panelOutput.SuspendLayout();
@@ -203,7 +205,6 @@
             this.btnFindReplace.FlatAppearance.BorderSize = 2;
             this.btnFindReplace.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnFindReplace.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.btnFindReplace.Image = ((System.Drawing.Image)(resources.GetObject("btnFindReplace.Image")));
             this.btnFindReplace.Location = new System.Drawing.Point(0, 78);
             this.btnFindReplace.Name = "btnFindReplace";
             this.btnFindReplace.Size = new System.Drawing.Size(40, 39);
@@ -243,6 +244,28 @@
             this.btnFormat.UseVisualStyleBackColor = false;
             this.btnFormat.Click += new System.EventHandler(this.btnFormat_Click);
             // 
+            // vBarEditor
+            // 
+            this.vBarEditor.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.vBarEditor.Location = new System.Drawing.Point(1110, 36);
+            this.vBarEditor.Margin = new System.Windows.Forms.Padding(0);
+            this.vBarEditor.Name = "vBarEditor";
+            this.vBarEditor.SetBackColor = System.Drawing.Color.White;
+            this.vBarEditor.SetForeColor = System.Drawing.Color.Black;
+            this.vBarEditor.Size = new System.Drawing.Size(20, 408);
+            this.vBarEditor.TabIndex = 3;
+            // 
+            // hBarEditor
+            // 
+            this.hBarEditor.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.hBarEditor.Location = new System.Drawing.Point(48, 444);
+            this.hBarEditor.Margin = new System.Windows.Forms.Padding(0, 0, 0, 3);
+            this.hBarEditor.Name = "hBarEditor";
+            this.hBarEditor.SetBackColor = System.Drawing.Color.White;
+            this.hBarEditor.SetForeColor = System.Drawing.Color.Black;
+            this.hBarEditor.Size = new System.Drawing.Size(1062, 17);
+            this.hBarEditor.TabIndex = 4;
+            // 
             // panelSplitter3
             // 
             this.panelSplitter3.BackColor = System.Drawing.Color.Silver;
@@ -265,6 +288,23 @@
             this.panelEditor.TabIndex = 7;
             this.panelEditor.FontChanged += new System.EventHandler(this.panelEditor_FontChanged);
             this.panelEditor.SizeChanged += new System.EventHandler(this.panelEditor_SizeChanged);
+            // 
+            // PanelTabs
+            // 
+            this.PanelTabs.Controls.Add(this.panel2);
+            this.PanelTabs.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.PanelTabs.Location = new System.Drawing.Point(51, 0);
+            this.PanelTabs.Margin = new System.Windows.Forms.Padding(3, 0, 0, 0);
+            this.PanelTabs.Name = "PanelTabs";
+            this.PanelTabs.Size = new System.Drawing.Size(1059, 36);
+            this.PanelTabs.TabIndex = 8;
+            // 
+            // panel2
+            // 
+            this.panel2.Location = new System.Drawing.Point(3, 3);
+            this.panel2.Name = "panel2";
+            this.panel2.Size = new System.Drawing.Size(200, 30);
+            this.panel2.TabIndex = 0;
             // 
             // TablePanelOutputs
             // 
@@ -289,7 +329,7 @@
             // 
             // panelOutputs
             // 
-            this.panelOutputs.Controls.Add(this.btnShowFindReplaceOutput);
+            this.panelOutputs.Controls.Add(this.btnComLogOutput);
             this.panelOutputs.Controls.Add(this.btnBuildOutput);
             this.panelOutputs.Controls.Add(this.btnEditorOutput);
             this.panelOutputs.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -299,21 +339,21 @@
             this.panelOutputs.Size = new System.Drawing.Size(1084, 25);
             this.panelOutputs.TabIndex = 2;
             // 
-            // btnShowFindReplaceOutput
+            // btnComLogOutput
             // 
-            this.btnShowFindReplaceOutput.BackColor = System.Drawing.Color.LightGray;
-            this.btnShowFindReplaceOutput.Dock = System.Windows.Forms.DockStyle.Left;
-            this.btnShowFindReplaceOutput.FlatAppearance.BorderColor = System.Drawing.Color.LightGray;
-            this.btnShowFindReplaceOutput.FlatAppearance.BorderSize = 0;
-            this.btnShowFindReplaceOutput.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnShowFindReplaceOutput.Location = new System.Drawing.Point(165, 0);
-            this.btnShowFindReplaceOutput.Margin = new System.Windows.Forms.Padding(0);
-            this.btnShowFindReplaceOutput.Name = "btnShowFindReplaceOutput";
-            this.btnShowFindReplaceOutput.Size = new System.Drawing.Size(87, 25);
-            this.btnShowFindReplaceOutput.TabIndex = 1;
-            this.btnShowFindReplaceOutput.Text = "Find/Replace Output";
-            this.btnShowFindReplaceOutput.UseVisualStyleBackColor = false;
-            this.btnShowFindReplaceOutput.Click += new System.EventHandler(this.btnShowFindReplaceOutput_Click);
+            this.btnComLogOutput.BackColor = System.Drawing.Color.LightGray;
+            this.btnComLogOutput.Dock = System.Windows.Forms.DockStyle.Left;
+            this.btnComLogOutput.FlatAppearance.BorderColor = System.Drawing.Color.LightGray;
+            this.btnComLogOutput.FlatAppearance.BorderSize = 0;
+            this.btnComLogOutput.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnComLogOutput.Location = new System.Drawing.Point(165, 0);
+            this.btnComLogOutput.Margin = new System.Windows.Forms.Padding(0);
+            this.btnComLogOutput.Name = "btnComLogOutput";
+            this.btnComLogOutput.Size = new System.Drawing.Size(87, 25);
+            this.btnComLogOutput.TabIndex = 1;
+            this.btnComLogOutput.Text = "ComLog";
+            this.btnComLogOutput.UseVisualStyleBackColor = false;
+            this.btnComLogOutput.Click += new System.EventHandler(this.btnShowFindReplaceOutput_Click);
             // 
             // btnBuildOutput
             // 
@@ -369,6 +409,16 @@
             this.TablePanelOutputs.SetRowSpan(this.panelSplitter4, 2);
             this.panelSplitter4.Size = new System.Drawing.Size(2, 131);
             this.panelSplitter4.TabIndex = 4;
+            // 
+            // vBarOutputs
+            // 
+            this.vBarOutputs.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.vBarOutputs.Location = new System.Drawing.Point(1133, 32);
+            this.vBarOutputs.Name = "vBarOutputs";
+            this.vBarOutputs.SetBackColor = System.Drawing.Color.LightGray;
+            this.vBarOutputs.SetForeColor = System.Drawing.Color.DodgerBlue;
+            this.vBarOutputs.Size = new System.Drawing.Size(14, 100);
+            this.vBarOutputs.TabIndex = 6;
             // 
             // panelOutput
             // 
@@ -500,6 +550,17 @@
             this.gridViewMethodes.Size = new System.Drawing.Size(271, 307);
             this.gridViewMethodes.TabIndex = 0;
             // 
+            // vBarMethodes
+            // 
+            this.vBarMethodes.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.vBarMethodes.Location = new System.Drawing.Point(301, 22);
+            this.vBarMethodes.Margin = new System.Windows.Forms.Padding(0, 0, 0, 20);
+            this.vBarMethodes.Name = "vBarMethodes";
+            this.vBarMethodes.SetBackColor = System.Drawing.Color.LightGray;
+            this.vBarMethodes.SetForeColor = System.Drawing.Color.DodgerBlue;
+            this.vBarMethodes.Size = new System.Drawing.Size(20, 310);
+            this.vBarMethodes.TabIndex = 2;
+            // 
             // panel1
             // 
             this.panel1.Controls.Add(this.tbMethodeFilter);
@@ -537,58 +598,6 @@
             this.lblMethodes.Text = "Methodes Classes:";
             this.lblMethodes.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
-            // vBarMethodes
-            // 
-            this.vBarMethodes.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.vBarMethodes.Location = new System.Drawing.Point(301, 22);
-            this.vBarMethodes.Margin = new System.Windows.Forms.Padding(0, 0, 0, 20);
-            this.vBarMethodes.Name = "vBarMethodes";
-            this.vBarMethodes.SetBackColor = System.Drawing.Color.LightGray;
-            this.vBarMethodes.SetForeColor = System.Drawing.Color.DodgerBlue;
-            this.vBarMethodes.Size = new System.Drawing.Size(20, 310);
-            this.vBarMethodes.TabIndex = 2;
-            // 
-            // vBarEditor
-            // 
-            this.vBarEditor.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.vBarEditor.Location = new System.Drawing.Point(1110, 36);
-            this.vBarEditor.Margin = new System.Windows.Forms.Padding(0);
-            this.vBarEditor.Name = "vBarEditor";
-            this.vBarEditor.SetBackColor = System.Drawing.Color.White;
-            this.vBarEditor.SetForeColor = System.Drawing.Color.Black;
-            this.vBarEditor.Size = new System.Drawing.Size(20, 408);
-            this.vBarEditor.TabIndex = 3;
-            // 
-            // hBarEditor
-            // 
-            this.hBarEditor.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.hBarEditor.Location = new System.Drawing.Point(48, 444);
-            this.hBarEditor.Margin = new System.Windows.Forms.Padding(0, 0, 0, 3);
-            this.hBarEditor.Name = "hBarEditor";
-            this.hBarEditor.SetBackColor = System.Drawing.Color.White;
-            this.hBarEditor.SetForeColor = System.Drawing.Color.Black;
-            this.hBarEditor.Size = new System.Drawing.Size(1062, 17);
-            this.hBarEditor.TabIndex = 4;
-            // 
-            // PanelTabs
-            // 
-            this.PanelTabs.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.PanelTabs.Location = new System.Drawing.Point(51, 0);
-            this.PanelTabs.Margin = new System.Windows.Forms.Padding(3, 0, 0, 0);
-            this.PanelTabs.Name = "PanelTabs";
-            this.PanelTabs.Size = new System.Drawing.Size(1059, 36);
-            this.PanelTabs.TabIndex = 8;
-            // 
-            // vBarOutputs
-            // 
-            this.vBarOutputs.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.vBarOutputs.Location = new System.Drawing.Point(1133, 32);
-            this.vBarOutputs.Name = "vBarOutputs";
-            this.vBarOutputs.SetBackColor = System.Drawing.Color.LightGray;
-            this.vBarOutputs.SetForeColor = System.Drawing.Color.DodgerBlue;
-            this.vBarOutputs.Size = new System.Drawing.Size(14, 100);
-            this.vBarOutputs.TabIndex = 6;
-            // 
             // FormCodeEditor
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -605,6 +614,7 @@
             this.splitContainer1.ResumeLayout(false);
             this.EditorLayoutPanel.ResumeLayout(false);
             this.panelFunctions.ResumeLayout(false);
+            this.PanelTabs.ResumeLayout(false);
             this.TablePanelOutputs.ResumeLayout(false);
             this.panelOutputs.ResumeLayout(false);
             this.panelOutput.ResumeLayout(false);
@@ -629,7 +639,7 @@
         private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.TableLayoutPanel TablePanelOutputs;
         private System.Windows.Forms.Panel panelOutputs;
-        private System.Windows.Forms.Button btnShowFindReplaceOutput;
+        private System.Windows.Forms.Button btnComLogOutput;
         private System.Windows.Forms.Button btnBuildOutput;
         private System.Windows.Forms.Button btnEditorOutput;
         private System.Windows.Forms.Panel panelSplitter2;
@@ -658,5 +668,6 @@
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.TextBox tbMethodeFilter;
         private System.Windows.Forms.Label lblMethodes;
+        private System.Windows.Forms.Panel panel2;
     }
 }

@@ -102,7 +102,6 @@ namespace qbook
             this.pagebarToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.logToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.newEditorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.rebuildToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.imageListMenuItems = new System.Windows.Forms.ImageList(this.components);
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.statusLabelStatus = new System.Windows.Forms.ToolStripStatusLabel();
@@ -115,8 +114,6 @@ namespace qbook
             this.toolStripStatusLabelKeyboard = new System.Windows.Forms.ToolStripStatusLabel();
             this.timerIdle = new System.Windows.Forms.Timer(this.components);
             this.pageControl = new qbook.PageControl();
-            this.runToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.initializeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.contextMenuStrip.SuspendLayout();
             this.contextMenuMru.SuspendLayout();
             this.menuStrip.SuspendLayout();
@@ -172,10 +169,7 @@ namespace qbook
             this.fullscreenToolStripMenuItem,
             this.pagebarToolStripMenuItem,
             this.logToolStripMenuItem,
-            this.newEditorToolStripMenuItem,
-            this.rebuildToolStripMenuItem,
-            this.runToolStripMenuItem,
-            this.initializeToolStripMenuItem});
+            this.newEditorToolStripMenuItem});
             this.menuStrip.Location = new System.Drawing.Point(0, 0);
             this.menuStrip.Name = "menuStrip";
             this.menuStrip.Padding = new System.Windows.Forms.Padding(4, 1, 0, 1);
@@ -202,6 +196,7 @@ namespace qbook
             this.fileToolStripMenuItem.Size = new System.Drawing.Size(56, 23);
             this.fileToolStripMenuItem.Text = "FILE";
             this.fileToolStripMenuItem.ToolTipText = "File Dialog";
+            this.fileToolStripMenuItem.Click += new System.EventHandler(this.fileToolStripMenuItem_Click);
             // 
             // newToolStripMenuItem
             // 
@@ -733,13 +728,6 @@ namespace qbook
             this.newEditorToolStripMenuItem.Size = new System.Drawing.Size(28, 23);
             this.newEditorToolStripMenuItem.Click += new System.EventHandler(this.newEditorToolStripMenuItem_Click);
             // 
-            // rebuildToolStripMenuItem
-            // 
-            this.rebuildToolStripMenuItem.Name = "rebuildToolStripMenuItem";
-            this.rebuildToolStripMenuItem.Size = new System.Drawing.Size(59, 23);
-            this.rebuildToolStripMenuItem.Text = "Rebuild";
-            this.rebuildToolStripMenuItem.Click += new System.EventHandler(this.rebuildToolStripMenuItem_Click);
-            // 
             // imageListMenuItems
             // 
             this.imageListMenuItems.ImageStream = ((System.Windows.Forms.ImageListStreamer)(resources.GetObject("imageListMenuItems.ImageStream")));
@@ -865,20 +853,6 @@ namespace qbook
             this.pageControl.TabIndex = 0;
             this.pageControl.MouseMove += new System.Windows.Forms.MouseEventHandler(this.pageControl_MouseMove);
             // 
-            // runToolStripMenuItem
-            // 
-            this.runToolStripMenuItem.Name = "runToolStripMenuItem";
-            this.runToolStripMenuItem.Size = new System.Drawing.Size(40, 23);
-            this.runToolStripMenuItem.Text = "Run";
-            this.runToolStripMenuItem.Click += new System.EventHandler(this.runToolStripMenuItem_Click);
-            // 
-            // initializeToolStripMenuItem
-            // 
-            this.initializeToolStripMenuItem.Name = "initializeToolStripMenuItem";
-            this.initializeToolStripMenuItem.Size = new System.Drawing.Size(62, 23);
-            this.initializeToolStripMenuItem.Text = "Initialize";
-            this.initializeToolStripMenuItem.Click += new System.EventHandler(this.initializeToolStripMenuItem_Click);
-            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -997,9 +971,6 @@ namespace qbook
         private System.Windows.Forms.ToolStripMenuItem pagebarToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem logToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem newEditorToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem rebuildToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem runToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem initializeToolStripMenuItem;
     }
 }
 

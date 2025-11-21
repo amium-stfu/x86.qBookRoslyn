@@ -12,12 +12,15 @@ using Newtonsoft.Json;
 using QB; //qbookCsScript
 using QB.Net;
 using qbook.CodeEditor;
+using qbook.Net;
 using qbook.ScintillaEditor;
 using qbook.Scripting;
+using qbook.Studio;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -52,6 +55,39 @@ namespace qbook
         public static RoslynService Roslyn;
         public static AdhocWorkspace Workspace => Roslyn.GetWorkspace;
         public static ProjectId Id => Roslyn.GetProjectId;
+
+        private static ServerSide ComChannel;
+
+
+        public static void InitPipeCom()
+        {
+            PipeNames.ResetPipes();  //neue Pipe-Namen generieren
+            ComChannel = new ServerSide();
+            ComChannel.OnReceived += (evt) =>
+            {
+              PipeCommandManager.EnqueueCommand(evt);   // Event von Runtime -> im UI (user interface) anzeigen
+              Debug.WriteLine($"{System.DateTime.Now.ToString()}: Editor -> : {evt.Command}");
+            };
+            PipeCommandManager.RegisterCommandHandler("Rebuild", async cmd => await PipeCommands.Rebuild());
+            PipeCommandManager.RegisterCommandHandler("PageText", async cmd => await PipeCommands.PageText(cmd));
+            PipeCommandManager.RegisterCommandHandler("PageFormat", async cmd => await PipeCommands.PageFormat(cmd));
+            PipeCommandManager.RegisterCommandHandler("PageOrder", async cmd => await PipeCommands.PageOrder(cmd));
+            PipeCommandManager.RegisterCommandHandler("HidePage", async cmd => await PipeCommands.HidePage(cmd));
+            PipeCommandManager.RegisterCommandHandler("Run", async cmd => await PipeCommands.Run());
+            PipeCommandManager.RegisterCommandHandler("Destroy", async cmd => await PipeCommands.Destroy());
+
+
+            PipeCommandManager.Start();
+        }
+
+        public static void SendToEditor(string command, params string[] args)
+        {
+            ComChannel?.Send(new PipeCommand
+            {
+                Command = command,
+                Args = args
+            });
+        }
 
 
 
@@ -755,7 +791,7 @@ using System.Text.Json;
                 {
                     Debug.WriteLine("Folder detected");
                     QB.Logger.Info($"Opening qbook: {fullPath} from Folder");
-                    ThisBook = await BookFromFolder(fullPath.Replace(".qbook", ".code"), "");
+                    ThisBook = await BookFromFolder(fullPath.Replace(".qbook", ".code"),"");
 
                 }
                 ThisBook.DataDirectory = null;
@@ -1054,6 +1090,11 @@ using System.Text.Json;
 
             Roslyn.AddCodeDocument("Program.cs", File.ReadAllText(Path.Combine(folderPath, "Program.cs")), true);
             Roslyn.AddCodeDocument("GlobalUsing.cs", "global using static QB.Program;", true);
+
+            string name = newBook.Filename.Replace(".qbook", "");
+
+            File.WriteAllText(Path.Combine(folderPath, name + ".csproj"), Roslyn.GenerateCsprojString(name));
+
             QB.Root.ActiveQbook = newBook;
             return newBook;
 
@@ -1278,14 +1319,8 @@ using System.Text.Json;
                 if (result == DialogResult.Yes)
                     await SaveInFolder();
             }
-            if (Explorer != null)
-            {
-                if (Explorer.Visible)
-                    Explorer.Close();
 
-                Explorer.Dispose();
-                Explorer = null;
-            }
+            Core.SendToEditor("CloseEditor");
 
             var fileContent = string.Empty;
             var filePath = string.Empty;

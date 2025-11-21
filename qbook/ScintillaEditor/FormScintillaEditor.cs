@@ -367,10 +367,8 @@ namespace qbook.ScintillaEditor
             public string SettingsDirectory { get; set; } = null;
             public string DataDirectory { get; set; } = null;
             public string TempDirectory { get; set; } = null;
-
             public string BackupDirectory { get; set; } = null;
             public string Language { get; set; } = null;
-
             public List<string > PageOrder { get; set; } = new List<string>();
 
 

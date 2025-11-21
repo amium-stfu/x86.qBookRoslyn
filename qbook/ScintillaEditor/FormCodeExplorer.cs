@@ -63,6 +63,8 @@ namespace qbook.ScintillaEditor
                 );
 
                 ApplyTheme();
+                SetTarget(BookTree.GetSelectedEditor());
+
 
 
 
@@ -135,6 +137,7 @@ namespace qbook.ScintillaEditor
                 if (c is InputControls.TextBoxWithLabel tb) tb.ApplyTheme();
 
             }
+            
         }
         public void InitIcons()
         {
@@ -170,6 +173,7 @@ namespace qbook.ScintillaEditor
         }
         private async void btnRebuild_Click(object sender, EventArgs e)
         {
+           
 
             bool codeError = BookTree.CheckCode;
 
@@ -183,9 +187,10 @@ namespace qbook.ScintillaEditor
 
             if (rebuildSuccess)
             {
-                BookRuntime.InitializeAll();
-                MainForm.SetStatusText("qbook rebuils successfully!", 3000);
-                SetStatusText("qbook rebuils successfully!");
+                
+                //BookRuntime.InitializeAll();
+                //MainForm.SetStatusText("qbook rebuils successfully!", 3000);
+                //SetStatusText("qbook rebuils successfully!");
             }
         }
         public async Task<bool> VisualRebuild()

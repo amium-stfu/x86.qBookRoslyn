@@ -119,7 +119,6 @@ namespace qbook
         private readonly SemaphoreSlim _loadSemaphore = new(1, 1);
         private bool _isLoading;
 
-
         public Project GetProject => _project;
 
         private readonly object _buildLock = new();
@@ -594,6 +593,39 @@ namespace qbook
             _adhocWs.AddProject(projectInfo);
             _project = _adhocWs.CurrentSolution.GetProject(projectId);
         }
+
+
+        public string GenerateCsprojString(string projectName = "InMemoryProject", string targetFramework = "net8.0")
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("<Project Sdk=\"Microsoft.NET.Sdk\">");
+            sb.AppendLine("  <PropertyGroup>");
+            sb.AppendLine($"    <OutputType>Library</OutputType>");
+            sb.AppendLine($"    <TargetFramework>{targetFramework}</TargetFramework>");
+            sb.AppendLine($"    <UseWindowsForms>true</UseWindowsForms>");
+            sb.AppendLine($"    <AssemblyName>{projectName}</AssemblyName>");
+            sb.AppendLine("  </PropertyGroup>");
+            sb.AppendLine("  <ItemGroup>");
+
+            // Hole Referenzen aus aktuellem Projekt
+            var refs = _project?.MetadataReferences.OfType<PortableExecutableReference>() ?? Enumerable.Empty<PortableExecutableReference>();
+            foreach (var r in refs)
+            {
+                if (!string.IsNullOrWhiteSpace(r.FilePath))
+                {
+                    string fileName = Path.GetFileNameWithoutExtension(r.FilePath);
+                    sb.AppendLine($"    <Reference Include=\"{fileName}\">");
+                    sb.AppendLine($"      <HintPath>{r.FilePath}</HintPath>");
+                    sb.AppendLine("    </Reference>");
+                }
+            }
+
+            sb.AppendLine("  </ItemGroup>");
+            sb.AppendLine("</Project>");
+            return sb.ToString();
+        }
+
+
 
 
 

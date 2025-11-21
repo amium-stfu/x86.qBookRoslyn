@@ -1,0 +1,116 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DisableMSBuildAssemblyCopyCheck>true</DisableMSBuildAssemblyCopyCheck>
+    <ApplicationIcon>editor.main.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="editor.main.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FontAwesome.Sharp" Version="6.6.0" />
+    <PackageReference Include="Microsoft.Build.Locator" Version="1.10.12" />
+    <PackageReference Include="Microsoft.Build.Tasks.Core" Version="18.0.2" />
+    <PackageReference Include="Microsoft.CodeAnalysis" Version="4.14.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.14.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Features" Version="4.14.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.14.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.14.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="4.14.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="4.14.0" />
+    <PackageReference Include="Scintilla.NET" Version="5.3.2.7" />
+    <PackageReference Include="Scintilla5.NET" Version="6.0.1" />
+    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="Serilog.Sinks.WinForms" Version="2.5.0" />
+    <PackageReference Include="VPKSoft.ScintillaLexers.NET" Version="1.1.16" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Controls\BookTreeView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\DocumentEditor.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FormBookTree.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Controls\FormEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Controls\FormCodeExplorer.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Controls\FormExplorerSplashScreen.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Controls\FormFindReplace.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Controls\FormPopup.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Controls\InputControls\ControlTab.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Controls\InputControls\TextBoxWithLabel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Controls\CustomScrollbars\GridViewHorizontalBar.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Controls\CustomScrollbars\GridViewVerticalBar.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Controls\CustomScrollbars\PopupVerticalBar.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Controls\CustomScrollbars\ScintillaHorizontalBar.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Controls\CustomScrollbars\ScintillaVerticalBar.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Controls\CustomScrollbars\TreeViewVerticalBar.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+
+</Project>

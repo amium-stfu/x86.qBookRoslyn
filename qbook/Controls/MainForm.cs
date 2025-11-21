@@ -2,8 +2,11 @@
 using ColoredTextBox;
 using CSScripting;
 using log4net;
-using qbook.Controls;
 using QB.Controls;
+using qbook.CodeEditor;
+using qbook.Controls;
+using qbook.Net;
+using qbook.ScintillaEditor;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -19,8 +22,6 @@ using System.Threading.Tasks;
 using System.Web;
 using System.Windows.Forms;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
-using qbook.CodeEditor;
-using qbook.ScintillaEditor;
 
 namespace qbook
 {
@@ -301,6 +302,9 @@ namespace qbook
         bool _FormClosingNoUserInteraction = false;
         private async void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
+           
+            Core.SendToEditor("CloseEditor");
+
             if (qbook.Core.ThisBook != null)
                 qbook.Core.ThisBook.Bounds = Bounds;
 
@@ -2518,6 +2522,11 @@ namespace qbook
         private async void newToolStripMenuItem1_Click(object sender, EventArgs e)
         {
             await Core.OpenQbookAsync();
+
+
+        
+
+
         }
 
         private void testToolStripMenuItem_Click(object sender, EventArgs e)
@@ -2527,10 +2536,30 @@ namespace qbook
             f.Show();
         }
 
-        private async void newEditorToolStripMenuItem_Click(object sender, EventArgs e)
+        private void newEditorToolStripMenuItem_Click(object sender, EventArgs e)
         {
 
-            await Core.ShowCodeExploror();
+            string name = Core.ThisBook.Filename.Replace(".qbook", ".csproj");
+            string path = Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename.Replace(".qbook", ".code"), name);
+
+            
+            string exePath = @"B:\x86.qBookRoslyn\qbookCode\bin\Debug\net8.0-windows\qbookCode.exe";
+
+            string args =  $"\"{path}\" " + $"\"{PipeNames.Server}\" " + $"\"{PipeNames.Client}\"";
+
+            Debug.WriteLine("Starting Code-Editor with: " + args);
+
+            ProcessStartInfo psi = new ProcessStartInfo
+            {
+                FileName = exePath,
+                Arguments = args,
+                UseShellExecute = false, // true wenn du z.B. Explorer öffnen willst
+                CreateNoWindow = false   // true, wenn kein Fenster angezeigt werden soll
+            };
+
+            Process.Start(psi);
+
+         //   await Core.ShowCodeExploror();
         }
 
         private async void rebuildToolStripMenuItem_Click(object sender, EventArgs e)
@@ -2561,7 +2590,12 @@ namespace qbook
 
         private void initializeToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            BookRuntime.InitializeAll();
+            Core.SendToEditor("Hallo from MainForm", "Ne");
+        }
+
+        private void fileToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
         }
     }
 

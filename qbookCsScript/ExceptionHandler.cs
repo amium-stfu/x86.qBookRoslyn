@@ -6,6 +6,7 @@ using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Shapes;
@@ -108,50 +109,34 @@ namespace QB
         private static Dictionary<string, RuntimeError> _runtimeErrorDict = new Dictionary<string, RuntimeError>();
 
         private static readonly object _syncLock = new object();
+        public static Dictionary<string, RuntimeError> Errors => _runtimeErrorDict;
+
+
+
         private static void AddError(RuntimeError err)
         {
-            uint now = (uint)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-
-            lock (_syncLock)
+            ErrorCounter++;
+            if (_runtimeErrorDict.ContainsKey(err.Key))
             {
-                if (_runtimeErrorDict.TryGetValue(err.Key, out var existing))
-                {
-                    existing.Count++;
-                    existing.RepeatMs = (int)(now - existing.epoch);
-                    existing.epoch = now;
-
-                    var row = RuntimeErrors.Rows.Find(err.Key);
-                    if (row != null)
-                    {
-                        row["Count"] = existing.Count;
-                        row["RepeatMs"] = existing.RepeatMs;
-                    }
-                }
-                else
-                {
-                    err.epoch = now;
-                    _runtimeErrorDict[err.Key] = err;
-
-                    var row = RuntimeErrors.NewRow();
-                    row["Key"] = err.Key;
-                    row["File"] = err.File;
-                    row["Methode"] = err.Methode;
-                    row["Line"] = err.Line;
-                    row["Col"] = err.Col;
-                    row["Reason"] = err.Exception;
-                    row["Count"] = err.Count;
-                    row["RepeatMs"] = err.RepeatMs;
-                    RuntimeErrors.Rows.Add(row);
-                }
+                _runtimeErrorDict[err.Key].Count++;
+                uint now = (uint)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                _runtimeErrorDict[err.Key].RepeatMs = (int)(now - _runtimeErrorDict[err.Key].epoch);
+                _runtimeErrorDict[err.Key].epoch = now;
             }
+            else
+            {
+                _runtimeErrorDict.Add(err.Key, err);
+            } 
         }
 
+        public static int ErrorCounter = 0;
         public static void InitRuntimeErrors()
         {
             _runtimeErrorDict.Clear();
             RuntimeErrors.Clear();
             RuntimeErrors.Rows.Clear();
-            if(RuntimeErrors.Columns.Count > 0) return;
+            ErrorCounter = 0;
+            if (RuntimeErrors.Columns.Count > 0) return;
             RuntimeErrors.Columns.Add("Key", typeof(string));
             RuntimeErrors.Columns.Add("File", typeof(string));
             RuntimeErrors.Columns.Add("Methode", typeof(string));
@@ -255,43 +240,87 @@ namespace QB
                 QB.Logger.Error("[EX] Failed building rich exception log: " + logEx.Message);
          
                 
+            
             }
+
+
         }
+
+        public static void TryRich(string context, Exception ex, bool rethrow = false)
+        {
+            try
+            {
+                LogRichException(context, ex);
+            }
+            catch (Exception logEx)
+            {
+                Debug.WriteLine("[TryRich] Logging failure: " + logEx.Message);
+            }
+
+            if (rethrow)
+                throw ex; // korrekt, da TryRich nicht in einem catch-Block steht
+        }
+
     }
     public static class ExceptionBridge
     {
-       
-        
+        /// <summary>
+        /// Führt eine Aktion sicher aus, protokolliert Exceptions über GlobalExceptions,
+        /// entpackt TargetInvocationExceptions und reicht sie optional weiter.
+        /// </summary>
         public static void Safe(string context, System.Action action, bool rethrow = false)
         {
             try
             {
                 action();
             }
-            catch (TimeoutException tex)
+            catch (TargetInvocationException tex)
             {
-                QB.Logger.Warn($"#Timeout {context}: {tex.Message}");
-                TryRich(context + "/Timeout", tex);
-                if (rethrow) throw;
+                Exception real = tex.InnerException ?? tex;
+
+                GlobalExceptions.TryRich(context, real);
+
+                if (rethrow)
+                    throw; // wichtig: echtes Rethrow, StackTrace bleibt erhalten
             }
             catch (Exception ex)
             {
-                QB.Logger.Error($"#EX {context}: {ex.GetType().Name}: {ex.Message}" + (QB.Logger.ShowStackTrace ? "\r\n" + ex.StackTrace : ""));
-                TryRich(context, ex);
-                if (rethrow) throw;
+                GlobalExceptions.TryRich(context, ex);
+
+                if (rethrow)
+                    throw; // echtes Rethrow
             }
         }
 
-        private static void TryRich(string context, Exception ex)
+        /// <summary>
+        /// Wie oben, aber mit Rückgabewert. Gibt default(T) zurück, wenn rethrow=false.
+        /// </summary>
+        public static T Safe<T>(string context, Func<T> func, bool rethrow = false)
         {
             try
             {
-                GlobalExceptions.LogException(context, ex);
+                return func();
             }
-            catch
+            catch (TargetInvocationException tex)
             {
-                // Falls Rich-Logger selbst scheitert, nichts weiter tun.
+                Exception real = tex.InnerException ?? tex;
+
+                GlobalExceptions.TryRich(context, real);
+
+                if (rethrow)
+                    throw;
             }
+            catch (Exception ex)
+            {
+                GlobalExceptions.TryRich(context, ex);
+
+                if (rethrow)
+                    throw;
+            }
+
+            return default(T); // klassisch & kompatibel
         }
     }
+
+
 }

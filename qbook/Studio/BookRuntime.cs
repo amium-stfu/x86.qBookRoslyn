@@ -4,6 +4,7 @@ using log4net.Layout;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using QB;
+using qbook.Studio;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -19,7 +20,7 @@ namespace qbook
 {
     public static class BookRuntime
     {
-        #region Page Dynamic Instance Management
+       
 
         private static Type? _programType;
         public static bool IsRuntimeReady => _programType != null && qbook.Core.ActiveCsAssembly != null;
@@ -73,6 +74,7 @@ namespace qbook
                 try
                 {
                     initGlobal.Invoke(null, null);
+                    RuntimeWatchdog.Start();
                 }
                 catch (TargetInvocationException tex)
                 {
@@ -112,7 +114,6 @@ namespace qbook
             }
 
         }
-
         public static void DestroyAll()
         {
 
@@ -126,6 +127,7 @@ namespace qbook
             {
                 Core.CsScript_Destroy();
                 QB.Logger.Debug("Core.CsScript_Destroy() executed successfully.");
+                RuntimeWatchdog.Stop();
             }
             catch (Exception ex)
             {
@@ -220,26 +222,13 @@ namespace qbook
             QB.Logger.Info("=== PageRuntime.DestroyAll() completed ===");
         }
 
-        #endregion
-
-
-        #region Execption Handling
-
-
-
-        #endregion
-
-        #region Bilding the Assembly
-
         private static int _buildVersion = 0;
         private static ProjectId? _lastProjectId;
         private static int _lastDocumentCount = 0;
 
 
         public static List<string> ErrorFiles = new List<string>();
-
         static Stopwatch buildWatch = new Stopwatch();
-
         public static int BuildDuration = 0;
         public static string BuildResult = "";
         public static bool BuildSuccess = false;
@@ -273,7 +262,6 @@ namespace qbook
             BuildResult = $"[Rebuild] Build success ({BuildDuration}ms)";
 
         }
-
         public static async Task BuildBookAssembly()
         {
             BuildSuccess = true;
@@ -305,7 +293,6 @@ namespace qbook
             BuildDuration = (int)buildWatch.ElapsedMilliseconds;
             BuildResult = $"[Rebuild] Build success ({BuildDuration}ms)";
         }
-
         private static List<(string fileName, string code)> CollectSourceFiles()
         {
             var roslynFiles = new List<(string fileName, string code)>();
@@ -323,17 +310,6 @@ namespace qbook
             // Füge hier ggf. weitere Dateien wie Program.cs hinzu
             return roslynFiles;
         }
-
-
-        #endregion
-
-        #region Load / Save Book
-
-        #endregion
-
-        #region Logging
-
-        #endregion
 
     }
 }
