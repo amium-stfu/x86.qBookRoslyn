@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "BJCgoTG+ycE=",
+  "dgSpecHash": "wkPdQrbMAz0=",
   "success": true,
-  "projectFilePath": "B:\\x86.qBookRoslyn\\qbookCode\\qbookCode.csproj",
+  "projectFilePath": "B:\\Github\\amium-stfu\\x86.qBookRoslyn\\qbookCode\\qbookCode.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\StefanFunk\\.nuget\\packages\\fontawesome.sharp\\6.6.0\\fontawesome.sharp.6.6.0.nupkg.sha512",
     "C:\\Users\\StefanFunk\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
@@ -70,9 +70,9 @@
       "code": "NU1701",
       "level": "Warning",
       "message": "Package 'Serilog.Sinks.WinForms 2.5.0' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0-windows7.0'. This package may not be fully compatible with your project.",
-      "projectPath": "B:\\x86.qBookRoslyn\\qbookCode\\qbookCode.csproj",
+      "projectPath": "B:\\Github\\amium-stfu\\x86.qBookRoslyn\\qbookCode\\qbookCode.csproj",
       "warningLevel": 1,
-      "filePath": "B:\\x86.qBookRoslyn\\qbookCode\\qbookCode.csproj",
+      "filePath": "B:\\Github\\amium-stfu\\x86.qBookRoslyn\\qbookCode\\qbookCode.csproj",
       "libraryId": "Serilog.Sinks.WinForms",
       "targetGraphs": [
         "net8.0-windows7.0"

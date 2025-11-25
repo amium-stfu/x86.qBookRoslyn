@@ -19,7 +19,6 @@ using PdfSharp.Pdf;
 using QB;
 using QB.Controls;
 using qbook.CodeEditor;
-using qbook.ScintillaEditor;
 using ScintillaNET;
 using System;
 using System.Collections.Generic;
@@ -285,87 +284,7 @@ namespace qbook
             _adhocWs = new AdhocWorkspace();
         }
 
-        // NEU: Erweiterte Reset-Variante
-        public void Reset(bool hard = false, IEnumerable<object>? externalDocHolders = null)
-        {
 
-            try
-            {
-                // Eventhandler lösen
-                if (_ws != null && _workspaceFailedHandler != null)
-                    _ws.WorkspaceFailed -= _workspaceFailedHandler;
-
-                // Referenzen aus externer Struktur (z.B. CodeNode) entfernen
-                if (externalDocHolders != null)
-                {
-                    foreach (var holder in externalDocHolders)
-                    {
-                        // Dynamisch über Reflection einfach 'RoslynDoc' Feld/Property nullen
-                        var prop = holder.GetType().GetProperty("RoslynDoc");
-                        if (prop != null && prop.CanWrite) prop.SetValue(holder, null);
-                        var field = holder.GetType().GetField("RoslynDoc");
-                        if (field != null) field.SetValue(holder, null);
-                    }
-                }
-
-                _docMap.Clear();
-                _project = null;
-                _projectId = null;
-
-                // Workspace wirklich freigeben
-                _adhocWs?.Dispose();
-                _adhocWs = null;
-                _ws?.Dispose();
-                _ws = null;
-
-                if (hard)
-                {
-                    // Dynamische Editor Controls / Forms schließen (optional – anpassen je nach Struktur)
-                    try
-                    {
-                        foreach (Form f in Application.OpenForms.OfType<Form>().ToList())
-                        {
-                            if (f is FormScintillaEditor)
-                            {
-                                f.Close();
-                                f.Dispose();
-                            }
-                        }
-                    }
-                    catch { }
-
-                    // BookRuntime freigeben
-                    try { BookRuntime.DestroyAll(); } catch { }
-
-                    // Script-AppDomain entladen
-                    try
-                    {
-                        if (qbook.Core.ActiveCsAssembly != null)
-                            qbook.Core.ActiveCsAssembly = null;
-                        var scriptDomainField = typeof(Core).GetField("scriptDomain", BindingFlags.NonPublic | BindingFlags.Static);
-                        var domain = scriptDomainField?.GetValue(null) as AppDomain;
-                        if (domain != null)
-                        {
-                            AppDomain.Unload(domain);
-                            scriptDomainField.SetValue(null, null);
-                        }
-                    }
-                    catch { }
-                }
-            }
-            finally
-            {
-                // GC-Fenster gewähren (nicht sofort neuen Workspace anlegen!)
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-                GC.Collect();
-            }
-        }
-        public void EnsureWorkspace()
-        {
-            if (_adhocWs == null)
-                _adhocWs = new AdhocWorkspace(s_host);
-        }
 
         public class ReferenceCacheFile
         {
@@ -380,7 +299,10 @@ namespace qbook
 
         private bool TryLoadReferenceCache(out List<MetadataReference> refs)
         {
+           
+           
             refs = new();
+            return false;
 
             try
             {
@@ -536,47 +458,18 @@ namespace qbook
 
             List<MetadataReference> references;
 
-            // ✅ 1. Versuchen, Cache zu laden
-            if (TryLoadReferenceCache(out references))
-            {
-                Debug.WriteLine("[Roslyn] Reference cache loaded.");
-            }
-            else
-            {
-                Debug.WriteLine("[Roslyn] Building references (no cache available)...");
+            Debug.WriteLine("[Roslyn] Building references...");
 
-                references = new List<MetadataReference>();
+            references = new List<MetadataReference>();
 
-                // deine bisherigen Logiken (Basisreferenzen, AppDomain, netstandard usw.)
-                references.Add(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
-                references.Add(MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location));
-                references.Add(MetadataReference.CreateFromFile(typeof(System.Windows.Forms.Form).Assembly.Location));
-                references.Add(MetadataReference.CreateFromFile(typeof(System.Drawing.Point).Assembly.Location));
-                references.Add(MetadataReference.CreateFromFile(typeof(Microsoft.CSharp.RuntimeBinder.Binder).Assembly.Location));
-                references.AddRange(AddLoadedAssembliesAsReferences());
-
-                string runtimeDir = RuntimeEnvironment.GetRuntimeDirectory();
-                foreach (var dllPath in Directory.GetFiles(runtimeDir, "*.dll"))
-                {
-                    if (!IsManagedAssembly(dllPath)) continue;
-                    try { references.Add(MetadataReference.CreateFromFile(dllPath)); }
-                    catch { }
-                }
-
-                string baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libs");
-                if (Directory.Exists(baseDir))
-                {
-                    foreach (var dllPath in Directory.GetFiles(baseDir, "*.dll"))
-                    {
-                        if (!IsManagedAssembly(dllPath)) continue;
-                        try { references.Add(MetadataReference.CreateFromFile(dllPath)); }
-                        catch { }
-                    }
-                }
-
-                // ✅ 2. Cache speichern
-                SaveReferenceCache(references);
-            }
+            // deine bisherigen Logiken (Basisreferenzen, AppDomain, netstandard usw.)
+            references.Add(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
+            references.Add(MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location));
+            references.Add(MetadataReference.CreateFromFile(typeof(System.Windows.Forms.Form).Assembly.Location));
+            references.Add(MetadataReference.CreateFromFile(typeof(System.Drawing.Point).Assembly.Location));
+            references.Add(MetadataReference.CreateFromFile(typeof(Microsoft.CSharp.RuntimeBinder.Binder).Assembly.Location));
+            references.Add(MetadataReference.CreateFromFile(typeof(System.Text.Json.Serialization.JsonAttribute).Assembly.Location));
+            references.AddRange(AddLoadedAssembliesAsReferences());
 
             // ✅ Projekt erstellen
             var projectInfo = ProjectInfo.Create(
@@ -1256,230 +1149,7 @@ namespace qbook
         public int BuildDuration = 0;
         public string BuildResult = "";
         public bool BuildSuccess = false;
-        public async Task CreateAssemblyFromTree(System.Windows.Forms.TreeView projectTree)
-        {
-            BuildSuccess = true;
-            BuildDuration = 0;
-            buildWatch.Stop();
-            buildWatch.Reset();
-            buildWatch.Start();
-            Debug.WriteLine("======== CreateAssemblyFromTree ========");
-            ErrorFiles.Clear();
-            // 1️⃣ Alte Assembly + Threads zerstören
-            try
-            {
-                BuildResult = "[Rebuild] Destroying old runtime...";
-                BookRuntime.DestroyAll();
-                qbook.Core.ActiveCsAssembly = null;
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-                GC.Collect();
-                Debug.WriteLine("[Rebuild] Old runtime destroyed.");
-            }
-            catch (System.Exception ex)
-            {
-                Debug.WriteLine($"[Rebuild] Destroy failed: {ex.Message}");
-                buildWatch.Stop();
-                BuildResult = "[Rebuild] Destroy failed";
-                BuildSuccess = false;
-
-            }
-
-            //Reset workspace
-            BuildResult = "[Rebuild] Resetting workspace...";
-            if (_ws != null && _workspaceFailedHandler != null)
-                _ws.WorkspaceFailed -= _workspaceFailedHandler;
-
-            _ws?.Dispose();
-            _adhocWs?.Dispose();
-            _ws = null;
-            _adhocWs = null;
-            _project = null;
-            _docMap.Clear();
-            _useInMemory = true;
-            _projectId = null;
-            _adhocWs = new AdhocWorkspace();
-            //
-            BuildResult = "[Rebuild] Collecting source files...";
-            var pages = new List<string>();
-            var roslynFiles = new List<(string fileName, string code)>();
-            var sbProgram = new StringBuilder();
-            sbProgram.AppendLine("namespace QB");
-            sbProgram.AppendLine("{");
-            sbProgram.AppendLine("\tpublic static class Program");
-            sbProgram.AppendLine("\t{");
-
-            List<oPage> oPages = new List<oPage>();
-
-            foreach (CodeNode node in projectTree.Nodes[0].Nodes)
-            {
-                Debug.WriteLine(node.Name);
-
-                if (node.Type == CodeNode.NodeType.Page)
-                {
-                    bool hidden = node.Page.Hidden;
-
-                    foreach (var htmlItem in node.Page.HtmlItems)
-                    {
-                        if (htmlItem.MyControl != null)
-                        {
-                            htmlItem.MyControl.Dispose();
-                        }
-                    }
-
-                    pages.Add(node.Text);
-                    string code = node.Editor.Text;
-                    roslynFiles.Add((node.FileName, code));
-
-                    // Page-Instanz als statische Property
-                    sbProgram.AppendLine($"\t\tpublic static Definition{node.Text}.qPage {node.Text} {{ get; }} = new Definition{node.Text}.qPage();");
-
-                    // Unterknoten (Subpages, Controls, etc.)
-                    foreach (CodeNode sub in node.Nodes)
-                    {
-                        string subcode = sub.Editor.Text;
-                        roslynFiles.Add((sub.FileName, subcode));
-                    }
-                }
-            }
-
-            // 4️⃣ Methoden: Initialize / Run / Destroy
-            sbProgram.AppendLine("\t\tpublic static void Initialize()");
-            sbProgram.AppendLine("\t\t{");
-            foreach (string p in pages)
-                sbProgram.AppendLine($"\t\t\t{p}.Initialize();");
-            sbProgram.AppendLine("\t\t}");
-
-            sbProgram.AppendLine("\t\tpublic static void Run()");
-            sbProgram.AppendLine("\t\t{");
-            foreach (string p in pages)
-                sbProgram.AppendLine($"\t\t\t{p}.Run();");
-            sbProgram.AppendLine("\t\t}");
-
-            sbProgram.AppendLine("\t\tpublic static void Destroy()");
-            sbProgram.AppendLine("\t\t{");
-            foreach (string p in pages)
-                sbProgram.AppendLine($"\t\t\t{p}.Destroy();");
-            sbProgram.AppendLine("\t\t}");
-
-            sbProgram.AppendLine("\t}");
-            sbProgram.AppendLine("}");
-
-            Debug.WriteLine("========= Program.cs =========");
-            Debug.WriteLine(sbProgram.ToString());
-            Debug.WriteLine("======== End of Program.cs ========");
-
-            // 5️⃣ Dateien hinzufügen
-            roslynFiles.Add(("Program.cs", sbProgram.ToString()));
-            roslynFiles.Add(("GlobalUsing.cs", "global using static QB.Program;\r\n"));
-
-
-
-
-
-
-            // 6️⃣ Referenzen aufbauen
-            List<MetadataReference> references = new List<MetadataReference>();
-
-            // Basisreferenzen aus dem laufenden .NET
-            references.Add(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
-            references.Add(MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location));
-            references.Add(MetadataReference.CreateFromFile(typeof(System.Windows.Forms.Form).Assembly.Location));
-            references.Add(MetadataReference.CreateFromFile(typeof(System.Drawing.Point).Assembly.Location));
-            references.Add(MetadataReference.CreateFromFile(typeof(Microsoft.CSharp.RuntimeBinder.Binder).Assembly.Location));
-
-
-            string netstandardPath = Path.Combine(RuntimeEnvironment.GetRuntimeDirectory(), "netstandard.dll");
-            if (File.Exists(netstandardPath))
-                references.Add(MetadataReference.CreateFromFile(netstandardPath));
-
-            // Zusätzliche DLLs aus libs/, aber nur managed Assemblies
-            string baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libs");
-            if (Directory.Exists(baseDir))
-            {
-                foreach (string dllPath in Directory.GetFiles(baseDir, "*.dll"))
-                {
-                    try
-                    {
-                        using var fs = new FileStream(dllPath, FileMode.Open, FileAccess.Read);
-                        using var pe = new System.Reflection.PortableExecutable.PEReader(fs);
-                        if (!pe.HasMetadata)
-                        {
-                            //                Debug.WriteLine($"[Roslyn] Skip native DLL: {Path.GetFileName(dllPath)}");
-                            continue;
-                        }
-
-                        references.Add(MetadataReference.CreateFromFile(dllPath));
-                        //     Debug.WriteLine($"[Roslyn] +Reference: {Path.GetFileName(dllPath)}");
-                    }
-                    catch (System.Exception ex)
-                    {
-                        //         Debug.WriteLine($"[Roslyn] Skip invalid: {Path.GetFileName(dllPath)} ({ex.Message})");
-                    }
-                }
-            }
-            string runtimeDir = RuntimeEnvironment.GetRuntimeDirectory();
-            string[] requiredAssemblies = new[]
-            {
-                "System.dll", // Basistypen wie Component
-                "System.ComponentModel.Primitives.dll",
-                "System.ComponentModel.TypeConverter.dll",
-                "System.Runtime.dll",
-                "System.Collections.dll",
-                "System.Linq.dll",
-                "System.Threading.dll"
-            };
-
-            foreach (string asmName in requiredAssemblies)
-            {
-                string asmPath = Path.Combine(runtimeDir, asmName);
-                if (File.Exists(asmPath))
-                {
-                    try
-                    {
-                        references.Add(MetadataReference.CreateFromFile(asmPath));
-                        //  Debug.WriteLine($"[Roslyn] +Reference: {asmName}");
-                    }
-                    catch (Exception ex)
-                    {
-                        QB.Logger.Error($"[Roslyn] Failed to add {asmName}: {ex.Message}");
-
-
-                    }
-                }
-            }
-            BuildResult = "[Rebuild] Loading project into workspace...";
-            await LoadInMemoryProjectAsync(roslynFiles, references);
-
-            foreach (CodeNode node in projectTree.Nodes[0].Nodes)
-            {
-                Debug.WriteLine(node.Text);
-                if (node.Type == CodeNode.NodeType.Page)
-                {
-                    node.RoslynDoc = GetDocumentByFilename(node.FileName);
-                    node.Adhoc.Workspace = GetWorkspace;
-                    node.Adhoc.Id = GetProjectId;
-
-
-                    foreach (CodeNode sub in node.Nodes)
-                    {
-                        sub.RoslynDoc = GetDocumentByFilename(sub.FileName);
-                        sub.Adhoc.Workspace = GetWorkspace;
-                        sub.Adhoc.Id = GetProjectId;
-                    }
-                }
-
-                if (node.Type == CodeNode.NodeType.Program)
-                {
-                    node.RoslynDoc = GetDocumentByFilename(node.FileName);
-                    node.Adhoc.Workspace = GetWorkspace;
-                    node.Adhoc.Id = GetProjectId;
-
-                }
-            }
-            BuildResult = "[Rebuild] Building assembly...";
-            // await BuildAssemblyAsync();
-        }
+   
         public async Task<Assembly?> BuildAssemblyAsync()
         {
             Debug.WriteLine("=== Build Assembly");
@@ -1652,31 +1322,6 @@ namespace qbook
             public string Type { get; set; }
             public string DefaultValue { get; set; }
             public string CurrentValue { get; set; }
-        }
-
-        public async Task<IReadOnlyList<SignatureParameter>> GetSignatureParametersAsync(RoslynDocument document, int caretPosition)
-        {
-            if (document == null) return Array.Empty<SignatureParameter>();
-
-            var tree = await document.GetSyntaxTreeAsync();
-            if (tree == null) return Array.Empty<SignatureParameter>();
-
-            var root = await tree.GetRootAsync();
-            var token = root.FindToken(Math.Max(0, caretPosition - 1));
-            var node = token.Parent;
-
-            while (node != null)
-            {
-                if (node is InvocationExpressionSyntax inv && inv.ArgumentList != null)
-                    return await ExtractParametersAsync(inv.ArgumentList, document, inv);
-
-                if (node is ObjectCreationExpressionSyntax obj && obj.ArgumentList != null)
-                    return await ExtractParametersAsync(obj.ArgumentList, document, obj);
-
-                node = node.Parent;
-            }
-
-            return Array.Empty<SignatureParameter>();
         }
 
         private async Task<IReadOnlyList<SignatureParameter>> ExtractParametersAsync(ArgumentListSyntax argumentList, RoslynDocument doc, SyntaxNode node)

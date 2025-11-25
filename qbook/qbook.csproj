@@ -667,23 +667,6 @@
     <Compile Include="FileHelper.cs" />
     <Compile Include="Net\PipeCom.cs" />
     <Compile Include="Net\PipeCommands.cs" />
-    <Compile Include="RoslynServices\RoslynAutoCompleteProvider.cs" />
-    <Compile Include="ScintillaEditor\BitmapTools.cs" />
-    <Compile Include="ScintillaEditor\BookTreeView.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="ScintillaEditor\FormExplorerSplashScreen.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="ScintillaEditor\FormExplorerSplashScreen.Designer.cs">
-      <DependentUpon>FormExplorerSplashScreen.cs</DependentUpon>
-    </Compile>
-    <Compile Include="ScintillaEditor\FormFindReplace.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="ScintillaEditor\FormFindReplace.Designer.cs">
-      <DependentUpon>FormFindReplace.cs</DependentUpon>
-    </Compile>
     <Compile Include="Controls\AboutDialog.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -771,80 +754,8 @@
     <Compile Include="License\HardwareInfo.cs" />
     <Compile Include="License\License2.cs" />
     <Compile Include="License\Licensing.cs" />
-    <Compile Include="ScintillaEditor\FormCodeExplorer.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="ScintillaEditor\FormCodeExplorer.Designer.cs">
-      <DependentUpon>FormCodeExplorer.cs</DependentUpon>
-    </Compile>
-    <Compile Include="ScintillaEditor\ScintillaFoldingExtensions.cs" />
-    <Compile Include="ScintillaEditor\FormBookTree.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="ScintillaEditor\FormBookTree.Designer.cs">
-      <DependentUpon>FormBookTree.cs</DependentUpon>
-    </Compile>
-    <Compile Include="ScintillaEditor\FormCodeEditor.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="ScintillaEditor\FormCodeEditor.Designer.cs">
-      <DependentUpon>FormCodeEditor.cs</DependentUpon>
-    </Compile>
-    <Compile Include="ScintillaEditor\FormPopup.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="ScintillaEditor\DocumentEditor.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="ScintillaEditor\FormScintillaEditor.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="ScintillaEditor\FormScintillaEditor.Designer.cs">
-      <DependentUpon>FormScintillaEditor.cs</DependentUpon>
-    </Compile>
-    <Compile Include="ScintillaEditor\CodeNode.cs" />
-    <Compile Include="ScintillaEditor\InputControls\ControlAutoComplete.cs" />
-    <Compile Include="ScintillaEditor\InputControls\ControlSignatureHelper.cs" />
-    <Compile Include="ScintillaEditor\InputControls\ControlTab.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="ScintillaEditor\InputControls\ControlTab.Designer.cs">
-      <DependentUpon>ControlTab.cs</DependentUpon>
-    </Compile>
-    <Compile Include="ScintillaEditor\InputControls\TextBoxWithLabel.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="ScintillaEditor\InputControls\TextBoxWithLabel.Designer.cs">
-      <DependentUpon>TextBoxWithLabel.cs</DependentUpon>
-    </Compile>
-    <Compile Include="ScintillaEditor\Snippets.cs" />
     <Compile Include="Studio\BookRuntime.cs" />
-    <Compile Include="ScintillaEditor\PopupControl.cs" />
-    <Compile Include="RoslynServices\RoslynAutoComplete.cs" />
-    <Compile Include="RoslynServices\RoslynDiagnostic.cs" />
-    <Compile Include="RoslynServices\RoslynFolding.cs" />
-    <Compile Include="RoslynServices\RoslynFoldingHelper.cs" />
-    <Compile Include="RoslynServices\RoslynSemantic.cs" />
     <Compile Include="RoslynServices\RoslynService.cs" />
-    <Compile Include="RoslynServices\RoslynSignatureHelper.cs" />
-    <Compile Include="ScintillaEditor\Scrollbars\GridViewHorizontalBar.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="ScintillaEditor\Scrollbars\GridViewVerticalBar.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="ScintillaEditor\Scrollbars\PopupVerticalBar.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="ScintillaEditor\Scrollbars\ScintillaHorizontalBar.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="ScintillaEditor\Scrollbars\ScintillaVerticalBar.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="ScintillaEditor\Scrollbars\TreeViewVerticalBar.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
     <Compile Include="Studio\BookThread.cs" />
     <Compile Include="Studio\Helpers.cs" />
     <Compile Include="Net\PipeCommandManager.cs" />
@@ -965,12 +876,6 @@
     <EmbeddedResource Include="Controls\FormSplashScreen.resx">
       <DependentUpon>FormSplashScreen.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="ScintillaEditor\FormExplorerSplashScreen.resx">
-      <DependentUpon>FormExplorerSplashScreen.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="ScintillaEditor\FormFindReplace.resx">
-      <DependentUpon>FormFindReplace.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Controls\AboutDialog.resx">
       <DependentUpon>AboutDialog.cs</DependentUpon>
     </EmbeddedResource>
@@ -1029,27 +934,6 @@
     <EmbeddedResource Include="oControls\oHtmlSettingsForm.resx">
       <DependentUpon>oHtmlSettingsForm.cs</DependentUpon>
       <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="ScintillaEditor\DocumentEditor.resx">
-      <DependentUpon>DocumentEditor.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="ScintillaEditor\FormBookTree.resx">
-      <DependentUpon>FormBookTree.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="ScintillaEditor\FormCodeEditor.resx">
-      <DependentUpon>FormCodeEditor.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="ScintillaEditor\FormCodeExplorer.resx">
-      <DependentUpon>FormCodeExplorer.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="ScintillaEditor\FormScintillaEditor.resx">
-      <DependentUpon>FormScintillaEditor.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="ScintillaEditor\InputControls\ControlTab.resx">
-      <DependentUpon>ControlTab.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="ScintillaEditor\InputControls\TextBoxWithLabel.resx">
-      <DependentUpon>TextBoxWithLabel.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="UI\Keyboard.resx">
       <DependentUpon>Keyboard.cs</DependentUpon>
@@ -1224,7 +1108,7 @@
   </Target>
   <PropertyGroup>
     <PreBuildEvent>rem --- automatically update Version in AssemblyInfo.cs ---
-powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File $(ProjectDir)updateAssemblyInfo.cs.ps1
+rem powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File $(ProjectDir)updateAssemblyInfo.cs.ps1
 
 </PreBuildEvent>
   </PropertyGroup>

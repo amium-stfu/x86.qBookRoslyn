@@ -166,10 +166,10 @@ namespace qbook
             this.uriStartupToolStripMenuItem,
             this.rootToolStripMenuItem,
             this.helpToolStripMenuItem,
+            this.newEditorToolStripMenuItem,
             this.fullscreenToolStripMenuItem,
             this.pagebarToolStripMenuItem,
-            this.logToolStripMenuItem,
-            this.newEditorToolStripMenuItem});
+            this.logToolStripMenuItem});
             this.menuStrip.Location = new System.Drawing.Point(0, 0);
             this.menuStrip.Name = "menuStrip";
             this.menuStrip.Padding = new System.Windows.Forms.Padding(4, 1, 0, 1);
@@ -203,7 +203,7 @@ namespace qbook
             this.newToolStripMenuItem.Image = ((System.Drawing.Image)(resources.GetObject("newToolStripMenuItem.Image")));
             this.newToolStripMenuItem.Name = "newToolStripMenuItem";
             this.newToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.N)));
-            this.newToolStripMenuItem.Size = new System.Drawing.Size(195, 22);
+            this.newToolStripMenuItem.Size = new System.Drawing.Size(248, 22);
             this.newToolStripMenuItem.Text = "&New";
             this.newToolStripMenuItem.Click += new System.EventHandler(this.newToolStripMenuItem_Click);
             // 
@@ -212,7 +212,7 @@ namespace qbook
             this.openToolStripMenuItem.Image = ((System.Drawing.Image)(resources.GetObject("openToolStripMenuItem.Image")));
             this.openToolStripMenuItem.Name = "openToolStripMenuItem";
             this.openToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.O)));
-            this.openToolStripMenuItem.Size = new System.Drawing.Size(195, 22);
+            this.openToolStripMenuItem.Size = new System.Drawing.Size(248, 22);
             this.openToolStripMenuItem.Text = "&Open";
             this.openToolStripMenuItem.Click += new System.EventHandler(this.openToolStripMenuItem_Click);
             // 
@@ -220,7 +220,7 @@ namespace qbook
             // 
             this.openRecentToolStripMenuItem.Image = ((System.Drawing.Image)(resources.GetObject("openRecentToolStripMenuItem.Image")));
             this.openRecentToolStripMenuItem.Name = "openRecentToolStripMenuItem";
-            this.openRecentToolStripMenuItem.Size = new System.Drawing.Size(195, 22);
+            this.openRecentToolStripMenuItem.Size = new System.Drawing.Size(248, 22);
             this.openRecentToolStripMenuItem.Text = "Open &Recent...";
             this.openRecentToolStripMenuItem.Click += new System.EventHandler(this.openRecentToolStripMenuItem_Click);
             // 
@@ -229,7 +229,7 @@ namespace qbook
             this.saveToolStripMenuItem.Image = ((System.Drawing.Image)(resources.GetObject("saveToolStripMenuItem.Image")));
             this.saveToolStripMenuItem.Name = "saveToolStripMenuItem";
             this.saveToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.S)));
-            this.saveToolStripMenuItem.Size = new System.Drawing.Size(195, 22);
+            this.saveToolStripMenuItem.Size = new System.Drawing.Size(248, 22);
             this.saveToolStripMenuItem.Text = "&Save";
             this.saveToolStripMenuItem.Click += new System.EventHandler(this.saveToolStripMenuItem_Click);
             // 
@@ -239,7 +239,7 @@ namespace qbook
             this.saveAsToolStripMenuItem.Name = "saveAsToolStripMenuItem";
             this.saveAsToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)(((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Shift) 
             | System.Windows.Forms.Keys.S)));
-            this.saveAsToolStripMenuItem.Size = new System.Drawing.Size(195, 22);
+            this.saveAsToolStripMenuItem.Size = new System.Drawing.Size(248, 22);
             this.saveAsToolStripMenuItem.Text = "Save &As...";
             this.saveAsToolStripMenuItem.Click += new System.EventHandler(this.saveAsToolStripMenuItem_Click);
             // 
@@ -249,7 +249,7 @@ namespace qbook
             this.pDFcurrentPageToolStripMenuItem,
             this.pDFallToolStripMenuItem});
             this.exportToolStripMenuItem.Name = "exportToolStripMenuItem";
-            this.exportToolStripMenuItem.Size = new System.Drawing.Size(195, 22);
+            this.exportToolStripMenuItem.Size = new System.Drawing.Size(248, 22);
             this.exportToolStripMenuItem.Text = "&Export";
             // 
             // pDFcurrentPageToolStripMenuItem
@@ -274,7 +274,7 @@ namespace qbook
             this.openSettingsDirectoryToolStripMenuItem,
             this.openTempDirectoryToolStripMenuItem});
             this.openExplorerToolStripMenuItem.Name = "openExplorerToolStripMenuItem";
-            this.openExplorerToolStripMenuItem.Size = new System.Drawing.Size(195, 22);
+            this.openExplorerToolStripMenuItem.Size = new System.Drawing.Size(248, 22);
             this.openExplorerToolStripMenuItem.Text = "Open (Explorer)";
             // 
             // openQbookToolStripMenuItem
@@ -308,13 +308,13 @@ namespace qbook
             // toolStripSeparator1
             // 
             this.toolStripSeparator1.Name = "toolStripSeparator1";
-            this.toolStripSeparator1.Size = new System.Drawing.Size(192, 6);
+            this.toolStripSeparator1.Size = new System.Drawing.Size(245, 6);
             // 
             // exitToolStripMenuItem
             // 
             this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
             this.exitToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Alt | System.Windows.Forms.Keys.F4)));
-            this.exitToolStripMenuItem.Size = new System.Drawing.Size(195, 22);
+            this.exitToolStripMenuItem.Size = new System.Drawing.Size(248, 22);
             this.exitToolStripMenuItem.Text = "E&xit";
             this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
             // 

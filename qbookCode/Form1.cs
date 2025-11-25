@@ -37,8 +37,14 @@ namespace qbookCode
 
                     Core.Roslyn.CreateEmptyProject(openFileDialog.FileName);
                     Core.ThisBook = await Core.BookFromFolder(filePath, fileContent);
+                    Core.ThisBook.DataDirectory = null;
+                    Core.ThisBook.SettingsDirectory = null;
+                    Core.ThisBook.TempDirectory = null;
+                    Core.ThisBook.Directory = filePath;
+                    
 
-                    foreach(oPage page in Core.ThisBook.Pages.Values)
+
+                    foreach (oPage page in Core.ThisBook.Pages.Values)
                     {
                         Debug.WriteLine($"Page: {page.Name} - {page.Text}");
                     }

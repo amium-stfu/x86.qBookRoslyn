@@ -3,7 +3,6 @@ using log4net.Appender;
 using log4net.Layout;
 using QB;
 using qbook.Controls;
-using qbook.ScintillaEditor;
 using System;
 using System.Diagnostics;
 using System.Globalization;
@@ -171,9 +170,7 @@ namespace qbook
                 splash.SetStatus("Creating Roslyn project...");
                 Core.Roslyn.CreateProject();
                 System.Threading.Thread.Sleep(300);
-                splash.SetStatus("Initializing Roslyn diagnostics...");
-                RoslynDiagnostic.InitDiagnostic();
-                System.Threading.Thread.Sleep(300);
+             
 
             }
 

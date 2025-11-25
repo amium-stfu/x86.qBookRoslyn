@@ -6,7 +6,6 @@ using QB.Controls;
 using qbook.CodeEditor;
 using qbook.Controls;
 using qbook.Net;
-using qbook.ScintillaEditor;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -521,7 +520,7 @@ namespace qbook
                         if (itemText.Trim() == "#")
                             itemText = page.Name;
                     }
-                    IconsAdd(new oIcon(page, qbook.Icon.Text, Pens.LightSlateGray, itemText, x, y, 198, h, EditText));
+                   
                 }
                 else
                 {
@@ -1105,47 +1104,6 @@ namespace qbook
 
         }
 
-
-        async Task EditTextAsync(object sender)
-        {
-            //Main.Qb.Book.Modified = true; //HALE: why modified here? (i.e. already modified when opening script-editor)
-
-            int x = Location.X + (sender as oIcon).e.X;
-            int y = Location.Y + (sender as oIcon).e.Y + 25;
-            x = Math.Min(x, Screen.PrimaryScreen.Bounds.Width - 900 - 20);
-            y = Math.Min(y, Screen.PrimaryScreen.Bounds.Height - 500 - 40);
-
-
-            if (QB.Book.AccessLevel >= QB.AccessLevel.Admin)
-            {
-                if (((sender as oIcon).Parent is oPage)
-                    && ((ModifierKeys & Keys.Control) == Keys.Control))
-                {
-                    //old editor
-                   
-                }
-                else
-                {
-                    //new editor (MDI)
-
-                    //oPage page = (sender as oIcon).Parent as oPage;
-
-                     Core.ShowCodeExploror((sender as oIcon).Parent as oPage);
-
-           
-                  //  Core.ShowFormCodeEditor((sender as oIcon).Parent as oPage);
-
-                }
-            }
-        }
-
-        void EditText(object sender)
-        {
-            Task.Run(async () =>
-            {
-                await EditTextAsync(sender);
-            });
-        }
 
 
         void SwitchFormat(object sender)
@@ -2531,9 +2489,7 @@ namespace qbook
 
         private void testToolStripMenuItem_Click(object sender, EventArgs e)
         {
-           FormBookTree f = new FormBookTree();
-           // FormCodeExplorer f = new FormCodeExplorer();
-            f.Show();
+
         }
 
         private void newEditorToolStripMenuItem_Click(object sender, EventArgs e)
@@ -2543,7 +2499,7 @@ namespace qbook
             string path = Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename.Replace(".qbook", ".code"), name);
 
             
-            string exePath = @"B:\x86.qBookRoslyn\qbookCode\bin\Debug\net8.0-windows\qbookCode.exe";
+            string exePath = @"B:\Github\amium-stfu\x86.qBookRoslyn\qbookCode\bin\Debug\net8.0-windows\qbookCode.exe";
 
             string args =  $"\"{path}\" " + $"\"{PipeNames.Server}\" " + $"\"{PipeNames.Client}\"";
 

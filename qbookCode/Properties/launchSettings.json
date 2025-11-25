@@ -2,7 +2,7 @@
   "profiles": {
     "qbookCode": {
       "commandName": "Project",
-      "commandLineArgs": "\"C:\\Users\\StefanFunk\\OneDrive - Amium GmbH\\Amium\\qbook\\qbooks\\FilterStudio\\FilterStudio.code\\FilterStudio.csproj\" \"amium.pipe.server\" \"amium.pipe.client\""
+      "commandLineArgs": "\"T:\\NewBook\\NewBook.code\\NewBook.csproj\" \"amium.pipe.server\" \"amium.pipe.client\""
     }
   }
 }

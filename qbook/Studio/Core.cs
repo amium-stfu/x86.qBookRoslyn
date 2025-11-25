@@ -13,7 +13,6 @@ using QB; //qbookCsScript
 using QB.Net;
 using qbook.CodeEditor;
 using qbook.Net;
-using qbook.ScintillaEditor;
 using qbook.Scripting;
 using qbook.Studio;
 using System;
@@ -42,7 +41,7 @@ using static Community.CsharpSqlite.Sqlite3;
 using static IronPython.Modules._ast;
 using static IronPython.Runtime.Exceptions.PythonExceptions;
 using static log4net.Appender.ColoredConsoleAppender;
-using static qbook.ScintillaEditor.FormScintillaEditor;
+
 
 
 
@@ -614,36 +613,6 @@ using System.Text.Json;
 
         }
 
-
-        private static readonly object _lock = new object();
-        public static FormCodeExplorer Explorer;
-
-        internal static async Task ShowCodeExploror(oPage page = null)
-        {
-            if (!VerifyDeveloperLicense()) return;
-
-            // Form-Erstellung IMMER auf UI-Thread
-            Application.OpenForms[0].Invoke((MethodInvoker)(() =>
-            {
-                if (Explorer == null || Explorer.IsDisposed)
-                {
-                    Explorer = new FormCodeExplorer();
-                }
-
-                if (!Explorer.Visible)
-                    Explorer.Show();
-                else
-                    Explorer.BringToFront();
-            }));
-
-            // Hintergrundarbeit (optional)
-            await Task.Run(() =>
-            {
-                // Hier darfst du alles machen, was nicht UI ist
-            });
-        }
-
-
         public static void InitLogger()
         {
             //string logFilename = Main.Qb.Book.LogFilename.Replace("{date}", DateTime.Now.ToString("yyyy-MM-dd_HHmmss")).Replace('\\', '/');
@@ -794,9 +763,10 @@ using System.Text.Json;
                     ThisBook = await BookFromFolder(fullPath.Replace(".qbook", ".code"),"");
 
                 }
-                ThisBook.DataDirectory = null;
-                ThisBook.SettingsDirectory = null;
-                ThisBook.TempDirectory = null;
+                Core.ThisBook.DataDirectory = null;
+                Core.ThisBook.SettingsDirectory = null;
+                Core.ThisBook.TempDirectory = null;
+                Core.ThisBook.Directory = directory;
 
                 QB.Root.ActiveQbook = ThisBook;
                 qbook.Core.ActualMain = qbook.Core.ThisBook.Main;
@@ -999,6 +969,30 @@ using System.Text.Json;
                 Url = data.Url
             };
         }
+
+        public class qBookDefinition
+        {
+            public string ProjectName { get; set; } = "Unnamed";
+            public string Version { get; set; } = "0.1.0";
+            public string VersionHistory { get; set; } = "";
+            public long VersionEpoch { get; set; } = 0;
+            public bool StartFullScreen { get; set; } = false;
+            public bool HidPageMenuBar { get; set; } = false;
+            public string PasswordAdmin { get; set; } = null; //overrides the default Admin-Password
+            public string PasswordService { get; set; } = null; //overrides the default Service-Password
+            public string PasswordUser { get; set; } = null; //overrides the default User-Password
+            public string Directory { get; set; } = null;
+            public string Filename { get; set; } = null;
+            public string SettingsDirectory { get; set; } = null;
+            public string DataDirectory { get; set; } = null;
+            public string TempDirectory { get; set; } = null;
+            public string BackupDirectory { get; set; } = null;
+            public string Language { get; set; } = null;
+            public List<string> PageOrder { get; set; } = new List<string>();
+
+
+        }
+
         internal static async Task<Book> BookFromFolder(string folderPath, string bookname)
         {
             Debug.WriteLine("BookFromFolder: " + folderPath);

@@ -4641,25 +4641,25 @@
   },
   "packageFolders": {
     "C:\\Users\\StefanFunk\\.nuget\\packages\\": {},
-    "C:\\Program Files\\DevExpress 25.1\\Components\\Offline Packages": {},
+    "C:\\Program Files\\DevExpress 23.2\\Components\\Offline Packages": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "B:\\x86.qBookRoslyn\\qbookCode\\qbookCode.csproj",
+      "projectUniqueName": "B:\\Github\\amium-stfu\\x86.qBookRoslyn\\qbookCode\\qbookCode.csproj",
       "projectName": "qbookCode",
-      "projectPath": "B:\\x86.qBookRoslyn\\qbookCode\\qbookCode.csproj",
+      "projectPath": "B:\\Github\\amium-stfu\\x86.qBookRoslyn\\qbookCode\\qbookCode.csproj",
       "packagesPath": "C:\\Users\\StefanFunk\\.nuget\\packages\\",
-      "outputPath": "B:\\x86.qBookRoslyn\\qbookCode\\obj\\",
+      "outputPath": "B:\\Github\\amium-stfu\\x86.qBookRoslyn\\qbookCode\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
-        "C:\\Program Files\\DevExpress 25.1\\Components\\Offline Packages",
+        "C:\\Program Files\\DevExpress 23.2\\Components\\Offline Packages",
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
         "C:\\Users\\StefanFunk\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\DevExpress 25.1.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\DevExpress 23.2.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -4668,7 +4668,7 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "C:\\Program Files\\DevExpress 25.1\\Components\\System\\Components\\Packages": {},
+        "C:\\Program Files\\DevExpress 23.2\\Components\\System\\Components\\Packages": {},
         "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
