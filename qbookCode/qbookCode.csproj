@@ -11,6 +11,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Controls\CodeNode.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="editor.main.ico" />
   </ItemGroup>
 

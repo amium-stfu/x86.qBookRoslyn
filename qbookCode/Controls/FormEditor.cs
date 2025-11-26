@@ -108,6 +108,7 @@ namespace qbookCode.Controls
         {
             panelEditor.Controls.Clear();
             BookTreeView.CleanupBeforeLoad();
+           
 
         }
 

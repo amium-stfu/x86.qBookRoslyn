@@ -175,17 +175,21 @@ namespace qbookCode.Controls
 
             ApplyTheme("btnToggleTheme");
         }
-        private void btnRebuild_Click(object sender, EventArgs e)
+        private async void btnRebuild_Click(object sender, EventArgs e)
         {
-            RuntimeManager.Reset();
 
             if (BookTree.CheckCode)
             {
                 SetStatusText("qbook rebuild failed! Please fix code errors first.", Color.Red);
                 return;
             }
-            SetStatusText("[Build] rebuilding...");
+
+            await Save();
+            await Reload();
+
             Core.SendToQbook("Rebuild");
+            SetStatusText("[Build] rebuilding...");
+            Editor.InitGridViews();
 
         }
 
@@ -208,6 +212,20 @@ namespace qbookCode.Controls
         }
         private async void btnSave_Click(object sender, EventArgs e)
         {
+            await Save();
+            //try
+            //{
+            //    await Core.SaveBook();
+            //    SetStatusText("qbook saved successfully!");
+            //}
+            //catch (Exception ex)
+            //{
+            //    SetStatusText("Error saving qbook: " + ex.Message, Color.Red);
+            //}
+        }
+
+        async Task Save()
+        {
             try
             {
                 await Core.SaveBook();
@@ -217,11 +235,16 @@ namespace qbookCode.Controls
             {
                 SetStatusText("Error saving qbook: " + ex.Message, Color.Red);
             }
-
-
-
         }
+
+
         private async void btnReload_Click(object sender, EventArgs e)
+        {
+
+            await Reload();
+        }
+
+        async Task Reload()
         {
             try
             {
@@ -242,19 +265,21 @@ namespace qbookCode.Controls
 
 
                 SetStatusText("qbook reloaded successfully!");
+                RuntimeManager.Reset();
+
             }
             catch (Exception ex)
             {
                 SetStatusText("Error reloading qbook: ", Color.Red);
             }
-
         }
+
+
 
         public async Task GoToDefinition() => await BookTree.GoToDefinition();
         public async Task RenameSymbol() => await BookTree.RenameSymbol();
 
         public BookNode SelectedCodeNode => BookTree.SelectedCodeNode;
-
         public BookTreeView ProjectTree => BookTree.bookTreeView;
 
 

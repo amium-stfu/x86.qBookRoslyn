@@ -230,7 +230,6 @@ namespace qbookCode
                     if (opage.Includes.Contains(codeFile))
                     {
                         await opage.SubCodeDocuments[codeFile].Include();
-
                     }
                 }
                 Debug.WriteLine(" ---- add page to book: " + opage.Name);
@@ -328,8 +327,6 @@ namespace qbookCode
                         temp = sub.Code;
                     csCode = temp.ToString();
                     System.IO.File.WriteAllText(Path.Combine(pageDir, sub.Filename), csCode);
-                    page.CodeOrder.Add(sub.Filename);
-                    page.Includes.Add(sub.Filename);
                 }
 
                 var dto = new PageDefinition
@@ -364,10 +361,58 @@ namespace qbookCode
 
             Debug.WriteLine("Project saved to " + newFile);
 
+            string programFile = Path.Combine(newFile, "Program.cs");
+            string programCs = CreateProgramCs();
+            File.WriteAllText(programFile, programCs);
+
+        }
+        private static string CreateProgramCs()
+        {
+            var sbProgram = new StringBuilder();
+            sbProgram.AppendLine("namespace QB");
+            sbProgram.AppendLine("{");
+            sbProgram.AppendLine("\tpublic static class Program");
+            sbProgram.AppendLine("\t{");
+            foreach (oPage page in ThisBook.Pages.Values)
+                sbProgram.AppendLine($"\t\tpublic static Definition{page.Name}.qPage {page.Name} {{ get; }} = new Definition{page.Name}.qPage();");
+
+            sbProgram.AppendLine("\t\tpublic static void Initialize()");
+            sbProgram.AppendLine("\t\t{");
+
+            foreach (oPage page in ThisBook.Pages.Values)
+                sbProgram.AppendLine($"\t\t\t{page.Name}.Initialize();");
+
+            sbProgram.AppendLine("\t\t}");
+
+            sbProgram.AppendLine("\t\tpublic static void Run()");
+            sbProgram.AppendLine("\t\t{");
+            foreach (oPage page in ThisBook.Pages.Values)
+                sbProgram.AppendLine($"\t\t\t{page.Name}.Run();");
+            sbProgram.AppendLine("\t\t}");
+
+            sbProgram.AppendLine("\t\tpublic static void Destroy()");
+            sbProgram.AppendLine("\t\t{");
+            foreach (oPage page in ThisBook.Pages.Values)
+                sbProgram.AppendLine($"\t\t\t{page.Name}.Destroy();");
+            sbProgram.AppendLine("\t\t}");
+
+            sbProgram.AppendLine("\t}");
+            sbProgram.AppendLine("}");
+
+
+            return sbProgram.ToString();
         }
 
 
+
     }
+
+
+
+
+
+
+
     public class Book() 
     {
         public string ProjectName { get; set; } = "Unnamed";

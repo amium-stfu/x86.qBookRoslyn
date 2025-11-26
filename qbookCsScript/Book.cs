@@ -67,9 +67,7 @@ namespace QB
             {
                 try
                 {
-      
-                    return Root.ActiveQbook.DataDirectory;
-                   
+                    return Root.ActiveQbook.DataDirectory; 
                 }
                 catch (Exception ex)
                 {

@@ -37,20 +37,30 @@ internal static class RuntimeManager
         RuntimeErrors.Columns.Add("Count", typeof(int));
         RuntimeErrors.Columns.Add("RepeatMs", typeof(int));
         RuntimeErrors.PrimaryKey = new[] { RuntimeErrors.Columns["Key"] };
+    
 
     }
 
     public static void Reset()
     {
         RuntimeErrors.Rows.Clear();
+        while (_errorQueue.TryDequeue(out _)) { }
+
+        // mögliche Race Conditions killen
+        Interlocked.Exchange(ref _processRequested, 0);
+
+        // sicherstellen, dass kein alter Post noch arbeitet
+        UiDispatcher.Send(() => { });
     }
+
+
 
     public static void EnqueueCommand(string[] errorData)
     {
         if (errorData == null) return;
         _errorQueue.Enqueue(errorData);
 
-        Debug.WriteLine("E " + errorData.Count());
+      //  Debug.WriteLine("E " + errorData.Count());
 
         // optional: sofort einen UI-Processing-Trigger schicken
         TriggerProcess();
@@ -70,11 +80,16 @@ internal static class RuntimeManager
                 {
                     ProcessQueueOnUiThread();
                 }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("Error in ProcessQueue: " + ex);
+                }
                 finally
                 {
                     Interlocked.Exchange(ref _processRequested, 0);
                 }
             });
+
         }
     }
 
@@ -121,7 +136,7 @@ internal static class RuntimeManager
             row["RepeatMs"] = err.RepeatMs;
         }
 
-        Debug.WriteLine("Rows" + RuntimeErrors.Rows.Count);
+   //     Debug.WriteLine("Rows" + RuntimeErrors.Rows.Count);
     }
 }
 

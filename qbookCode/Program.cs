@@ -129,8 +129,6 @@ namespace qbookCode
             {
                 splash.Show();
                 Application.DoEvents();
-             
-
                 splash.SetStatus("Loading Project...");
                 Thread.Sleep(500);
 
@@ -167,10 +165,10 @@ namespace qbookCode
                
                 Core.Explorer.Editor.InitGridViews();
 
-                // Jetzt sichtbar machen
+              
                 Core.Explorer.Opacity = 1;
 
-                // Message-Loop starten
+           
                 Application.Run(Core.Explorer);
             }
         }

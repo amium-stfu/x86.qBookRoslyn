@@ -12,6 +12,7 @@ using System.Windows.Forms;
 using qbookCode.Roslyn;
 
 using RoslynDocument = Microsoft.CodeAnalysis.Document;
+using System.Web;
 
 namespace qbookCode.Controls
 {
@@ -92,7 +93,7 @@ namespace qbookCode.Controls
             base.OnBeforeSelect(e);
         }
 
-        public DocumentEditor GetSelectedEditor() => SelectedCodeNode?.Editor;
+        public DocumentEditor? GetSelectedEditor() => SelectedCodeNode?.Editor;
 
         #region Drag & Drop
         public int InsertLineY { get; set; } = -1;
@@ -427,13 +428,22 @@ namespace qbookCode.Controls
         BookNode LastSelectedNode = null;
         private async void ProjectTree_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
         {
-          
             if (e.Button == MouseButtons.Left)
             {
                 if (e.Node is BookNode)
                 {
-         
-                    if(LastSelectedNode != null)
+
+                    BookNode? node = e.Node as BookNode;
+
+                    if(node == null) return;
+                    if (node.Type != NodeType.SubCode && node.Type != NodeType.Page && node.Type != NodeType.Program)
+                    {
+                        return;
+                    }
+
+
+
+                    if (LastSelectedNode != null)
                     {
                         LastSelectedNode.ForeColor = Theme.GridForeColor;
                     }
@@ -530,8 +540,6 @@ namespace qbookCode.Controls
                 }
                 Menu.Show(this, e.Location);
             }
-      
-
         }
 
 
@@ -586,24 +594,29 @@ namespace qbookCode.Controls
             uDLClientToolStripMenuItem.Name = "uDLClientToolStripMenuItem";
             uDLClientToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
             uDLClientToolStripMenuItem.Text = "UDL Client";
+            uDLClientToolStripMenuItem.Visible = false;
             // 
             // aKClientToolStripMenuItem
             // 
             aKClientToolStripMenuItem.Name = "aKClientToolStripMenuItem";
             aKClientToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
             aKClientToolStripMenuItem.Text = "AK Client";
+            aKClientToolStripMenuItem.Visible = false;
             // 
             // aKServerToolStripMenuItem
             // 
             aKServerToolStripMenuItem.Name = "aKServerToolStripMenuItem";
             aKServerToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
             aKServerToolStripMenuItem.Text = "AK Server";
+            aKServerToolStripMenuItem.Visible = false;
+
             // 
             // streamClientToolStripMenuItem
             // 
             streamClientToolStripMenuItem.Name = "streamClientToolStripMenuItem";
             streamClientToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
             streamClientToolStripMenuItem.Text = "Stream Client";
+            streamClientToolStripMenuItem.Visible = false;
             // 
             // hidePageToolStripMenuItem
             // 
@@ -626,7 +639,7 @@ namespace qbookCode.Controls
             deleteStripMenuItem.Name = "deleteStripMenuItem";
             deleteStripMenuItem.Size = new System.Drawing.Size(164, 22);
             deleteStripMenuItem.Text = "Delete Code";
-            deleteStripMenuItem.Click += deletePageToolStripMenuItem_Click;
+            deleteStripMenuItem.Click += deleteCodeToolStripMenuItem_Click;
             // 
             // toolStripMenuOpenWorkspace
             // 
@@ -661,8 +674,6 @@ namespace qbookCode.Controls
             deletePageToolStripMenuItem.Size = new System.Drawing.Size(164, 22);
             deletePageToolStripMenuItem.Text = "Delete Page";
             deletePageToolStripMenuItem.Click += deletePageToolStripMenuItem_Click;
-
-
             Menu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] 
             {
             addPageBeforeToolStripMenuItem,
@@ -677,15 +688,18 @@ namespace qbookCode.Controls
             deletePageToolStripMenuItem
             });
         }
-
         private async void toolStripMenuIncludeCode_Click(object sender, EventArgs e)
         {
             if (ClickedNode != null && ClickedNode.Editor != null)
             {
+                oPage page = Core.ThisBook.Pages[ClickedNode.Editor.Page.Name];
                 if (ClickedNode.Editor.Target.Active)
                 {
                     ClickedNode.Editor.Target.Active = false;
                     ClickedNode.Editor.Target.Exclude();
+                    page.Includes.Remove(ClickedNode.Editor.Target.Filename);
+
+
                     await ClickedNode.Editor.UpdateRoslyn("Toggle Exclude Code");
                     ClickedNode.Editor.ApplyTheme();
                 }
@@ -693,15 +707,17 @@ namespace qbookCode.Controls
                 {
                     ClickedNode.Editor.Target.Active = true;
                     await ClickedNode.Editor.Target.Include();
+                    page.Includes.Add(ClickedNode.Editor.Target.Filename);
                     await ClickedNode.Editor.UpdateRoslyn("Toggle Include Code");
                     ClickedNode.Editor.ApplyTheme();
                 }
+
+                foreach (string f in page.Includes) Debug.WriteLine(f);
 
                await UpdateAllAfterInExclude();
 
             }
         }
-
         private async Task UpdateAllAfterInExclude()
         {
             try
@@ -721,138 +737,168 @@ namespace qbookCode.Controls
                 ApplyTheme();
             }
         }
-
         private async void renameCodeToolStripMenuItem_Click(object sender, EventArgs e)
         {
            BeginUpdate();
             string name = ShowInputDialog($"Input new name:", $"Rename Code {ClickedNode.Text}", ClickedNode.Text);
             if (!string.IsNullOrWhiteSpace(name))
             {
+
+
+
                 View.Editor.RemoveTab(ClickedNode.Editor.Target.Filename);
 
                 await ClickedNode.Editor.UpdateRoslyn("Rename Code");
-
-                string oldFilename = ClickedNode.Editor.Target.Filename;
-
-                string newFilename = ClickedNode.Name.Replace(ClickedNode.Text, name);
-                BookNode newNode = new BookNode(newFilename, NodeType.SubCode) { ImageIndex = 3 };
-
                 oPage page = Core.ThisBook.Pages[ClickedNode.Editor.Page.Name];
+                string oldFilename = ClickedNode.Editor.Target.Filename;
+                string code = ClickedNode.Editor.Target.Code;
+                string newFilename = ClickedNode.Name.Replace(ClickedNode.Text, name);
+
+                if (page.SubCodeDocuments.ContainsKey(newFilename))
+                {
+                    EndUpdate();
+                    MessageBox.Show("A subcode with this name already exists.", "Add SubCode", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                System.Windows.Forms.TreeNodeCollection tree = ClickedNode.Parent.Nodes;
+                int originNodeIndex = Core.ThisBook.PageOrder.IndexOf(ClickedNode.Text);
+                page.Includes.Remove(oldFilename);
+                page.SubCodeDocuments.Remove(oldFilename);
+                Core.Roslyn.RemoveCodeDocument(oldFilename);
+
+
+                BookNode newNode = new BookNode(newFilename, NodeType.SubCode) { ImageIndex = 3 };
+                CodeDocument doc = Core.Roslyn.AddCodeDocument(newFilename, code, true);
+                newNode.Editor = new DocumentEditor(doc, page);
+                await newNode.Editor.UpdateRoslyn("Rename Code");
 
                 int index = page.CodeOrder.IndexOf(oldFilename);
                 page.CodeOrder[index] = newFilename;
-
-                page.Includes.Remove(oldFilename); 
                 page.Includes.Add(newFilename);
+                page.SubCodeDocuments.Add(newFilename, doc);
 
-                CodeDocument doc = Core.Roslyn.AddCodeDocument(newFilename, ClickedNode.Editor.Target.Code, true);
-                newNode.Editor = new DocumentEditor(doc, ClickedNode.Editor.Page);
-                await newNode.Editor.UpdateRoslyn("Rename Code");
-
-                System.Windows.Forms.TreeNodeCollection tree = ClickedNode.Parent.Nodes;
-                int origin = Core.ThisBook.PageOrder.IndexOf(ClickedNode.Text);
-
-                page.SubCodeDocuments.Remove(ClickedNode.Editor.Target.Filename);
-                page.SubCodeDocuments.Add(newNode.Editor.Target.Filename, newNode.Editor.Target);
-
-                Core.Roslyn.RemoveCodeDocument(ClickedNode.Editor.Target.Filename);
-
-                tree.Remove(ClickedNode);
                
 
+                tree.Remove(ClickedNode);
+                tree.Insert(originNodeIndex, newNode);
 
-                tree.Insert(origin, newNode);
+                Debug.WriteLine("== Codeorder");
+                foreach (string file in page.CodeOrder) Debug.WriteLine(file);
+                Debug.WriteLine("== includes");
+                foreach (string file in page.Includes) Debug.WriteLine(file);
+                Debug.WriteLine("== CodeDocuments");
+                foreach (CodeDocument d in page.SubCodeDocuments.Values) Debug.WriteLine(d.Filename);
             }
 
             EndUpdate();
 
         }
-
         private void renamePageToolStripMenuItem_Click(object sender, EventArgs e)
         {
             try
             {
+ 
+                BeginUpdate();
                 string name = ShowInputDialog($"Input new name:", $"Rename Page {ClickedNode.Editor.Page.Name}", ClickedNode.Editor.Page.Name);
                 if (!string.IsNullOrWhiteSpace(name))
                 {
-
+                   
+                    if(Core.ThisBook.Pages.ContainsKey(name))
+                    {
+                        EndUpdate();
+                        MessageBox.Show("A page with this name already exists.", "Rename Page", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    
                     System.Windows.Forms.TreeNodeCollection tree = ClickedNode.Parent.Nodes;
                     int originPageIndex = Core.ThisBook.PageOrder.IndexOf(ClickedNode.Text);
-                    oPage originPage = ClickedNode.Editor.Page;
+                    oPage page = ClickedNode.Editor.Page;
+                    View.Editor.RemoveTab(page.RoslynCodeDoc.Filename);
 
-                    View.Editor.RemoveTab(originPage.RoslynCodeDoc.Filename);
+                    
+                    string code = ClickedNode.Editor.Text;
+                   
+                    string oldFilename = page.RoslynCodeDoc.Filename;
+                    string newFilename = oldFilename.Replace(page.Name, name);
 
-                    oPage newPage = new oPage(name, name);
-                    newPage.OrderIndex = originPage.OrderIndex;
-                    newPage.Hidden = originPage.Hidden;
-                    newPage.Format = originPage.Format;
-                    newPage.Includes = new List<string>(originPage.Includes);
-                    newPage.CodeOrder = new List<string>(originPage.CodeOrder);
-                    newPage.Section = originPage.Section;
-                    newPage.Url = originPage.Url;
-
-                    newPage.RoslynCodeDoc = Core.Roslyn.AddCodeDocument
-                        (
-                        filename: originPage.RoslynCodeDoc.Filename.Replace(originPage.Name, name),
-                        code: originPage.RoslynCodeDoc.Code.Replace($"Definition{originPage.Name}", $"Definition{name}"),
+                    Core.Roslyn.RemoveCodeDocument(oldFilename);
+                    ClickedNode.Editor.Target = Core.Roslyn.AddCodeDocument
+                    (
+                        filename: newFilename,
+                        code: code.Replace($"Definition{page.Name}", $"Definition{name}"),
                         active: true
-                        );
+                    );
 
-                    Core.Roslyn.RemoveCodeDocument(originPage.RoslynCodeDoc.Filename);
+                    page.Filename = newFilename;
+                    page.CodeOrder = page.CodeOrder.Select(f => f.Replace(page.Name, name)).ToList();
+                    page.Includes = page.Includes.Select(f => f.Replace(page.Name, name)).ToList();
 
-                    foreach (var item in originPage.SubCodeDocuments)
-                    {
-                        CodeDocument old = item.Value as CodeDocument;
-                        string key = item.Key;
-
-                        View.Editor.RemoveTab(old.Filename);
-                        newPage.SubCodeDocuments[key] = Core.Roslyn.AddCodeDocument
-                        (
-                        filename: old.Filename.Replace(originPage.Name, name),
-                        code: old.Code.Replace($"Definition{originPage.Name}", $"Definition{name}"),
-                        active: old.Active
-                        );
-                        Core.Roslyn.RemoveCodeDocument(old.Filename);
-                    }
-
-           
-                    Core.ThisBook.PageOrder[originPageIndex] = newPage.Name;
-
-                    ClickedNode.Name = ClickedNode.Name.Replace(originPage.Name, name);
-                    ClickedNode.Editor.Target = Core.Roslyn.GetCodeDocument(newPage.RoslynCodeDoc.Filename);
-                    ClickedNode.Editor.Text = ClickedNode.Editor.Target.Code;
-                    ClickedNode.Editor.EmptyUndoBuffer();
 
                     foreach (BookNode sub in ClickedNode.Nodes)
                     {
-                        string file = originPage.RoslynCodeDoc.Filename.Replace(originPage.Name, name);
-                        sub.Editor.Target = Core.Roslyn.GetCodeDocument(file);
-                        sub.Editor.Text = ClickedNode.Editor.Target.Code;
-                        sub.Editor.EmptyUndoBuffer();
+                        View.Editor.RemoveTab(sub.Editor.Target.Filename);
+                        string subcode = sub.Editor.Text;
+                        Core.Roslyn.RemoveCodeDocument(sub.Editor.Target.Filename);
+                        sub.Editor.Target = Core.Roslyn.AddCodeDocument
+                        (
+                            filename: sub.Editor.Target.Filename.Replace(page.Name, name),
+                            code: subcode.Replace($"Definition{page.Name}", $"Definition{name}"),
+                            active: true
+                        );
+                        page.SubCodeDocuments.Remove(sub.Editor.Target.Filename.Replace(name, page.Name));
+                        page.SubCodeDocuments[sub.Editor.Target.Filename] = sub.Editor.Target;
+
                     }
+
+                    ClickedNode.Editor.Target.UpdateCode();
+
+                    Core.ThisBook.PageOrder[originPageIndex] = name;
+                    Core.ThisBook.Pages.Remove(page.Name);
+                    Core.ThisBook.Pages.Add(name, page);
+
+
+                    page.Name = name;
+                    ClickedNode.Name = ClickedNode.Name.Replace(page.Name, name);
+                    ClickedNode.Text = name;
+                    EndUpdate();
                 }
-                Create();
+              
             }
             catch (Exception ex)
             {
                 Debug.WriteLine("Error renaming page: " + ex.Message);
-                Create();
-
+                EndUpdate();
             }
         }
-   
-
-
         private void deletePageToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Core.Roslyn.RemoveCodeDocument(ClickedNode.Editor.Target.Filename);
-          //  Core.ThisBook.Main.Objects.Remove(ClickedNode.Editor.Page);
+            string filename = ClickedNode.Editor.Target.Filename;
+            oPage page = ClickedNode.Editor.Page;
+            View.Editor.RemoveTab(filename);
+
+            foreach (CodeDocument code in page.SubCodeDocuments.Values)
+                Core.Roslyn.RemoveCodeDocument(code.Filename);
+
+            Core.Roslyn.RemoveCodeDocument(filename);
+
             Core.ThisBook.PageOrder.Remove(ClickedNode.Text);
+            Core.ThisBook.Pages.Remove(page.Name);
+
             Nodes.Remove(ClickedNode);
         }
+        private void deleteCodeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
 
-
-
+            string filename = ClickedNode.Editor.Target.Filename;
+            View.Editor.RemoveTab(filename);
+            oPage page = ClickedNode.Editor.Page;
+            Core.Roslyn.RemoveCodeDocument(filename);
+            page.Includes.Remove(filename);
+            page.CodeOrder.Remove(filename);
+            page.SubCodeDocuments.Remove(filename);
+            Nodes.Remove(ClickedNode);
+        }
         private async void customToolStripMenuItem_Click(object sender, EventArgs e)
         {
             
@@ -864,13 +910,24 @@ namespace qbookCode.Controls
                 {
                     string PageName = ClickedNode.Text;
                     oPage page = Core.ThisBook.Pages[PageName];
-
                     string filename = page.Name + "." + name + ".cs";
+
+                    if(page.SubCodeDocuments.ContainsKey(filename))
+                    {
+                        EndUpdate();
+                        MessageBox.Show("A subcode with this name already exists.", "Add SubCode", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+
+
                     BookNode subNode = new BookNode(filename, NodeType.SubCode) { ImageIndex = 3 };
                     page.SubCodeDocuments[filename] = Core.Roslyn.AddCodeDocument(filename, Snippets.NewSubCode(page, name), true);
                     subNode.Editor = new DocumentEditor(page.SubCodeDocuments[filename], page);
                     await subNode.Editor.UpdateRoslyn("New CustomCode");
                     ClickedNode.Nodes.Add(subNode);
+                    page.Includes.Add(filename);
+                    page.CodeOrder.Add(filename);
 
                 }
             }
@@ -882,18 +939,27 @@ namespace qbookCode.Controls
 
             EndUpdate();
         }
-
-
         private async void addPageBeforeToolStripMenuItem_Click(object sender, EventArgs e)
         {
             await InsertPage(offset: -1);
         }
         private async Task InsertPage(int offset = 1)
         {
+            
+            
             BeginUpdate();
             oPage page = null;
             BookNode pageNode = null;
             string name = ShowInputDialog("Input page name:", $"New subcode", "NewPage");
+
+            if (Core.ThisBook.Pages.ContainsKey(name))
+            {
+                EndUpdate();
+                MessageBox.Show("A page with this name already exists.", "Rename Page", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+
             if (!string.IsNullOrWhiteSpace(name))
             {
                 page = new oPage(name, name);
@@ -976,10 +1042,7 @@ namespace qbookCode.Controls
             InsertPage(offset: +1);
         }
 
-
-
         #endregion
-
 
         #region Select Edit Node
 
@@ -1109,7 +1172,6 @@ namespace qbookCode.Controls
             }
             return null;
         }
-
         public BookNode GetNodeByFilename(string name)
         {
             Debug.WriteLine($"========");
@@ -1142,9 +1204,6 @@ namespace qbookCode.Controls
 
             return null;
         }
-
-
-
         public async Task OpenNodeByName(string name)
         {
 
@@ -1190,10 +1249,6 @@ namespace qbookCode.Controls
         }
 
         #endregion
-
-       
-
-
     }
 
     public enum NodeType

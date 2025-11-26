@@ -2,7 +2,7 @@
   "profiles": {
     "qbookCode": {
       "commandName": "Project",
-      "commandLineArgs": "\"T:\\NewBook\\NewBook.code\\NewBook.csproj\" \"amium.pipe.server\" \"amium.pipe.client\""
+      "commandLineArgs": "\"T:\\FilterStudio\\FilterStudio.code\\FilterStudio.csproj\" \"amium.pipe.server\" \"amium.pipe.client\""
     }
   }
 }
