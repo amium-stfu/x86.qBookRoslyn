@@ -231,6 +231,8 @@ namespace QB.Net
 
             void rxThreadIdle()
             {
+                //if (!udpClient.Client.Connected) return;
+                
                 IPEndPoint ipep;
                 UdpClient newsock = null;
                 IPEndPoint sender = null;

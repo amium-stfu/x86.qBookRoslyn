@@ -447,7 +447,6 @@ using System.Text.Json;
         }
 
         static AppDomain scriptDomain = null;
-
         static string ReplaceCodeInclude(Match m, string pathToPage = "")
         {
             if (!m.Groups[1].Success)
@@ -901,6 +900,25 @@ using System.Text.Json;
                         page.Includes.Add(file);
                     }
                 }
+
+                var dto = new PageDefinition
+                {
+                    Name = page.Name,
+                    Text = page.Text,
+
+                    OrderIndex = page.OrderIndex,
+                    Hidden = page.Hidden,
+                    Format = page.Format,
+                    Includes = page.Includes,
+                    Section = page.Section,
+                    Url = page.Url,
+                    CodeOrder = page.CodeOrder,
+
+                };
+
+                string oPageJson = JsonConvert.SerializeObject(dto, Newtonsoft.Json.Formatting.Indented);
+                File.WriteAllText(Path.Combine(pageDir, "oPage.json"), oPageJson);
+
             }
 
             var sbProgram = new StringBuilder();
@@ -939,6 +957,36 @@ using System.Text.Json;
 
             File.WriteAllText(Path.Combine(root, "Program.cs"), sbProgram.ToString());
             File.WriteAllText(Path.Combine(root, "GlobalUsing.cs"), "global using static QB.Program;\r\n");
+
+            string name = Path.GetFileNameWithoutExtension(fullPath).Replace(".qbook","");
+
+            File.WriteAllText(Path.Combine(root, name + ".csproj"), Roslyn.GenerateCsprojString(name));
+
+            var project = new qBookDefinition
+            {
+                ProjectName = Core.ThisBook.Filename.Replace(".qbook", ""),
+                Version = Core.ThisBook.Version,
+                VersionHistory = Core.ThisBook.VersionHistory,
+                VersionEpoch = Core.ThisBook.VersionEpoch,
+                StartFullScreen = Core.ThisBook.StartFullScreen,
+                HidPageMenuBar = Core.ThisBook.HidPageMenuBar,
+                PasswordAdmin = Core.ThisBook.PasswordAdmin,
+                PasswordService = Core.ThisBook.PasswordService,
+                PasswordUser = Core.ThisBook.PasswordUser,
+                Directory = Core.ThisBook.Directory,
+                Filename = Core.ThisBook.Filename,
+                SettingsDirectory = Core.ThisBook.SettingsDirectory,
+                DataDirectory = Core.ThisBook.DataDirectory,
+                BackupDirectory = Core.ThisBook.BackupDirectory,
+                TempDirectory = Core.ThisBook.TempDirectory,
+                Language = Core.ThisBook.Language,
+                PageOrder = Core.ThisBook.PageOrder
+            };
+
+            string bookJson = JsonConvert.SerializeObject(project, Newtonsoft.Json.Formatting.Indented);
+            File.WriteAllText(Path.Combine(root, "Book.json"), bookJson);
+
+
 
         }
         public class PageDefinition

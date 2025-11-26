@@ -46,10 +46,14 @@ namespace qbookCode.Controls
         }
 
 
-        public bool CheckCode => bookTreeView.CheckCode();
+
+        public async Task<bool> CheckCode()
+        {
+            return await bookTreeView.CheckCode();
+        }
         public DocumentEditor GetSelectedEditor()
         {
-            return bookTreeView.GetSelectedEditor();
+            return bookTreeView.GetSelectedEditor()!;
         }
         private void button1_Click(object sender, EventArgs e)
         {

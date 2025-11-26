@@ -75,6 +75,7 @@ namespace qbook
                 {
                     initGlobal.Invoke(null, null);
                     RuntimeWatchdog.Start();
+                   
                 }
                 catch (TargetInvocationException tex)
                 {

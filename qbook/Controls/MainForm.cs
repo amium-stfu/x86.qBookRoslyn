@@ -2344,88 +2344,6 @@ namespace qbook
             qbook.Core.ShowLogForm();
         }
 
-        private void codeToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            string program = "";
-
-            program += "namespace QB\r\n{\r\n";
-            program += "   public static class Program {\r\n";
-
-
-            string uri = Path.Combine(@"T:\pageCode", qbook.Core.ThisBook.Filename.Replace(".qbook",""));
-            Directory.CreateDirectory(uri);
-
-            Directory.CreateDirectory(Path.Combine(uri,"dlls"));
-
-            int pageCount = 0;
-            foreach (oPage page in qbook.Core.ActualMain.Objects.Where(item => item is oPage))
-            {
-                pageCount++;
-                string code = page.CsCode;
-
-                int index = code.IndexOf("public class");
-                Debug.WriteLine("index= " + index);
-                string insertText = "\r\nnamespace class_" + page.Name + "\r\n" + "{" + "\r\n";
-                code = code.Insert(index-1, insertText);
-                code += "\r\n}";
-
-                string className = "class_" + page.Name + ".@class_" + page.Name;
-                program += "   public static " + className + " " + page.Name +  " { get;} = new " + className +"();\r\n";
-
-
-                Directory.CreateDirectory(Path.Combine(uri, pageCount + "_" + page.Name));
-
-                File.WriteAllText(Path.Combine(uri, pageCount + "_" + page.Name, "0_class_" + page.Name + ".cs"), code);
-
-
-                string global = "global using static QB.Program;\r\n";
-          
-                File.WriteAllText(Path.Combine(uri, "GlobalUsing.cs"), global);
-
-
-
-            var lines = code.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-
-                var usings = lines
-                .TakeWhile(l => !l.TrimStart().StartsWith("public class"))
-                .Where(l => l.TrimStart().StartsWith("using"))
-                .ToList();
-
-                int subCount = 0;
-                foreach (var subClass in page.CsCodeExtra)
-                {
-                    subCount++;
-                    string sub = "";
-
-                    foreach (string use in usings)
-                    {
-                        sub += $"{use}\r\n";
-                    }
-                    
-                    sub += "\r\nnamespace class_"+ page.Name +  "\r\n{\r\n\r\n";
-           
-                    sub += subClass.Value;
-                  
-
-                    sub += "\r\n}";
-
-                    File.WriteAllText(Path.Combine(uri, pageCount + "_" + page.Name, subCount + "_"+ subClass.Key + ".cs"), sub);
-
-                  
-
-                }
-          
-            }
-
-            program += "   }\r\n}";
-            File.WriteAllText(Path.Combine(uri, "Program.cs"), program);
-
-            string root = CsprojGenerator.GetSolutionDirectory();
-
-            string csprojXml = GenerateCsprojWithAbsolutePaths(root, uri);
-            File.WriteAllText(Path.Combine(uri, "Generated.csproj"), csprojXml);
-
-        }
         public static string GenerateCsprojWithAbsolutePaths(string root, string uri)
         {
             string projectRoot = uri;
@@ -2512,14 +2430,6 @@ namespace qbook
             Process.Start(psi);
 
          //   await Core.ShowCodeExploror();
-        }
-
-        private async void rebuildToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            await BookRuntime.BuildAssembly();
-           // await Task.Delay(100);
-            BookRuntime.InitializeAll();
-
         }
 
         bool InitShown = false;

@@ -10,7 +10,21 @@
     <ApplicationIcon>editor.main.ico</ApplicationIcon>
   </PropertyGroup>
 
-  <ItemGroup>
+	<Target Name="SetVersion" BeforeTargets="BeforeBuild" Condition="'$(Configuration)'=='Release'">
+		<PropertyGroup>
+			<Year>$([System.DateTime]::Now.ToString("yyyy"))</Year>
+			<Month>$([System.DateTime]::Now.ToString("MM"))</Month>
+			<Day>$([System.DateTime]::Now.ToString("dd"))</Day>
+			<Time>$([System.DateTime]::Now.ToString("HHmm"))</Time>
+
+			<!-- AssemblyVersion mit vier Segmenten -->
+			<AssemblyVersion>$(Year).$(Month).$(Day).$(Time)</AssemblyVersion>
+			<InformationalVersion>$(Year).$(Month).$(Day).$(Time)</InformationalVersion>
+		</PropertyGroup>
+	</Target>
+
+
+	<ItemGroup>
     <Compile Remove="Controls\CodeNode.cs" />
   </ItemGroup>
 

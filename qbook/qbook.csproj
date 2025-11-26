@@ -1107,9 +1107,10 @@
     <Error Condition="!Exists('..\packages\Scintilla.NET.5.3.2.7\build\scintilla.net.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Scintilla.NET.5.3.2.7\build\scintilla.net.targets'))" />
   </Target>
   <PropertyGroup>
-    <PreBuildEvent>rem --- automatically update Version in AssemblyInfo.cs ---
-rem powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File $(ProjectDir)updateAssemblyInfo.cs.ps1
-
+    <PreBuildEvent>
+if "$(ConfigurationName)"=="Release" (
+powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File $(ProjectDir)updateAssemblyInfo.cs.ps1
+)
 </PreBuildEvent>
   </PropertyGroup>
   <Import Project="..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.119.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets" Condition="Exists('..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.119.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets')" />

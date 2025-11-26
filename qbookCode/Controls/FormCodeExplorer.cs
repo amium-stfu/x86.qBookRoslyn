@@ -7,6 +7,7 @@ using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -23,6 +24,8 @@ namespace qbookCode.Controls
         public FormCodeExplorer()
         {
             InitializeComponent();
+
+            this.Text = "qbookCode  v." + Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
             this.Shown += async (s, e) =>
             {
@@ -177,8 +180,8 @@ namespace qbookCode.Controls
         }
         private async void btnRebuild_Click(object sender, EventArgs e)
         {
-
-            if (BookTree.CheckCode)
+        
+            if (await BookTree.CheckCode())
             {
                 SetStatusText("qbook rebuild failed! Please fix code errors first.", Color.Red);
                 return;

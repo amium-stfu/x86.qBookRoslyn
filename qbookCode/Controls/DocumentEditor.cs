@@ -1431,8 +1431,8 @@ namespace qbookCode.Controls
                 // Zeilen außerhalb des SubCode-Bereichs ausblenden
                 HideProtectLines(0, startLine); // Zeilen vor SubCode
                 HideProtectLines(endLine, Lines.Count - 1); // Zeilen nach SubCode
-                Debug.WriteLine("StartLine " + startLine);
-                Debug.WriteLine("EndLine " + endLine + ".." + Lines.Count);
+                //Debug.WriteLine("StartLine " + startLine);
+                //Debug.WriteLine("EndLine " + endLine + ".." + Lines.Count);
             }
         }
         public async Task UpdateMethodesFromRoslynAsync()

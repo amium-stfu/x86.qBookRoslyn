@@ -214,36 +214,57 @@ namespace qbookCode.Controls
         #region Theme
 
     
-        public void ApplyTheme()
+        public async Task ApplyTheme()
         {
             BeginUpdate();
             BackColor = Theme.PanelBackColor;
             ForeColor = Theme.GridForeColor;
             BorderStyle = System.Windows.Forms.BorderStyle.None;
-            UpdateAllNodes();
+            await UpdateSelectedNode();
             EndUpdate();
         }
 
 
-        bool CodeError { get; set; } = false;
-        public bool CheckCode()
+        public bool CodeError 
         {
-            UpdateAllNodes();
+            get; 
+            set; 
+        } = false;
+        public async Task<bool> CheckCode()
+        {
+            await UpdateAllNodes("CheckCode");
             return CodeError;
         }
 
-
-        private void UpdateAllNodes()
+        private async Task UpdateSelectedNode()
         {
-            CodeError = false;
-            foreach (BookNode node in Nodes)
+            if (SelectedCodeNode != null)
             {
-             
-                UpdateNodeByLevelRecursive(node);
+                await SelectedCodeNode.Editor.UpdateRoslyn("UpdateSelectedNode");
+                //UpdateNodeByLevelRecursive(SelectedCodeNode);
             }
         }
-        private void UpdateNodeByLevelRecursive(BookNode node)
+
+
+        private async Task UpdateAllNodes(string sender)
         {
+            using (var splash = new FormExplorerSplashScreen())
+            {
+                splash.Show();
+                Application.DoEvents();
+                splash.SetStatus("Verifying code...");
+
+                CodeError = false;
+                foreach (BookNode node in Nodes)
+                {
+                    await UpdateNodeByLevelRecursive(node);
+                }
+                splash.Close();
+            }
+        }
+        private async Task UpdateNodeByLevelRecursive(BookNode node)
+        {
+            BeginUpdate();
             node.ForeColor = Theme.TreeNodeDefaultColor;
             if (node == SelectedCodeNode)
                 node.ForeColor = Theme.TreeNodeSelectColor;
@@ -255,6 +276,7 @@ namespace qbookCode.Controls
             if (node.Type == NodeType.Program) index = 3;
             if (node.Editor != null) 
             {
+                await node.Editor.UpdateRoslyn("UpdateNodes");
                 if (node.Editor.Page != null)
                     if (node.Editor.Page.Hidden) index = 5;
 
@@ -276,6 +298,7 @@ namespace qbookCode.Controls
             {
                 UpdateNodeByLevelRecursive(child);
             }
+            EndUpdate();
         }
 
         #endregion
@@ -344,13 +367,10 @@ namespace qbookCode.Controls
         #region Create Update Delete Nodes
         public void Create()
         {
-            using (var splash = new FormExplorerSplashScreen())
-            {
-                splash.Show();
-                Application.DoEvents();
-
+           
+             
                 PageEditors.Clear();
-                splash.SetStatus("Creating BookTree");
+              
 
                 BeginUpdate();
                 ImageList = BookTreeViewIcons;
@@ -363,7 +383,7 @@ namespace qbookCode.Controls
                 SelectedCodeNode = null;
                 foreach (oPage page in Core.ThisBook.Pages.Values)
                 {
-                    splash.SetStatus("Adding Page " + page.Name);
+                 
                     BookNode pageNode = new BookNode(page.RoslynCodeDoc.Filename, NodeType.Page) { ImageIndex = 2 };
                     pageNode.Editor = new DocumentEditor(page.RoslynCodeDoc, page);
                     pageNode.Editor.GoToDefinition = async () => await GoToDefinitionAsync();
@@ -377,9 +397,7 @@ namespace qbookCode.Controls
                     {
                         BookNode subNode = new BookNode(doc.Filename, NodeType.SubCode) { ImageIndex = 3 };
                         subNode.Text = doc.Filename.Split('.')[1];
-                        splash.SetStatus("Adding SubCode " + subNode.Text);
                         subNode.Editor = new DocumentEditor(doc, page);
-
                         subEditors.Add(subNode.Editor);
                         subNode.Editor.Page = page;
                         pageNode.Nodes.Add(subNode);
@@ -395,13 +413,8 @@ namespace qbookCode.Controls
                 Global.Editor = new DocumentEditor(Core.Roslyn.GetCodeDocument("GlobalUsing.cs"), null);
                 Root.Nodes.Add(Program);
                 Root.Nodes.Add(Global);
-
                 Root.Expand();
                 EndUpdate();
-               
-                splash.SetStatus("Verifying Code");
-            }
-          
         }
 
         public async Task CheckFullCode()
