@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("qbookCode")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b10fd3c950f5ec3fcbbd109217c7fe4aecda382d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+28848f5bc176b9bb6209bfe5bbb46f96f97304d7")]
 [assembly: System.Reflection.AssemblyProductAttribute("qbookCode")]
 [assembly: System.Reflection.AssemblyTitleAttribute("qbookCode")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -731,8 +731,20 @@ namespace qbookCode.Controls
                 View.Editor.RemoveTab(ClickedNode.Editor.Target.Filename);
 
                 await ClickedNode.Editor.UpdateRoslyn("Rename Code");
+
+                string oldFilename = ClickedNode.Editor.Target.Filename;
+
                 string newFilename = ClickedNode.Name.Replace(ClickedNode.Text, name);
                 BookNode newNode = new BookNode(newFilename, NodeType.SubCode) { ImageIndex = 3 };
+
+                oPage page = Core.ThisBook.Pages[ClickedNode.Editor.Page.Name];
+
+                int index = page.CodeOrder.IndexOf(oldFilename);
+                page.CodeOrder[index] = newFilename;
+
+                page.Includes.Remove(oldFilename); 
+                page.Includes.Add(newFilename);
+
                 CodeDocument doc = Core.Roslyn.AddCodeDocument(newFilename, ClickedNode.Editor.Target.Code, true);
                 newNode.Editor = new DocumentEditor(doc, ClickedNode.Editor.Page);
                 await newNode.Editor.UpdateRoslyn("Rename Code");
@@ -740,10 +752,11 @@ namespace qbookCode.Controls
                 System.Windows.Forms.TreeNodeCollection tree = ClickedNode.Parent.Nodes;
                 int origin = Core.ThisBook.PageOrder.IndexOf(ClickedNode.Text);
 
-                PageEditors[ClickedNode.Editor.Page.Name].SubCodes.Remove(ClickedNode.Editor);
-                PageEditors[ClickedNode.Editor.Page.Name].SubCodes.Add(newNode.Editor);
+                page.SubCodeDocuments.Remove(ClickedNode.Editor.Target.Filename);
+                page.SubCodeDocuments.Add(newNode.Editor.Target.Filename, newNode.Editor.Target);
 
                 Core.Roslyn.RemoveCodeDocument(ClickedNode.Editor.Target.Filename);
+
                 tree.Remove(ClickedNode);
                
 
@@ -842,21 +855,31 @@ namespace qbookCode.Controls
 
         private async void customToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            
             BeginUpdate();
-            string name = ShowInputDialog("Input code name:", $"New subcode", "CustomCode");
-            if (!string.IsNullOrWhiteSpace(name))
+            try
             {
-                string PageName = ClickedNode.Text;
-               // oPage page = qbook.Core.ThisBook.Main.Objects.OfType<oPage>().FirstOrDefault(p => p.Name == PageName);
+                string name = ShowInputDialog("Input code name:", $"New subcode", "CustomCode");
+                if (!string.IsNullOrWhiteSpace(name))
+                {
+                    string PageName = ClickedNode.Text;
+                    oPage page = Core.ThisBook.Pages[PageName];
 
-                //string filename = page.Name + "." + name + ".cs";
-                //BookNode subNode = new BookNode(filename, NodeType.SubCode) { ImageIndex = 3 };
-                //page.SubCodeDocuments[filename] = Core.Roslyn.AddCodeDocument(filename, Snippets.NewSubCode(page, name), true);
-                //subNode.Editor = new DocumentEditor(page.SubCodeDocuments[filename], page);
-                //await subNode.Editor.UpdateRoslyn("New CustomCode");
-                //ClickedNode.Nodes.Add(subNode);
+                    string filename = page.Name + "." + name + ".cs";
+                    BookNode subNode = new BookNode(filename, NodeType.SubCode) { ImageIndex = 3 };
+                    page.SubCodeDocuments[filename] = Core.Roslyn.AddCodeDocument(filename, Snippets.NewSubCode(page, name), true);
+                    subNode.Editor = new DocumentEditor(page.SubCodeDocuments[filename], page);
+                    await subNode.Editor.UpdateRoslyn("New CustomCode");
+                    ClickedNode.Nodes.Add(subNode);
 
+                }
             }
+            catch(Exception ex)
+            {
+                Debug.WriteLine("Error adding custom subcode: " + ex.Message);
+                EndUpdate();
+            }
+
             EndUpdate();
         }
 
@@ -876,12 +899,19 @@ namespace qbookCode.Controls
                 page = new oPage(name, name);
 
                 string filename = name + ".qPage.cs";
+                page.Filename = filename;
                 page.RoslynCodeDoc = Core.Roslyn.AddCodeDocument(filename, Snippets.NewPageCode(name), true);
                 page.RoslynCodeDoc.UpdateCode();
-                
+                page.CodeOrder = new List<string>();
+                page.Includes = new List<string>();
+                page.Section = "";
+      
+
                 pageNode = new BookNode(page.RoslynCodeDoc.Filename, NodeType.Page) { ImageIndex = 2 };
                 pageNode.Editor = new DocumentEditor(page.RoslynCodeDoc, page);
+                
                 await pageNode.Editor.UpdateRoslyn("InsertPage");
+
 
             }
             if (page == null)
@@ -913,7 +943,7 @@ namespace qbookCode.Controls
                 {
                     Core.ThisBook.PageOrder.Insert(origin + offset, pageNode.Text);
                 }
-             //   qbook.Core.ThisBook.Main.Objects.Add(page);
+             Core.ThisBook.Pages.Add(page.Name,page);
             }
             EndUpdate();
 

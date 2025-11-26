@@ -151,6 +151,8 @@ namespace qbookCode
             
         }
 
+
+
         internal static async Task<Book> BookFromFolder(string folderPath, string bookname)
         {
 
@@ -239,7 +241,10 @@ namespace qbookCode
             Roslyn.AddCodeDocument("Program.cs", File.ReadAllText(Path.Combine(folderPath, "Program.cs")), true);
             Roslyn.AddCodeDocument("GlobalUsing.cs", "global using static QB.Program;", true);
 
+    
+
             string name = newBook.Filename.Replace(".qbook", "");
+
 
             return newBook;
 
@@ -247,8 +252,8 @@ namespace qbookCode
 
         internal static async Task SaveBook() 
         { 
-            string bookFolder = Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename.Replace(".qbook", ".code"));
-            string backupFolder = Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename.Replace(".qbook", ".backup"));
+            string bookFolder = Program.ActualBookPath;
+            string backupFolder = Program.ActualBookPath.Replace(".code", ".backup");
             string pagesFolder = Path.Combine(bookFolder, "Pages");
 
             string csproj = File.ReadAllText(Path.Combine(bookFolder, $"{Core.ThisBook.Filename.Replace(".qbook", "")}.csproj"));
@@ -323,6 +328,8 @@ namespace qbookCode
                         temp = sub.Code;
                     csCode = temp.ToString();
                     System.IO.File.WriteAllText(Path.Combine(pageDir, sub.Filename), csCode);
+                    page.CodeOrder.Add(sub.Filename);
+                    page.Includes.Add(sub.Filename);
                 }
 
                 var dto = new PageDefinition
@@ -354,6 +361,8 @@ namespace qbookCode
 
             string bookJson = JsonConvert.SerializeObject(project, Newtonsoft.Json.Formatting.Indented);
             File.WriteAllText(Path.Combine(newFile, "Book.json"), bookJson);
+
+            Debug.WriteLine("Project saved to " + newFile);
 
         }
 

@@ -2481,10 +2481,6 @@ namespace qbook
         {
             await Core.OpenQbookAsync();
 
-
-        
-
-
         }
 
         private void testToolStripMenuItem_Click(object sender, EventArgs e)

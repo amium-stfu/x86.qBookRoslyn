@@ -8,3 +8,6 @@
 2025-11-25 12:16:43.909 [INF] Received command from qBook: RuntimeErrors with args: {"Key":"signalFilter.view.cs:146:13","File":"signalFilter.view.cs","Methode":"FocusIdle()","Line":146,"Col":13,"Exception":"System.IndexOutOfRangeException: Index was outside the bounds of the array.","Count":8,"RepeatMs":3016,"Length":0,"Snippet":null}
 2025-11-25 12:17:41.437 [INF] Received command from qBook: CloseEditor with args: 
 2025-11-25 12:24:25.480 [INF] Received command from qBook: CloseEditor with args: 
+2025-11-25 12:41:29.244 [INF] Toggling hidden lines
+2025-11-25 12:41:31.394 [INF] Toggling hidden lines
+2025-11-25 13:56:26.366 [INF] Received command from qBook: CloseEditor with args: 
