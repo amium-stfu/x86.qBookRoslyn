@@ -1,0 +1,258 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type='text/xsl' href='qbook.xsl'?>
+<Book xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Main>
+    <Name />
+    <Text />
+    <Objects>
+      <oItem xsi:type="oPage">
+        <Name>main</Name>
+        <Text>Automation.StateMachine</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+          <oItem xsi:type="oLayer">
+            <Name>Tags</Name>
+            <Text />
+            <Objects />
+            <Selected>false</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>true</Selected>
+        <Settings />
+        <CsCode>Machine M1 = null;
+
+public void Initialize() {		
+	
+	M1 = new Machine("M1", (m) =&gt; Standby(m));	
+	M1.Ui.DefaultPanels(30);
+	M1.Module("s1").Read.Color = "blue";
+	M1.Module("s2").Read.Color = "green";	
+	
+	M1.Ui.DataPanel.Control("s1", new Widget("widget", M1.Module("s1")));
+	M1.Ui.DataPanel.Control("s2", new Widget("widget", M1.Module("s2")));
+	M1.Ui.DataPanel.Control("s3", new Widget("widget", M1.Module("s3")));
+	
+	M1.Ui.ControlPanel.Control("Reset", new Button("Reset", (b) =&gt; M1.Reset()));
+	M1.Ui.ControlPanel.Control("Run", new Button("Run", (b) =&gt; M1.Run()));
+	M1.Ui.ControlPanel.Control("Pause", new Button("Pause", (b) =&gt; M1.Pause()));
+	M1.Ui.ControlPanel.Control("Finish", new Button("Finish", (b) =&gt; M1.Finish()));
+	M1.Ui.ControlPanel.Control("Abort", new Button("Abort", (b) =&gt; M1.Abort()));	
+	
+	M1.Ui.Chart.Signal("s1", M1.Module("s1").Read);
+	M1.Ui.Chart.Signal("s2", M1.Module("s2").Read);
+	M1.Ui.Chart.Signal("s3", M1.Module("s3").Read);		
+	
+	var Gauge1 = new RadialGauge("Gauge1", 10, 50, 90, 80);
+	Gauge1.Module = M1.Module("s3");		
+	
+	M1.Function = (s) =&gt; Standby(s);
+}
+
+public void Run() {   
+}
+
+public void Pause(Machine m) {	
+}
+
+public void Standby(Machine m) {
+	if (DateTime.Now &gt; m.FunctionStart.AddSeconds(1))
+		m.Function = (m) =&gt; Sample(m);	
+
+	m.Module("s1").Read.Value = 0;
+	m.Module("s2").Read.Value = 20;
+	m.Module("s3").Read.Value = 50;
+}
+
+public void Sample(Machine m) {
+	if (DateTime.Now &gt; m.FunctionStart.AddSeconds(30))
+		m.Function = (m) =&gt; Standby(m);	
+	
+	if (m.State == State.Runnning) {
+		m.Module("s1").Read.Value = 10;	
+		m.Module("s2").Read.Value ++;
+		if (m.Module("s2").Read.Value &gt; 40)
+			m.Module("s2").Read.Value = 20;
+		if (m.Module("s2").Read.Value == 40)
+			m.Module("s3").Read.Value += 0.5;
+	}
+}
+</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Drawing;
+using QB;
+using QB.Controls;
+using QB.Automation;
+
+public class _page_main
+{
+</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+}
+</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+    </Objects>
+    <Selected>false</Selected>
+    <Settings />
+    <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+    <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+    <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+    <CsCodeFooter>
+}
+</CsCodeFooter>
+    <Bounds>
+      <X>0</X>
+      <Y>0</Y>
+      <W>0</W>
+      <H>0</H>
+    </Bounds>
+    <Visible>true</Visible>
+  </Main>
+  <Version>1.0.0</Version>
+  <Bounds>
+    <Location>
+      <X>266</X>
+      <Y>52</Y>
+    </Location>
+    <Size>
+      <Width>1199</Width>
+      <Height>841</Height>
+    </Size>
+    <X>266</X>
+    <Y>52</Y>
+    <Width>1199</Width>
+    <Height>841</Height>
+  </Bounds>
+  <Directory>D:\OneDrive - Amium GmbH\Qbook\Main\bin\Debug</Directory>
+  <Filename>automation.statemachine</Filename>
+  <Language>en</Language>
+  <Grid>0</Grid>
+  <DesignMode>false</DesignMode>
+  <TagMode>false</TagMode>
+  <Recorder>false</Recorder>
+</Book>

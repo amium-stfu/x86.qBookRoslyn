@@ -1,0 +1,287 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type='text/xsl' href='qbook.xsl'?>
+<Book xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Main>
+    <Name />
+    <Text />
+    <Objects>
+      <oItem xsi:type="oPage">
+        <Name>ligre</Name>
+        <TextDE>kann</TextDE>
+        <TextES>pueden</TextES>
+        <Text>ligre</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>true</Selected>
+        <Settings />
+        <CsCode>
+
+public class LigreView : DefaultLuiView
+{
+//	Chart chart2 = new Chart("Chart2", 105, 75, 175, 60);
+	Ligre ligre;
+	
+	public LigreView(string name, Ligre ligre) : base(name, x:0, y:0, w:280, h:180, dataPanelHeight:125)
+	{
+		this.ligre = ligre;	
+		
+		Add(new Widget("seconds", ligre.s), to:DataPanel);
+		
+		Add(new Button("Date", w:90, h:7), to:ControlPanel);		
+		Add(new Button("SystemState", w:90, h:7), to:ControlPanel);		
+		Add(new Button("Version", w:90, h:7), to:ControlPanel);		
+		
+		Add(new Button("Off", text:"Off", w:45, h:7, onClick:(s)=&gt;Off(s)), to:ControlPanel);	
+		Add(new Button("On", text:"On", w:45, h:7, onClick:(s)=&gt;On(s)), to:ControlPanel);	
+		
+	//Chart.Bounds.Set(h:140);
+		
+		Add(ligre.s, to:Chart);	
+	//	Add(ligre.s, to:chart2);		
+		
+	
+		this.OnElapsed = (c) =&gt; Idle(c);
+		Run();
+	}	
+	
+	public void Off(Control c) {			
+		ligre.On = false;
+	}
+	
+	public void On(Control c) {
+		ligre.On = true;
+	}
+	
+	public void Idle(Control c) {			
+		Button("Date").Text = ligre.Date.ToString("yyyy-mm-ss hh:mm:ss");
+		Button("SystemState").Text = ligre.systemState + ":" + ligre.deviceSystemState + "/" + ligre.coffeeSystemState;
+		Button("Version").Text = ligre.version;
+	}	
+}
+
+
+public class Ligre : Can.Client {	
+	
+	public enum DeviceSystemState {Standby, StartUp, EcoMode, Error, Ready, Dispensing, Cleaning, InitialCommissioning, RemoteControl, DeepSleep, Unknown};
+	public enum CoffeeSystemState {Broken, HeatingUp, Ready, Dispensing, Unknown};
+	
+	public DateTime Date = DateTime.Now;
+	public Module s = new Module("s", text: "seconds", value:0, unit:"s", color:Color.Green);	
+	
+	public DeviceSystemState deviceSystemState = DeviceSystemState.Unknown;
+	public CoffeeSystemState coffeeSystemState = CoffeeSystemState.Unknown;
+	public string systemState;
+	public string version = "";
+	
+	public bool On = false;
+
+	public Ligre(string name, string uri) : base (name, uri:uri) {
+	
+		Function = (m) =&gt; Idle(m as Ligre);
+		OnMessageReceived += (c, cm) =&gt; MessageReceived(c, cm);
+		Interval = 10;
+		Run();
+	}	
+	
+	public void MessageReceived(Can.Client c, Can.Message cm) {
+	
+		if ((cm.Id == 0x270) &amp;&amp; (cm.Data.Length == 6))
+		{
+			int year = 2000 + cm.Data[0];
+			int mo = cm.Data[1];
+			int day = cm.Data[2];
+			int h = cm.Data[3];
+			int m = cm.Data[4];
+			int ss = cm.Data[5];
+			
+			s.Value = ss;
+			
+			Date = new DateTime(year, mo, day, h, m, ss);	
+		}
+		
+		if ((cm.Id == 0x205) &amp;&amp; (cm.Data.Length &gt;= 4))
+		{
+			version = "" + cm.Data[0] + "/" + cm.Data[1] + "/" + cm.Data[2] + "/" + cm.Data[3];
+		}
+		
+		if ((cm.Id == 0x211) &amp;&amp; (cm.Data.Length == 3))
+		{
+			
+			systemState = "" + cm.Data[0] + "/" + cm.Data[1] + "/" + cm.Data[2];
+			deviceSystemState = (DeviceSystemState)cm.Data[0];
+			coffeeSystemState = (CoffeeSystemState)cm.Data[1];
+		}
+	}
+	
+	
+	int ms10Counter = 0;
+	public void Idle(Ligre ligre) {
+		Ticks.Value %= 100;
+		
+		ms10Counter ++;
+		ms10Counter %= 10;
+		
+		if (ms10Counter == 0) Transmit(new Can.Message(On ? (uint)0x200 : (uint)0x201, new byte[] {}));			
+	 	if (ms10Counter == 1) Transmit(new Can.Message(0x204, new byte[] {1}));
+		if (ms10Counter == 2) Transmit(new Can.Message(0x210, new byte[] {}));
+		if (ms10Counter == 3) Transmit(new Can.Message(0x272, new byte[] {0, 0, 0, 0, 0, 0, 0, 0}));
+	}		
+}
+
+
+Ligre Ligre1 = new Ligre("Ligre", uri:"192.168.21.151:9001"); 	
+
+
+public void Initialize() {	
+		
+	LigreView ligre1View = new LigreView("LigreView", Ligre1);
+}
+
+public void Run() { 	
+}
+
+public void Destroy() {
+}
+
+</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Drawing;
+using QB;
+using QB.Controls;
+using QB.Net;
+using QB.Amium.Controls;
+
+
+public class _page_ligre
+{</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+
+}</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+    </Objects>
+    <Selected>false</Selected>
+    <Settings />
+    <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+    <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using QB;
+using QB.Controls;
+
+public class _page_main
+{
+</CsCodeHeader>
+    <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+    <CsCodeFooter>
+}
+</CsCodeFooter>
+    <Bounds>
+      <X>0</X>
+      <Y>0</Y>
+      <W>0</W>
+      <H>0</H>
+    </Bounds>
+    <Visible>true</Visible>
+  </Main>
+  <Version>1.0.0</Version>
+  <Bounds>
+    <Location>
+      <X>1838</X>
+      <Y>82</Y>
+    </Location>
+    <Size>
+      <Width>1388</Width>
+      <Height>879</Height>
+    </Size>
+    <X>1838</X>
+    <Y>82</Y>
+    <Width>1388</Width>
+    <Height>879</Height>
+  </Bounds>
+  <Language>en</Language>
+  <Grid>0</Grid>
+  <DesignMode>false</DesignMode>
+  <TagMode>false</TagMode>
+  <Recorder>false</Recorder>
+</Book>

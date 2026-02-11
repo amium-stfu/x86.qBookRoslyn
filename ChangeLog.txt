@@ -1,0 +1,16 @@
+Extensions:
+
+New: QB.Extensions Color Color.ChangeBrightness(percent int)
+New: QB.Extensions Color Object.ToColor()
+New: QB.Extensions Image ConvertBase64ToImage(string base64String)
+New: QB.Extensions ShowEditDialog(...)
+New: Folder QB.Logs
+New: class QB.Logs.SqlLogger
+New: class QB.Logs.CsvLogger
+
+
+
+
+New: class Automation.Simulation.DemoSignal
+New: class QB.Controls.BoxView 
+New: QB.Controls.Box Overload  -> public Box(string name,Func<string> textFunction,...)

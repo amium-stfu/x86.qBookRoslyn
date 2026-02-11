@@ -1,0 +1,10 @@
+diff a/qbook/Properties/AssemblyInfo.cs b/qbook/Properties/AssemblyInfo.cs	(rejected hunks)
+@@ -33,7 +33,7 @@
+ // [assembly: AssemblyVersion("1.0.*")]
+ 
+ //HALE: the following line will be replaced automatically by the pre-build "updateAssemblyInfo.cs.ps1"
+-[assembly: AssemblyVersion("2025.02.18.*")]
++[assembly: AssemblyVersion("2025.02.19.*")]
+ [assembly: AssemblyFileVersion("0.3.0.2")]
+ 
+ //[assembly: log4net.Config.XmlConfigurator(Watch = true)]

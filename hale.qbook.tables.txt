@@ -1,0 +1,22 @@
+tbl1 = oTable();
+tbl1.name = "fred";
+@100ms'refresh100ms'=>{tbl1.at(1,1) = +date("ss"); csv=tbl1.csv;}
+
+tbl1.clear();
+tbl1.csv="1,2,3\n4,5,6\n7,8,9";
+tbl1.at(1.5, "1").value = "x";
+tbl1.at("1.6", "2").value = "y";
+tbl1.at("1.6", 3).value = "z";
+tbl1.at(1,1).format.font="Tahoma";
+tbl1.at(1,1).format.alignment="center";
+tbl1.at(1,1).format.forecolor="red";
+tbl1csv=tbl1.csv;
+tbl1csvEx=tbl1.csvRowHeaders;
+tbl1csfEx=tbl1.csfRowHeaders;
+
+//list as table
+params = oTable();
+params.at("width").value = "15.0";
+//params["width"].value = "10.0";
+params.at("height").value = "20.0";
+params.at("area").value = params.at("width").value * params.at("height").value;

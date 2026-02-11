@@ -1,0 +1,22 @@
+---immediate examples:
+
+- add fkt (periodic, 100ms) that shows a dialog if a condition is met:
+- (not very useful?! the dialog might block the UX...)
+fkt:()=>{if(M00AB>21)dialog("STOP","Voltage>21","OK:1,Cancel:2,NotSure:3","question",1,400,300);}&
+
+
+---button settings:
+-example1:
+action=script:(max=10) => { for (i=1;i<max;i++) { udlsetset("M0123", i*10); sleep(1.0);}} &
+text="C:"+format((cnt01%4)^2,"F2")
+backcolor=if (cnt01%4==0) 0xff0000; else 0x00FF00;
+
+-example2:
+action=script:()=>{dr = dialog("STOP", "Do you really want to stop?", "OK:1,Cancel:2,Not Sure:3", "question", 1, 400, 300); drt=dr; if (dr=="1") { dialog("OK", "You clicked OK", "OK", "info", 1, 300, 200);  } }
+text=if (M00AB>21) `T:{format(M00AB,"F1")}`; else "Stop";
+text=if (M00AB>21 || M00AB<18) `T:{format(M00AB,"F1")}`; else "Stop";
+backcolor=if (M00AB>21) 0xff0000; else if (M00AB<18) 0x0000ff; else 0x00ff00; //Over-Voltage Alarm
+
+-example3 //button toggle STBY|^STBY, text=STBY|SMGA|SMGZ|0x<state>
+action=script:if(M00A0.state==0x22) M00A0.state.write=0x23; else M00A0.state.write=0x22;
+text=if(M00A0.state==0x22) "STBY"; else if(M00A0.state==0x23) "SMPL"; else if(M00A0.state==0x32) "SMPZ"; else "0x"+format(M00A0.state,"X2");

@@ -1,0 +1,46 @@
+(object) Val["FID.M0123.Read"]
+(VarProps) Props["FID.M0123.Read"].xyz
+
+
+Props["FID.M0123"]
+(object) .Read = NaN; //=default => Val["FID.M0123.Read"] => .Scope["FID.M0123.Read"]
+(string) .Source = null;
+(string) .Label = null;
+(string) .Unit = null;
+(int) 	 .Alert = 0;
+(double) .Gain = 1.0;
+(double) .Offset = 0.0;
+(double) .OperatingHours
+(bool)   .IsTimeout = (DateUpdate < (DateTime.Now - TimeSpan.FromSeconds(3)))
+(string) .Format = "F3"
+
+--- UDL only?
+.Set = NaN;
+.SetWrite? = null;
+
+.State = 0;
+.StateWrite? = null;
+
+.Out = NaN;
+.OutWrite? = null;
+
+.OutUnit = null;
+
+.Mode = 0;
+.Timer = 0;
+
+.CardSerialNumber
+.AID
+.SN
+.CardType
+.SensorType
+.Version
+.IsController
+
+
+? .Text
+
+? .Idle() //every 200ms?
+{
+   //remove expired history?
+}

@@ -1,0 +1,41 @@
+---UDL
+.setset (send can until set = setset)
+.label only shows "UI", etc..
+
+
+---UX
+close dialogs with ESC (!!!)
+allow dialogs move/size (!!!)
+BUG: graphics is currently drawn outside bounds
+other color (not gray) for properties (and border, etc) at design-time
+
+settings-textbox:
+? double-click to open (script-)editor of item below cursor, e.g. "action="
+? (show only one settings item per line, single-line)
+"text" is not a separate tab, just a property line (or both?)
+maybe text="()=>`This is Button #{M0210*2}`"
+
+rightclick on object -> context-menu or settings-dlg
+rightclick on empty-space -> new object menu
+
+move-box: top-left
+settings-box: top-right
+size-box: bottom-right
+???: bottom-left (remove?
+
+
+---button
+BUG: onclick should only trigger w/ left button
+onclick->action
+backcolor->func
+forecolor->func
+text->func
+onhover-effect
+onclick-effect
+bool:istoggle-button
+
+
+
+
+
+

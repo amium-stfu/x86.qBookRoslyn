@@ -1,0 +1,400 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Text.RegularExpressions;
+
+namespace Main.Helpers
+{
+    public class ObjectSettings
+    {
+        public string Code;
+        public List<ObjectSettingItem> Items = new List<ObjectSettingItem>();
+
+        public bool Modified = true;
+
+        //public ObjectSettings()
+        //{
+        //    Code = code;
+        //    Parse();
+        //}
+
+        public ObjectSettingItem this[string name]
+        {
+            get
+            {
+                lock (Items)
+                {
+                    return Items.FirstOrDefault(i => i.Equals(name));
+                }
+            }
+        }
+
+        public string GetItem(string type, string name, string defaultValue = null)
+        {
+            lock (Items)
+            {
+                var item = Items.FirstOrDefault(i => i.Type == type);
+                if (item != null)
+                {
+                    if (item.Properties.ContainsKey(name))
+                        return item.Properties[name].ToString();
+                }
+            }
+            return defaultValue;
+        }
+
+        static Regex functionRegex = new Regex(@"^[_a-zA-Z$][_a-zA-Z0-9\.]*\s*\=\s*\([_a-zA-Z0-9,\s]*\)\s*\=\>\s*.*");
+
+        static Regex functionRegex = new Regex(@"^[_a-zA-Z$][_a-zA-Z0-9\.]*\s*\=\s*\([_a-zA-Z0-9,\s]*\)\s*\=\>\s*.*");
+        static Regex intervalFunctionRegex = new Regex(@"^@(?<interval>\d+)\:\(\)\s*\=\>(?<fkt>\s*.*)");
+        static Regex onEventRegex = new Regex(@"^@(?<var>[_a-zA-Z$][_a-zA-Z0-9\.]*)\:(?<event>.+)\s*\=\>(?<fkt>\s*.*)");
+
+        //@now.ss:onValueChanged=>
+        public Dictionary<string, string> aliasDict = new Dictionary<string, string>();
+        public void Parse(string code)
+        {
+            Code = code;
+
+            string Code2 = "";
+            int ci = 0;
+            foreach(char c in code)
+            {
+                if (c == '{')
+                    ci++;
+                if (c == '}')
+                    ci--;
+
+                if ((c == '\n') && (ci > 0))
+                { 
+                }
+                else
+                    Code2 += c;
+            }
+
+            Code = Code2;
+
+            //if (Code != lastCode)
+            {
+                Items.Clear();
+                aliasDict.Clear();
+<<<<<<< HEAD
+
+                //foreach (var line1 in Code.Replace("\r", "").Split('\n'))
+
+                var tokens = GetAllTokens(code);
+                foreach (var token1 in tokens)
+                {
+                    var token = token1;
+
+                    if (false) //no more strip comments and trimming necessary since change from split to tokenizer
+                    {
+                        int commentPos = token.IndexOf("//");
+                        if (commentPos >= 0)
+                            token = token.Substring(0, commentPos).Trim();
+                        if (token.Length == 0)
+                            continue;
+
+                        token = token.Trim();
+                    }
+
+                    if (functionRegex.IsMatch(token))
+                    {
+                        foreach (var alias in aliasDict)
+                            token = token.Replace(alias.Key, alias.Value);
+
+                        var formulaItem = Qb.ScriptingEngine.InterpretScript(token.ToMagesTerm()); //use mages to add the function
+                    }
+                    else if (intervalFunctionRegex.IsMatch(token))
+                    {
+                        Match m = intervalFunctionRegex.Match(token);
+                        int.TryParse(m.Groups["interval"].Value, out int interval);
+                        switch (interval)
+                        {
+                            case 10:
+                                Qb.ScriptingEngine.AddFunction(Qb.Book.Main.Objects.OfType<oPage>().First(), "", m.Groups["fkt"].Value, 10);
+                                break;
+                            case 100:
+                                Qb.ScriptingEngine.AddFunction(Qb.Book.Main.Objects.OfType<oPage>().First(), "", m.Groups["fkt"].Value, 100);
+                                break;
+                            case 1000:
+                                Qb.ScriptingEngine.AddFunction(Qb.Book.Main.Objects.OfType<oPage>().First(), "", m.Groups["fkt"].Value, 1000);
+                                break;
+                        }
+                    }
+                    else if (onEventRegex.IsMatch(token))
+                    {
+                        Match m = onEventRegex.Match(token);
+
+                        var varName = m.Groups["var"].Value;
+                        var eventType = m.Groups["event"].Value;
+                        var fkt = m.Groups["fkt"].Value;
+                        _ = Qb.ScriptingEngine.AddOrUpdateAssignEventAsync("pagexyz.", varName, eventType, fkt);
+                        Qb.ScriptingEngine.SubscribeAssignEventPrefix(m.Groups["var"].Value, Qb.ScriptingEngine.AssignEvent, "page." + this.GetHashCode() + ":" + varName + ":" + eventType);
+                    }
+                    else //parse/interpret settings line-by-line
+                    {
+                        var typeArgs = token.Split(new char[] { ':' }, 2);
+
+=======
+
+
+
+                foreach (var line1 in Code.Replace("\r", "").Split('\n'))
+                {
+                    var line = line1;
+                    int commentPos = line.IndexOf("//");
+                    if (commentPos >= 0)
+                        line = line.Substring(0, commentPos).Trim();
+                    if (line.Length == 0)
+                        continue;
+
+                    line = line.Trim();
+                    if (functionRegex.IsMatch(line))
+                    {
+                        foreach (var alias in aliasDict)
+                            line = line.Replace(alias.Key, alias.Value);// .ReplaceOutsideQuotes(alias.Key, alias.Value);
+
+                        var formulaItem = Qb.ScriptingEngine.InterpretScript(line.ToMagesTerm()); //use mages to add the function
+                    }
+                    else //parse/interpret settings line-by-line
+                    {
+                        var typeArgs = line.Split(new char[] { ':' }, 2);
+
+>>>>>>> ff8787bb511bf142949b4f7f11ebd5ae1817fd93
+                        if (typeArgs.Length == 2)
+                        {
+                            var type = typeArgs[0];
+                            var args = typeArgs[1];
+
+                            foreach (var alias in aliasDict)
+<<<<<<< HEAD
+                                args = args.ReplaceOutsideQuotes(alias.Key, alias.Value);
+=======
+                                args = args.Replace(alias.Key, alias.Value);// .ReplaceOutsideQuotes(alias.Key, alias.Value);
+>>>>>>> ff8787bb511bf142949b4f7f11ebd5ae1817fd93
+
+                            if (type == "alias")
+                            {
+                                var splits = args.Split(new char[] { '=' }, 2);
+                                if (splits.Length == 2)
+                                    aliasDict.Add(splits[0].Trim(), splits[1].Trim());
+                                continue;
+<<<<<<< HEAD
+                            }
+
+                            ObjectSettingItem si = new ObjectSettingItem();
+                            si.Type = type;
+                            var argList = args.SplitOutsideQuotesAndParenthesis();
+                            foreach (var arg in argList)
+                            {
+                                var splits = arg.Split(new char[] { '=' }, 2);
+                                var key = splits[0].Trim();
+                                if (!si.Properties.ContainsKey(key))
+                                {
+                                    if (splits.Length == 2)
+                                        si.Properties.Add(key, splits[1].Trim());
+                                    else
+                                        si.Properties.Add(key, null);
+                                }
+                                else
+                                {
+                                    //update or ignore?
+                                }
+                            }
+
+                            Items.Add(si);
+                        }
+                    }
+                }
+            }
+            changed = true;
+        }
+
+
+        List<string> GetAllTokens(string script)
+        {
+            List<string> tokenList = new List<string>();
+            int pos = 0;
+            int newPos = -1;
+            string token = null;
+            do
+            {
+                token = GetNextToken(script, pos, out newPos)?.Trim(new char[] { ';', ' ', '\t', '\n', '\r' });
+                if (!string.IsNullOrEmpty(token))
+                    tokenList.Add(token);
+                pos = newPos;
+            } while (token != null);
+
+            return tokenList;
+        }
+
+
+        // Define other methods and classes here
+        string GetNextToken(string script, int startPos, out int newPos)
+        {
+            StringBuilder sb = new StringBuilder();
+            script = script.TrimStart().Replace("\r\n", "\n");
+            if (!script.StartsWith("\n"))
+                script = "\n" + script;
+
+            int len = script.Length;
+            int pos = startPos;
+            while (pos < len && script[pos] != '\n')
+                pos++;
+
+            bool inQuotes = false;
+            int curlyCount = 0;
+            bool isCurlyTerm = false;
+            bool termEnd = false;
+            while (pos < len)
+            {
+                switch (script[pos])
+                {
+                    case '/':
+                        if (!inQuotes)
+                        {
+                            if (pos < len && script[pos + 1] == '/')
+                            {
+                                //comment, ignore until end of line
+                                pos += 2;
+                                while (pos < len && script[pos] != '\n')
+                                    pos++;
+=======
+>>>>>>> ff8787bb511bf142949b4f7f11ebd5ae1817fd93
+                            }
+
+                            ObjectSettingItem si = new ObjectSettingItem();
+                            si.Type = type;
+                            var argList = args.SplitOutsideQuotesAndParenthesis();
+                            foreach (var arg in argList)
+                            {
+<<<<<<< HEAD
+                                sb.Append(script[pos]);
+                            }
+                        }
+                        break;
+                    case '\"':
+                        sb.Append(script[pos]);
+                        inQuotes = !inQuotes;
+                        break;
+                    case '{':
+                        sb.Append(script[pos]);
+                        if (!inQuotes)
+                        {
+                            curlyCount++;
+                            isCurlyTerm = true;
+                        }
+                        break;
+                    case '}':
+                        sb.Append(script[pos]);
+                        if (!inQuotes)
+                        {
+                            curlyCount--;
+                            if ((curlyCount == 0) && isCurlyTerm)
+                                termEnd = true;
+                        }
+                        break;
+                    case ';':
+                        sb.Append(script[pos]);
+                        if (!inQuotes)
+                        {
+                            if (!isCurlyTerm)
+                                termEnd = true;
+                        }
+                        break;
+                    default:
+                        sb.Append(script[pos]);
+                        break;
+                }
+
+                if (termEnd)
+                {
+                    newPos = pos;
+                    return sb.ToString();
+=======
+                                var splits = arg.Split(new char[] { '=' }, 2);
+                                var key = splits[0].Trim();
+                                if (!si.Properties.ContainsKey(key))
+                                {
+                                    if (splits.Length == 2)
+                                        si.Properties.Add(key, splits[1].Trim());//SCAN.Trim('"'));
+                                    else
+                                        si.Properties.Add(key, null);
+                                }
+                                else
+                                {
+                                    //update or ignore?
+                                }
+                            }
+
+                            Items.Add(si);
+                        }
+                    }                    
+>>>>>>> ff8787bb511bf142949b4f7f11ebd5ae1817fd93
+                }
+                pos++;
+            }
+<<<<<<< HEAD
+
+            newPos = pos;
+            return null;
+=======
+            Modified = true;
+>>>>>>> ff8787bb511bf142949b4f7f11ebd5ae1817fd93
+        }
+    }
+
+    public class ObjectSettingItem
+    {
+        public string Type = null;
+        public Dictionary<string, string> Properties = new Dictionary<string, string>();
+
+        //public string GetProperty(string name)
+        //{
+        //    lock (Properties)
+        //    {
+        //        if (Properties.ContainsKey(name))
+        //            return Properties[name];
+        //        else
+        //            return null;
+        //    }
+        //}
+
+        public string this[string name]
+        {
+            get
+            {
+                lock (Properties)
+                {
+                    if (Properties.ContainsKey(name))
+                    {
+                        string term = Properties[name];
+                        //if (term is string && ((string)term).IsFormula())
+                        //{
+                        //    return Qb.ScriptingEngine.InterpretScript((string)term).ToString();
+                        //}
+                        //else
+                        {
+                            return term;
+                        }
+                    }
+                    else
+                        return null;
+                }
+            }
+            set
+            {
+                lock (Properties)
+                {
+                    if (!Properties.ContainsKey(name))
+                        Properties.Add(name, value);
+                    Properties[name] = value;
+                }
+            }
+        }
+
+    }
+}

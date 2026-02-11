@@ -1,0 +1,479 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type='text/xsl' href='qbook.xsl'?>
+<Book xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Main>
+    <Name />
+    <Text />
+    <Objects>
+      <oItem xsi:type="oPage">
+        <Name>main</Name>
+        <Text>.</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>true</Selected>
+        <Settings />
+        <CsCode>
+public Machine M1 = new Machine("M");
+
+public void Initialize() {
+
+	UDL.Client Udc = new UDL.Client("UDL", "127.0.0.1:9001"); 
+	M1.Ui.DefaultPanels(30);
+	
+    Pid Pid1 = new Pid("Pid1", 1 * 1000, 10, 60 * 1000, 600 * 1000);
+	M1.Tag("Pid1", Pid1);
+
+	M1.Ui.ControlPanel.Control("Ready", new Button("Ready", (b) =&gt; Ready()));
+	M1.Ui.ControlPanel.Control("Run", new Button("Run", (b) =&gt; Sample()));
+
+	Udc.Module("m410").Read = new Signal("TC1", 0, "°C", Color.Red);	
+	Udc.Module("m410").Set = new Signal("Out", 0, "%", Color.Blue);		
+	
+	Pid1.Read = Udc.Module("m410").Read;
+	Pid1.Out = Udc.Module("m410").Set;
+	
+	var gauge1 = new RadialGauge("Gauge1", 10, 50, 90, 80);
+	gauge1.Module = Pid1;
+	
+	M1.Ui.Chart.Signal("1", Pid1.Read);
+	M1.Ui.Chart.Signal("2", Pid1.Set);
+	M1.Ui.Chart.Signal("3", Pid1.Out);
+}
+
+public void Run() {	
+}
+
+public void Pause() {
+	M1.Status = "Pause";
+	((Pid)M1.Tag("Pid1")).Set.Value = 0;
+}
+
+public void Ready() {
+	M1.Status = "Ready";
+	((Pid)M1.Tag("Pid1")).Set.Value = 0;
+}
+
+public void Sample() {
+	M1.Status = "Sample";
+	((Pid)M1.Tag("Pid1")).Set.Value = 40;
+}
+</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Drawing;
+using QB;
+using QB.Controls;
+using QB.Automation;
+using QB.Net;
+
+public class _page_main
+{
+</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+}
+</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+      <oItem xsi:type="oPage">
+        <Name>akhost</Name>
+        <Text>.</Text>
+        <Objects>
+          <oItem xsi:type="oLayer">
+            <Name>Main</Name>
+            <Text />
+            <Objects />
+            <Selected>true</Selected>
+            <Settings />
+            <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+            <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader>
+            <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+            <CsCodeFooter>
+}
+</CsCodeFooter>
+            <Bounds>
+              <X>0</X>
+              <Y>0</Y>
+              <W>0</W>
+              <H>0</H>
+            </Bounds>
+            <Visible>true</Visible>
+          </oItem>
+        </Objects>
+        <Selected>false</Selected>
+        <Settings />
+        <CsCode>
+
+Button bReady = new Button("Ready", 10, 160, 20, 10);
+
+
+class ReaAkHost : AK.Server {
+	
+	public delegate void OnCommandDelegate(object s, string command);
+    public OnCommandDelegate OnCommand;
+	
+	public ReaAkHost(string text, int port) : base (text, port) {
+		
+		akons.Add("THC", new Signal("THC", 1, "ppm", Color.Green));
+		akons.Add("CO", new Signal("CO", 3, "ppm", Color.Green));
+		akons.Add("CO2", new Signal("CO2", 4, "ppm", Color.Green));
+		
+		this.OnMessageReceived += MessageReceived;
+		
+		Interval = 100;
+		Run();
+		
+		OnElapsed += Elapsed;
+	}
+	
+	override public void Abort() {
+		base.Abort();
+		this.OnMessageReceived -= MessageReceived;
+	}
+	
+	public void Elapsed(Timer s) {
+		akons["THC"].Value ++;
+		
+	//	thc ++;
+		//thc %= 100;
+	}
+	
+	Dictionary&lt;string, Signal&gt; akons = new Dictionary&lt;string, Signal&gt;();	
+	
+	void Command(string command) {
+		if (OnCommand != null)
+			OnCommand(this, command);
+	}
+	
+	string MessageReceived(AK.Server sender, int port, string client, char dcb, string command, string channel, string[] parameters) {
+		
+		if (command == "AKON")
+		{
+			string valueString = "";
+			foreach(Signal signal in akons.Values)
+				valueString += signal.Text + " " + signal.Value + " ";			
+			return valueString.Trim();
+		}
+
+		if (command == "ASTZ")
+			return Access + " " + Status;	
+				
+		if (command == "SREM")
+		{
+		    Access = "SREM";
+		    return "";
+		}
+		
+		if (command == "SMAN")
+		{
+		    Access = "SMAN";
+		    return "";
+		}
+		
+		if (command == "SPAU")
+		{
+		    if (Access == "SMAN")
+		        return "OF";
+		    if ((Status != "STBY") &amp;&amp;
+		        (Status != "SPAU"))
+		        return "BS";
+			
+			Status = "SPAU";
+		    return "";
+		}
+		
+		if (command == "STBY")
+		{
+		    if (Access == "SMAN")
+		        return "OF";
+			
+			Status = "STBY";
+			Command("Ready");
+		    return "";
+		}
+		
+		if (command == "SMGA")
+		{
+		    if (Access == "SMAN")
+		        return "OF";
+		    if ((Status != "STBY") &amp;&amp;
+		        (Status != "SMGA"))
+		        return "BS";		   
+			Status = "SMGA";
+			Command("Sample");
+		    return "";
+		}		
+		return "NA";
+	}	
+}
+
+public void Initialize() {	
+	
+	new ReaAkHost("rea7700", 7700).OnCommand += ReaHostCommand;
+	
+//	new AK.Server("7700", 7700).OnMessageReceived = (sender, client, dcb, command, channel, parameter) 
+//		=&gt; MessageReceived(sender, client, dcb, command, channel, parameter);	
+}
+
+public void ReaHostCommand(object s, string command) {
+	if (command == "Ready")
+		main.Ready();
+	if (command == "Sample")
+		main.Sample();
+}
+	
+
+public void Run() {
+}
+
+string MessageReceived(AK.Server aks, string client, char dcb, string command, string channel, string parameter) {
+	
+	bReady.Text = client;
+	
+	if (main.M1.Status == "Pause")
+		aks.Status = "SPAU";
+	
+	if (main.M1.Status == "Ready")
+		aks.Status = "STBY";
+	
+	if (main.M1.Status == "Sample")
+		aks.Status = "SMGA";
+	
+	if (command == "ASTZ")
+		return aks.Access + " " + aks.Status;
+	
+	if (command == "AKON")
+		return ((Pid)main.M1.Tag("Pid1")).Read.ToString();
+	
+	if (command == "SREM")
+    {
+        aks.Access = "SREM";
+        return "";
+    }
+
+    if (command == "SMAN")
+    {
+        aks.Access = "SMAN";
+        return "";
+    }
+
+    if (command == "SPAU")
+    {
+        if (aks.Access == "SMAN")
+            return "OF";
+        if ((aks.Status != "STBY") &amp;&amp;
+            (aks.Status != "SPAU"))
+            return "BS";
+		
+		aks.Status = "SPAU";
+        main.Pause();
+        return "";
+    }
+
+    if (command == "STBY")
+    {
+        if (aks.Access == "SMAN")
+            return "OF";
+		
+		aks.Status = "STBY";
+        main.Ready();
+        return "";
+    }
+
+    if (command == "SMGA")
+    {
+        if (aks.Access == "SMAN")
+            return "OF";
+        if ((aks.Status != "STBY") &amp;&amp;
+            (aks.Status != "SMGA"))
+            return "BS";
+       
+		aks.Status = "SMGA";
+		main.Sample();
+        return "";
+    }
+	
+    return "NA";
+}
+</CsCode>
+        <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Drawing;
+using QB;
+using QB.Controls;
+using QB.Net;
+
+public class _page_akhost
+{
+</CsCodeHeader>
+        <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+        <CsCodeFooter>
+}
+</CsCodeFooter>
+        <Bounds>
+          <X>10</X>
+          <Y>20</Y>
+          <W>280</W>
+          <H>180</H>
+        </Bounds>
+        <Visible>true</Visible>
+        <HtmlItems />
+        <Section />
+        <rItemWidth>60</rItemWidth>
+        <lItemWidth>60</lItemWidth>
+      </oItem>
+    </Objects>
+    <Selected>false</Selected>
+    <Settings />
+    <CsCode>//declare common fields/properties/types here...
+
+public void Initialize() {
+    //put some initialization code here...
+}
+
+public void Run() {
+    //put some 'do-work' code here...
+}
+</CsCode>
+    <CsCodeHeader>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader>
+    <CsCodeHeader_x>using System;
+using System.Collections.Generic;
+using System.Linq;
+using static QbRoot;
+
+public class _page_main
+{
+</CsCodeHeader_x>
+    <CsCodeFooter>
+}
+</CsCodeFooter>
+    <Bounds>
+      <X>0</X>
+      <Y>0</Y>
+      <W>0</W>
+      <H>0</H>
+    </Bounds>
+    <Visible>true</Visible>
+  </Main>
+  <Version>1.0.0</Version>
+  <Bounds>
+    <Location>
+      <X>643</X>
+      <Y>73</Y>
+    </Location>
+    <Size>
+      <Width>953</Width>
+      <Height>731</Height>
+    </Size>
+    <X>643</X>
+    <Y>73</Y>
+    <Width>953</Width>
+    <Height>731</Height>
+  </Bounds>
+  <Directory>D:\OneDrive - Amium GmbH\Qbook\Main\bin\Debug</Directory>
+  <Filename>main.host</Filename>
+  <Language>en</Language>
+  <Grid>0</Grid>
+  <DesignMode>false</DesignMode>
+  <TagMode>false</TagMode>
+  <Recorder>false</Recorder>
+</Book>

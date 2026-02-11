@@ -1,0 +1,38 @@
+{
+	"General": {
+		"OutputFile": null,
+		"TargetPlatform": null,
+		"KeyFile": null,
+		"AlternativeILMergePath": null,
+		"InputAssemblies": [
+		  "Main.exe", 
+		  "Mages.Core.dll",
+		  "log4net.dll",
+		  "Newtonsoft.Json.dll",
+		  "PdfSharp.dll"
+		]
+	},
+	"Advanced": {
+		"AllowDuplicateType": true,
+		"AllowMultipleAssemblyLevelAttributes": false,
+		"AllowWildCards": false,
+		"AllowZeroPeKind": false,
+		"AttributeFile": null,
+		"Closed": false,
+		"CopyAttributes": false,
+		"DebugInfo": true,
+		"DelaySign": false,
+		"DeleteCopiesOverwriteTarget": false,
+		"ExcludeFile": "",
+		"FileAlignment": 512,
+		"Internalize": false,
+		"Log": false,
+		"LogFile": null,
+		"PublicKeyTokens": true,
+		"SearchDirectories": [],
+		"TargetKind": null,
+		"UnionMerge": false,
+		"Version": null,
+		"XmlDocumentation": false
+	  }
+}

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "qbookCode": {
+      "commandName": "Project",
+      "commandLineArgs": "\"T:\\FilterStudio\\FilterStudio.code\\FilterStudio.csproj\" \"amium.pipe.server\" \"amium.pipe.client\""
+    }
+  }
+}
