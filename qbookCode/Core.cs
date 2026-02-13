@@ -156,6 +156,21 @@ namespace qbookCode
         internal static async Task<Book> BookFromFolder(string folderPath, string bookname)
         {
 
+            if (!File.Exists(Path.Combine(folderPath, "Book.json")))
+            {
+                using (var Dialog = new OpenFileDialog())
+                {
+                    Dialog.Title = "Select Book.json for " + bookname;
+                    Dialog.Filter = "*.json|*.json";
+                    Dialog.InitialDirectory = folderPath;
+                    if (Dialog.ShowDialog() == DialogResult.OK)
+                    folderPath = Path.GetDirectoryName(Dialog.FileName);
+                }
+            
+            }
+
+
+
             RuntimeManager.InitRuntimeErrors();
 
 

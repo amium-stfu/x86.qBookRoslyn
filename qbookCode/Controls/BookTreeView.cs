@@ -279,8 +279,8 @@ namespace qbookCode.Controls
             if (node.Editor != null) 
             {
                 await node.Editor.UpdateRoslyn("UpdateNodes");
-                if (node.Editor.Page != null)
-                    if (node.Editor.Page.Hidden) index = 5;
+                if (node.Editor.Page != null )
+                    if (node.Editor.Page.Hidden && node.Type == NodeType.Page) index = 5;
 
                 if(!node.Editor.Active) index = 4;
                 if (node.Editor.HasErrors && node.Editor.Active)
@@ -293,10 +293,13 @@ namespace qbookCode.Controls
                         node.Parent.Expand();
                     }
                 }
-                if (node.Editor.Page.Hidden)
-                {
-                    index = 11;
-                }
+                //if (node.Editor.Page != null)
+                //{
+                //    if (node.Editor.Page.Hidden)
+                //    {
+                //        index = 11;
+                //    }
+                //}
             }
 
             node.ImageIndex = index;
