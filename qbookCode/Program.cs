@@ -125,6 +125,22 @@ namespace qbookCode
 
         private static void RunWithSplash(string inputPath)
         {
+            if (!File.Exists(inputPath))
+            {
+                using (var Dialog = new OpenFileDialog())
+                {
+                    Dialog.Title = "Select Book.json for ";
+                    Dialog.Filter = "*.csproj|*.csproj";
+            
+                    if (Dialog.ShowDialog() == DialogResult.OK)
+                        inputPath = Dialog.FileName;
+                }
+            }
+
+            Debug.WriteLine(inputPath);
+
+
+
             using (var splash = new FormExplorerSplashScreen())
             {
                 splash.Show();

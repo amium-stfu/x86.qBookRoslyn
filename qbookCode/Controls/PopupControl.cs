@@ -147,9 +147,53 @@ namespace qbookCode.Controls
                         ItemSelected?.Invoke(_items[_selectedIndex]);
                     e.Handled = true;
                     break;
+
+         
             }
 
             base.OnKeyDown(e);
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            if (_items.Count == 0) return;
+
+            // Ignore clicks on the scrollbar area
+            int listWidth = Width - (_bar.Visible ? _bar.Width : 0);
+            if (e.X >= listWidth) return;
+
+            int localIndex = e.Y / _itemHeight;
+            int itemIndex = _firstVisibleIndex + localIndex;
+
+            if (itemIndex >= 0 && itemIndex < _items.Count)
+            {
+                _selectedIndex = itemIndex;
+                ScrollIntoView();
+                Invalidate();
+            }
+        }
+
+        protected override void OnMouseDoubleClick(MouseEventArgs e)
+        {
+            base.OnMouseDoubleClick(e);
+            if (_items.Count == 0) return;
+
+            int listWidth = Width - (_bar.Visible ? _bar.Width : 0);
+            if (e.X >= listWidth) return;
+
+            // Ensure selection reflects where the double-click occurred
+            int localIndex = e.Y / _itemHeight;
+            int itemIndex = _firstVisibleIndex + localIndex;
+
+            if (itemIndex >= 0 && itemIndex < _items.Count)
+            {
+                _selectedIndex = itemIndex;
+                ScrollIntoView();
+                Invalidate();
+
+                ItemSelected?.Invoke(_items[_selectedIndex]);
+            }
         }
 
         // Theme-Properties

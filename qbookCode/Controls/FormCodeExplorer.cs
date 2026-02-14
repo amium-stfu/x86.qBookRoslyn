@@ -271,7 +271,7 @@ namespace qbookCode.Controls
         }
 
 
-
+        public async Task GotoReference(string file, int row) => await BookTree.GotoReference(file, row);
         public async Task GoToDefinition() => await BookTree.GoToDefinition();
         public async Task RenameSymbol() => await BookTree.RenameSymbol();
 

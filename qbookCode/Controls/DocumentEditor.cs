@@ -1,8 +1,11 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Differencing;
 using Microsoft.CodeAnalysis.Text;
 using qbookCode.Controls.InputControls;
+using qbookCode.Roslyn;
 using ScintillaNET;
 using System;
 using System.Collections.Generic;
@@ -13,21 +16,27 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
 using System.Windows.Forms;
 using VPKSoft.ScintillaLexers;
-using qbookCode.Roslyn;
-
 using static System.ComponentModel.Design.ObjectSelectorEditor;
 using RoslynDocument = Microsoft.CodeAnalysis.Document; // Alias gegen Kollision mit ScintillaNET.Document
 
 
 namespace qbookCode.Controls
 {
+   
+   
+
+
     public class DocumentEditor : Scintilla
     {
 
         ControlAutoComplete AutoComplete;
         ControlSignatureHelper SignatureHelper;
+
+        ReferencesHelperControl ReferencesList;
 
         class LineRange
         {
@@ -133,8 +142,15 @@ namespace qbookCode.Controls
             if (InvokeRequired) BeginInvoke(a); else a();
         }
 
+        DataTable References = new DataTable();
         public DocumentEditor(CodeDocument doc, oPage page) : base()
         {
+            References = new DataTable();
+            References.Columns.Add("Method", typeof(string));
+            References.Columns.Add("Document", typeof(string));
+            References.Columns.Add("Line", typeof(int));
+            References.Columns.Add("Span", typeof(string));
+
             Init();
             InitFolding();
             Page = page;
@@ -143,7 +159,9 @@ namespace qbookCode.Controls
             EmptyUndoBuffer();
             AutoComplete = new ControlAutoComplete(this);
             SignatureHelper = new ControlSignatureHelper(this);
-         
+            ReferencesList = new ReferencesHelperControl(this);
+
+
 
             this.HScrollBar = false;
             this.VScrollBar = false;
@@ -174,6 +192,8 @@ namespace qbookCode.Controls
             CharAdded += SignatureHelper_CharAdded;
             KeyDown += RoslynAutoComplete_KeyDown;
             KeyDown += CursorUpDown;
+            KeyDown += ReferenceList_KeyDown;
+
 
             //this.LostFocus += (s, e) =>
             //{
@@ -239,6 +259,7 @@ namespace qbookCode.Controls
             completeText = string.Empty;
             AutoComplete.Hide();
             SignatureHelper.Hide();
+            ReferencesList.Hide();
         }
 
 
@@ -297,6 +318,18 @@ namespace qbookCode.Controls
            // else
              //   Hide();
         }
+
+        private async void ReferenceList_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Escape)
+            {
+                ReferencesList.Hide();
+
+            }
+
+        }
+
+
         private async void RoslynAutoComplete_KeyDown(object sender, KeyEventArgs e)
         {
             if(e.KeyCode == Keys.Back && completeText.Length > 0)
@@ -1026,6 +1059,7 @@ namespace qbookCode.Controls
         }
         public void ApplyDarkTheme()
         {
+            
             _currentTheme = EditorTheme.Dark;
             Color _backColor = Color.FromArgb(40, 40, 40);
             _currentTheme = EditorTheme.Dark;
@@ -1114,6 +1148,8 @@ namespace qbookCode.Controls
                 Markers[i].SetForeColor(foldFore);
                 Markers[i].SetBackColor(foldBack);
             }
+
+            
 
 
         }
@@ -1205,8 +1241,11 @@ namespace qbookCode.Controls
         private void InitEditorContextMenu()
         {
 
+            var miRef = new ToolStripMenuItem("Show References");
+            miRef.Click += async (_, __) => await ReferencesList.ShowAsync();
+            EditorContextMenu.Items.Add(miRef);
 
-            var miGoto = new ToolStripMenuItem("Go To Definition (F12)");
+            var miGoto = new ToolStripMenuItem("Go To Definition");
             miGoto.Click += async (_, __) => await Core.Explorer.GoToDefinition();
             EditorContextMenu.Items.Add(miGoto);
 
@@ -1431,6 +1470,126 @@ namespace qbookCode.Controls
         }
 
 
+        public async Task<List<CompletionItem>> UpdateReferences()
+        {
+            List<CompletionItem> items = new List<CompletionItem>();
+
+
+            if (Target?.Document == null) return items;
+
+            // Get all references first
+            var all = await RosylnSemantic.FindAllMethodReferencesAsync(Target.Document);
+
+            // Determine caret position
+            int caretPos = CurrentPosition;
+
+            // Get syntax root and find the method under caret
+            var root = await Target.Document.GetSyntaxRootAsync().ConfigureAwait(false);
+            if (root == null)
+            {
+                References = all;
+                return items;
+            }
+
+            var token = root.FindToken(Math.Max(0, Math.Min(caretPos, TextLength)));
+            var node = token.Parent;
+
+            Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax? methodDecl = null;
+            for (var n = node; n != null; n = n.Parent)
+            {
+                if (n is Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax m)
+                {
+                    methodDecl = m;
+                    break;
+                }
+            }
+
+            if (methodDecl == null)
+            {
+                // No method under caret → show all
+                References = all;
+                return items;
+            }
+
+            // Names for filtering
+            var classDecl = methodDecl.Parent as Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax;
+            string methodName = methodDecl.Identifier.Text;
+            string? className = classDecl?.Identifier.Text;
+
+            Debug.WriteLine(category: "UpdateReferences", message: $"Method under caret: {className}.{methodName}");
+
+            // Filter rows by MethodName and ContainingType
+            var filtered = all.Clone();
+            foreach (DataRow row in all.Rows)
+            {
+                var rowMethodName = row["MethodName"]?.ToString() ?? string.Empty;
+                var rowContainingType = row["ContainingType"]?.ToString() ?? string.Empty;
+
+                if (string.Equals(rowMethodName, methodName, StringComparison.Ordinal) &&
+                    (string.IsNullOrEmpty(className) || string.Equals(rowContainingType, className, StringComparison.Ordinal)))
+                {
+                    filtered.ImportRow(row);
+                }
+            }
+
+            // If nothing matched (e.g., overloads with different containers), fall back to method name only
+            if (filtered.Rows.Count == 0)
+            {
+                foreach (DataRow row in all.Rows)
+                {
+                    var rowMethodName = row["MethodName"]?.ToString() ?? string.Empty;
+                    if (string.Equals(rowMethodName, methodName, StringComparison.Ordinal))
+                    {
+                        filtered.ImportRow(row);
+                    }
+                }
+            }
+
+            References = filtered;
+
+            //ReferencesList.
+          
+            foreach (DataRow row in References.Rows)
+            {
+             
+                items.Add(new CompletionItem
+                {
+                    Text = $"{row["Document"].ToString().Replace(".cs", "")}.{row["Line"]}: {row["Code"].ToString().Trim()}",
+                    Value = $"{row["Document"]}|{row["Line"]}"
+                });
+
+
+                Debug.WriteLine($"{row["Line"]}: Reference: {row["Document"]} =  {row["Code"]}");
+            }
+
+            return items;
+
+            //ReferencesList.ListView.SetItems(items);
+
+            //// Position relativ zur Caret-Position bestimmen
+            //int pos = CurrentPosition;
+            //int x = PointXFromPosition(pos);
+            //int y = PointYFromPosition(pos) + 18;
+            //Point screenPoint = PointToScreen(new Point(x, y));
+
+            //ReferencesList.Height = ReferencesList.ListView.GetAutoHeightForItems(maxVisibleItems: 10);
+            //ReferencesList.Width = 800;
+
+            //ReferencesList.Location = screenPoint;
+            //ReferencesList.Show();
+            //Focus();
+            //GotoPosition(pos);
+
+            // Visual feedback: highlight the method start line
+            //var methodLine = methodDecl.GetLocation().GetLineSpan().StartLinePosition.Line + 1; // 1-based
+            //HighlightLine(methodLine, Color.Yellow);
+        }
+
+
+
+
+
+
         #endregion
 
 
@@ -1640,7 +1799,11 @@ namespace qbookCode.Controls
         }
 
 
+
+
     }
+
+
 
 
 

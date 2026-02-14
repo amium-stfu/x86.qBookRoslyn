@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Rename;
+using qbookCode.Roslyn;
 using ScintillaNET;
 using System;
 using System.Collections.Generic;
@@ -8,11 +9,11 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Forms;
-using qbookCode.Roslyn;
-
-using RoslynDocument = Microsoft.CodeAnalysis.Document;
 using System.Web;
+using System.Windows.Documents;
+using System.Windows.Forms;
+using System.Windows.Shapes;
+using RoslynDocument = Microsoft.CodeAnalysis.Document;
 
 namespace qbookCode.Controls
 {
@@ -1160,6 +1161,18 @@ namespace qbookCode.Controls
             SelectedCodeNode.Editor.FirstVisibleLine = firstLine;
             SelectedCodeNode.Editor.GotoPosition(caretBefore);
         }
+
+        public async Task GotoReference(string documentName, int row)
+        {
+            BookNode node = GetNodeByFilename(documentName);
+            await OpenNodeByName(node.Name);
+            int pos = GetPositionFromLineColumn(node.Editor, row, 0);
+            node.Editor.GotoPosition(pos);
+            node.Editor.HighlightLine(row, Color.Yellow);
+            node.Editor.ScrollCaret();
+        }
+
+
         public async Task GoToDefinitionAsync()
         {
             if (SelectedCodeNode == null) return;

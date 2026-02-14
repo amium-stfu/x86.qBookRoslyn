@@ -1,9 +1,12 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Classification;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.Text;
 using ScintillaNET;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -74,5 +77,66 @@ public static class RosylnSemantic
             foreach (var (s, l) in kvp.Value)
                 editor.IndicatorFillRange(s, l);
         }
+    }
+
+    public static async Task<DataTable> FindAllMethodReferencesAsync(RoslynDocument doc)
+    {
+        var table = new DataTable();
+        // Schema: strings for names to enable filtering, plus location info
+        table.Columns.Add("Method", typeof(string));           // Fully qualified (error format) for display
+        table.Columns.Add("MethodName", typeof(string));       // Simple method name
+        table.Columns.Add("ContainingType", typeof(string));   // Simple class/record/struct name
+        table.Columns.Add("Document", typeof(string));
+        table.Columns.Add("Line", typeof(int));
+        table.Columns.Add("Span", typeof(string));
+        table.Columns.Add("Code", typeof(string));
+
+        if (doc == null) return table;
+
+        var semanticModel = await doc.GetSemanticModelAsync().ConfigureAwait(false);
+        var root = await doc.GetSyntaxRootAsync().ConfigureAwait(false);
+        if (semanticModel == null || root == null) return table;
+
+        var methodNodes = root.DescendantNodes().OfType<MethodDeclarationSyntax>();
+        var solution = doc.Project.Solution;
+
+        foreach (var methodNode in methodNodes)
+        {
+            var methodSymbol = semanticModel.GetDeclaredSymbol(methodNode);
+            if (methodSymbol == null) continue;
+
+            var refs = await SymbolFinder.FindReferencesAsync(methodSymbol, solution).ConfigureAwait(false);
+
+            foreach (var r in refs)
+            {
+                foreach (var loc in r.Locations)
+                {
+                    var lineSpan = loc.Location.GetLineSpan();
+                    var span = loc.Location.SourceSpan;
+
+                    // 0-based line index for SourceText.Lines
+                    int lineIndex = lineSpan.StartLinePosition.Line;
+
+                    // Get the full line text
+                    var text = await loc.Document.GetTextAsync().ConfigureAwait(false);
+                    string lineText = lineIndex >= 0 && lineIndex < text.Lines.Count
+                        ? text.Lines[lineIndex].ToString()
+                        : string.Empty;
+
+                    var row = table.NewRow();
+                    row["Method"] = methodSymbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+                    row["MethodName"] = methodSymbol.Name;
+                    row["ContainingType"] = methodSymbol.ContainingType?.Name ?? string.Empty;
+
+                    row["Document"] = loc.Document.Name;
+                    row["Line"] = lineIndex + 1; // 1-based for display
+                    row["Span"] = $"{span.Start}..{span.End}";
+                    row["Code"] = lineText;
+                    table.Rows.Add(row);
+                }
+            }
+        }
+
+        return table;
     }
 }
