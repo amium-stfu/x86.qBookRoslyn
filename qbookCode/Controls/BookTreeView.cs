@@ -938,7 +938,6 @@ namespace qbookCode.Controls
         }
         private async void customToolStripMenuItem_Click(object sender, EventArgs e)
         {
-
             BeginUpdate();
             try
             {
@@ -956,15 +955,42 @@ namespace qbookCode.Controls
                         return;
                     }
 
+                    string code = Snippets.NewSubCode(page, name);
+
+
+                    if (ImportFromFile)
+                    {
+                        using (var importDialog = new OpenFileDialog())
+                        {
+                            importDialog.Title = "Select a cs file";
+                            importDialog.Filter = "Codefile|*.cs";
+                            importDialog.Multiselect = false;
+
+                            if (importDialog.ShowDialog(this) == DialogResult.OK)
+                            {
+                                string filePath = importDialog.FileName;
+
+                                code = System.IO.File.ReadAllText(filePath);
+
+                                string sourcePageName = System.IO.Path.GetFileNameWithoutExtension(filePath).Split('.')[0];
+                                if (sourcePageName != page.Name)
+                                {
+                                    code = code.Replace($"Definition{sourcePageName}", $"Definition{page.Name}");
+                                }
+                            }
+
+                        }
+
+                    }
                     BookNode subNode = new BookNode(filename, NodeType.SubCode) { ImageIndex = 3 };
-                    page.SubCodeDocuments[filename] = Core.Roslyn.AddCodeDocument(filename, Snippets.NewSubCode(page, name), true);
+                    page.SubCodeDocuments[filename] = Core.Roslyn.AddCodeDocument(filename, code, true);
                     subNode.Editor = new DocumentEditor(page.SubCodeDocuments[filename], page);
                     await subNode.Editor.UpdateRoslyn("New CustomCode");
                     ClickedNode.Nodes.Add(subNode);
                     page.Includes.Add(filename);
                     page.CodeOrder.Add(filename);
-
                 }
+                
             }
             catch (Exception ex)
             {
