@@ -7,12 +7,16 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Printing;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Web;
 using System.Windows.Documents;
 using System.Windows.Forms;
 using System.Windows.Shapes;
+using System.Xml.Linq;
 using RoslynDocument = Microsoft.CodeAnalysis.Document;
 
 namespace qbookCode.Controls
@@ -38,9 +42,9 @@ namespace qbookCode.Controls
         private ToolStripMenuItem renamePageToolStripMenuItem = new ToolStripMenuItem();
         private ToolStripMenuItem toolStripMenuIncludeCode = new ToolStripMenuItem();
         private ToolStripMenuItem deletePageToolStripMenuItem = new ToolStripMenuItem();
-       
 
- 
+
+
         class PageEditor
         {
             public DocumentEditor PageRoot;
@@ -193,7 +197,7 @@ namespace qbookCode.Controls
                 foreach (BookNode page in Nodes[0].Nodes)
                     if (page.Type == NodeType.Page) pageOder.Add(page.Text);
 
-                Core.SendToQbook("PageOrder", pageOder.ToArray() );
+                Core.SendToQbook("PageOrder", pageOder.ToArray());
             }
         }
         private bool IsChildNode(System.Windows.Forms.TreeNode? parent, System.Windows.Forms.TreeNode? child)
@@ -214,7 +218,7 @@ namespace qbookCode.Controls
 
         #region Theme
 
-    
+
         public async Task ApplyTheme()
         {
             BeginUpdate();
@@ -226,10 +230,10 @@ namespace qbookCode.Controls
         }
 
 
-        public bool CodeError 
+        public bool CodeError
         {
-            get; 
-            set; 
+            get;
+            set;
         } = false;
         public async Task<bool> CheckCode()
         {
@@ -267,7 +271,7 @@ namespace qbookCode.Controls
         }
         private async Task UpdateNodeByLevelRecursive(BookNode node)
         {
-            
+
             node.ForeColor = Theme.TreeNodeDefaultColor;
             if (node == SelectedCodeNode)
                 node.ForeColor = Theme.TreeNodeSelectColor;
@@ -277,13 +281,13 @@ namespace qbookCode.Controls
             if (node.Type == NodeType.Page) index = 2;
             if (node.Type == NodeType.SubCode) index = 3;
             if (node.Type == NodeType.Program) index = 3;
-            if (node.Editor != null) 
+            if (node.Editor != null)
             {
                 await node.Editor.UpdateRoslyn("UpdateNodes");
-                if (node.Editor.Page != null )
+                if (node.Editor.Page != null)
                     if (node.Editor.Page.Hidden && node.Type == NodeType.Page) index = 5;
 
-                if(!node.Editor.Active) index = 4;
+                if (!node.Editor.Active) index = 4;
                 if (node.Editor.HasErrors && node.Editor.Active)
                 {
                     index = 10;
@@ -308,7 +312,7 @@ namespace qbookCode.Controls
             {
                 UpdateNodeByLevelRecursive(child);
             }
-      
+
         }
 
         #endregion
@@ -377,54 +381,54 @@ namespace qbookCode.Controls
         #region Create Update Delete Nodes
         public void Create()
         {
-           
-             
-                PageEditors.Clear();
-              
 
-                BeginUpdate();
-                ImageList = BookTreeViewIcons;
-                Nodes.Clear();
-                BookNode Root = new BookNode(Core.ThisBook.Filename.Replace(".qbook", ""), NodeType.Book);
 
-                Root.ImageIndex = 1;
-                Font = new System.Drawing.Font("Calibri", 12);
-                Nodes.Add(Root);
-                SelectedCodeNode = null;
-                foreach (oPage page in Core.ThisBook.Pages.Values)
+            PageEditors.Clear();
+
+
+            BeginUpdate();
+            ImageList = BookTreeViewIcons;
+            Nodes.Clear();
+            BookNode Root = new BookNode(Core.ThisBook.Filename.Replace(".qbook", ""), NodeType.Book);
+
+            Root.ImageIndex = 1;
+            Font = new System.Drawing.Font("Calibri", 12);
+            Nodes.Add(Root);
+            SelectedCodeNode = null;
+            foreach (oPage page in Core.ThisBook.Pages.Values)
+            {
+
+                BookNode pageNode = new BookNode(page.RoslynCodeDoc.Filename, NodeType.Page) { ImageIndex = 2 };
+                pageNode.Editor = new DocumentEditor(page.RoslynCodeDoc, page);
+                pageNode.Editor.GoToDefinition = async () => await GoToDefinitionAsync();
+
+
+                if (SelectedCodeNode == null)
+                    SelectedCodeNode = pageNode;
+
+                List<DocumentEditor> subEditors = new List<DocumentEditor>();
+                foreach (CodeDocument doc in page.SubCodeDocuments.Values)
                 {
-                 
-                    BookNode pageNode = new BookNode(page.RoslynCodeDoc.Filename, NodeType.Page) { ImageIndex = 2 };
-                    pageNode.Editor = new DocumentEditor(page.RoslynCodeDoc, page);
-                    pageNode.Editor.GoToDefinition = async () => await GoToDefinitionAsync();
-
-
-                    if (SelectedCodeNode == null)
-                        SelectedCodeNode = pageNode;
-
-                    List<DocumentEditor> subEditors = new List<DocumentEditor>();
-                    foreach (CodeDocument doc in page.SubCodeDocuments.Values)
-                    {
-                        BookNode subNode = new BookNode(doc.Filename, NodeType.SubCode) { ImageIndex = 3 };
-                        subNode.Text = doc.Filename.Split('.')[1];
-                        subNode.Editor = new DocumentEditor(doc, page);
-                        subEditors.Add(subNode.Editor);
-                        subNode.Editor.Page = page;
-                        pageNode.Nodes.Add(subNode);
-                    }
-
-                    Root.Nodes.Add(pageNode);
-                    PageEditors[page.Name] = new PageEditor(pageNode.Editor, subEditors);
+                    BookNode subNode = new BookNode(doc.Filename, NodeType.SubCode) { ImageIndex = 3 };
+                    subNode.Text = doc.Filename.Split('.')[1];
+                    subNode.Editor = new DocumentEditor(doc, page);
+                    subEditors.Add(subNode.Editor);
+                    subNode.Editor.Page = page;
+                    pageNode.Nodes.Add(subNode);
                 }
 
-                BookNode Program = new BookNode("Program.cs", NodeType.Program) { ImageIndex = 3 };
-                Program.Editor = new DocumentEditor(Core.Roslyn.GetCodeDocument("Program.cs"), null);
-                BookNode Global = new BookNode("GlobalUsing.cs", NodeType.Program) { ImageIndex = 3 };
-                Global.Editor = new DocumentEditor(Core.Roslyn.GetCodeDocument("GlobalUsing.cs"), null);
-                Root.Nodes.Add(Program);
-                Root.Nodes.Add(Global);
-                Root.Expand();
-                EndUpdate();
+                Root.Nodes.Add(pageNode);
+                PageEditors[page.Name] = new PageEditor(pageNode.Editor, subEditors);
+            }
+
+            BookNode Program = new BookNode("Program.cs", NodeType.Program) { ImageIndex = 3 };
+            Program.Editor = new DocumentEditor(Core.Roslyn.GetCodeDocument("Program.cs"), null);
+            BookNode Global = new BookNode("GlobalUsing.cs", NodeType.Program) { ImageIndex = 3 };
+            Global.Editor = new DocumentEditor(Core.Roslyn.GetCodeDocument("GlobalUsing.cs"), null);
+            Root.Nodes.Add(Program);
+            Root.Nodes.Add(Global);
+            Root.Expand();
+            EndUpdate();
         }
 
         public async Task CheckFullCode()
@@ -447,7 +451,7 @@ namespace qbookCode.Controls
 
         #region Events
 
-        
+
         BookNode LastSelectedNode = null;
         private async void ProjectTree_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
         {
@@ -462,7 +466,7 @@ namespace qbookCode.Controls
 
                     BookNode? node = e.Node as BookNode;
 
-                    if(node == null) return;
+                    if (node == null) return;
                     if (node.Type != NodeType.SubCode && node.Type != NodeType.Page && node.Type != NodeType.Program)
                     {
                         return;
@@ -485,7 +489,7 @@ namespace qbookCode.Controls
 
                     LastSelectedNode = SelectedCodeNode;
                 }
-               
+
             }
 
 
@@ -503,13 +507,13 @@ namespace qbookCode.Controls
                     toolStripMenuIncludeCode.Text = "Include Code";
                 }
 
-                if(ClickedNode.Editor != null && ClickedNode.Editor.Page != null)
+                if (ClickedNode.Editor != null && ClickedNode.Editor.Page != null)
                 {
                     oPage page = ClickedNode.Editor.Page;
                     hidePageToolStripMenuItem.Text = page.Hidden ? "Show Page" : "Hide Page";
-                    
+
                 }
-         
+
 
                 var clickedNode = ((System.Windows.Forms.TreeView)sender).GetNodeAt(new Point(e.X, e.Y));
                 if (e.Node.Level == 0)
@@ -551,7 +555,7 @@ namespace qbookCode.Controls
                     renameCodeToolStripMenuItem.Visible = true;
                     deleteStripMenuItem.Visible = true;
 
-             if(((BookNode)e.Node).Type == NodeType.Program)
+                    if (((BookNode)e.Node).Type == NodeType.Program)
                     {
                         addPageBeforeToolStripMenuItem.Visible = false;
                         addPageAfterToolStripMenuItem.Visible = false;
@@ -578,7 +582,7 @@ namespace qbookCode.Controls
 
         void initMenu()
         {
-   
+
             Menu.Name = "contextMenuTreeView";
             Menu.Size = new System.Drawing.Size(165, 224);
             // 
@@ -615,7 +619,7 @@ namespace qbookCode.Controls
             customToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
             customToolStripMenuItem.Text = "Custom";
             customToolStripMenuItem.Click += customToolStripMenuItem_Click;
-        
+
             // 
             // uDLClientToolStripMenuItem
             // 
@@ -702,7 +706,7 @@ namespace qbookCode.Controls
             deletePageToolStripMenuItem.Size = new System.Drawing.Size(164, 22);
             deletePageToolStripMenuItem.Text = "Delete Page";
             deletePageToolStripMenuItem.Click += deletePageToolStripMenuItem_Click;
-            Menu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] 
+            Menu.Items.AddRange(new System.Windows.Forms.ToolStripItem[]
             {
             addPageBeforeToolStripMenuItem,
             addPageAfterToolStripMenuItem,
@@ -742,7 +746,7 @@ namespace qbookCode.Controls
 
                 foreach (string f in page.Includes) Debug.WriteLine(f);
 
-               await UpdateAllAfterInExclude();
+                await UpdateAllAfterInExclude();
 
             }
         }
@@ -759,7 +763,7 @@ namespace qbookCode.Controls
                 }
                 ApplyTheme();
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Debug.WriteLine("Error updating after In/Exclude: " + ex.Message);
                 ApplyTheme();
@@ -767,8 +771,8 @@ namespace qbookCode.Controls
         }
         private async void renameCodeToolStripMenuItem_Click(object sender, EventArgs e)
         {
-           BeginUpdate();
-            string name = ShowInputDialog($"Input new name:", $"Rename Code {ClickedNode.Text}", ClickedNode.Text);
+            BeginUpdate();
+            string name = ShowInputDialog(sender: "renameCodeToolStripMenuItem", $"Input new name:", $"Rename Code {ClickedNode.Text}", ClickedNode.Text);
             if (!string.IsNullOrWhiteSpace(name))
             {
 
@@ -824,28 +828,28 @@ namespace qbookCode.Controls
         {
             try
             {
-                
+
                 BeginUpdate();
-                string name = ShowInputDialog($"Input new name:", $"Rename Page {ClickedNode.Editor.Page.Name}", ClickedNode.Editor.Page.Name);
+                string name = ShowInputDialog(sender: "renamePageToolStripMenuItem", $"Input new name:", $"Rename Page {ClickedNode.Editor.Page.Name}", ClickedNode.Editor.Page.Name);
                 if (!string.IsNullOrWhiteSpace(name))
                 {
-                   
-                    if(Core.ThisBook.Pages.ContainsKey(name))
+
+                    if (Core.ThisBook.Pages.ContainsKey(name))
                     {
                         EndUpdate();
                         MessageBox.Show("A page with this name already exists.", "Rename Page", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
-                 
+
 
                     System.Windows.Forms.TreeNodeCollection tree = ClickedNode.Parent.Nodes;
                     int originPageIndex = Core.ThisBook.PageOrder.IndexOf(ClickedNode.Text);
                     oPage page = ClickedNode.Editor.Page;
                     View.Editor.RemoveTab(page.RoslynCodeDoc.Filename);
 
-                    
+
                     string code = ClickedNode.Editor.Text.Replace($"Definition{page.Name}", $"Definition{name}");
-                   
+
                     string oldFilename = page.RoslynCodeDoc.Filename;
 
                     View.Editor.RemoveTab(oldFilename);
@@ -896,7 +900,7 @@ namespace qbookCode.Controls
                     ClickedNode.Text = name;
                     EndUpdate();
                 }
-              
+
             }
             catch (Exception ex)
             {
@@ -934,25 +938,23 @@ namespace qbookCode.Controls
         }
         private async void customToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            
+
             BeginUpdate();
             try
             {
-                string name = ShowInputDialog("Input code name:", $"New subcode", "CustomCode");
+                string name = ShowInputDialog(sender: "customToolStripMenuItem", "Input code name:", $"New subcode", "CustomCode");
                 if (!string.IsNullOrWhiteSpace(name))
                 {
                     string PageName = ClickedNode.Text;
                     oPage page = Core.ThisBook.Pages[PageName];
                     string filename = page.Name + "." + name + ".cs";
 
-                    if(page.SubCodeDocuments.ContainsKey(filename))
+                    if (page.SubCodeDocuments.ContainsKey(filename))
                     {
                         EndUpdate();
                         MessageBox.Show("A subcode with this name already exists.", "Add SubCode", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
-
-
 
                     BookNode subNode = new BookNode(filename, NodeType.SubCode) { ImageIndex = 3 };
                     page.SubCodeDocuments[filename] = Core.Roslyn.AddCodeDocument(filename, Snippets.NewSubCode(page, name), true);
@@ -964,7 +966,7 @@ namespace qbookCode.Controls
 
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Debug.WriteLine("Error adding custom subcode: " + ex.Message);
                 EndUpdate();
@@ -978,12 +980,10 @@ namespace qbookCode.Controls
         }
         private async Task InsertPage(int offset = 1)
         {
-            
-            
-            BeginUpdate();
+
             oPage page = null;
             BookNode pageNode = null;
-            string name = ShowInputDialog("Input page name:", $"New subcode", "NewPage");
+            string name = ShowInputDialog(sender: "InsertPage", "Input page name:", $"New page", "NewPage");
 
             if (Core.ThisBook.Pages.ContainsKey(name))
             {
@@ -992,27 +992,52 @@ namespace qbookCode.Controls
                 return;
             }
 
-
-            if (!string.IsNullOrWhiteSpace(name))
+            if (ImportFromFile)
             {
-                page = new oPage(name, name);
+                using (var importDialog = new OpenFileDialog())
+                {
+                    importDialog.Title = "Select a page file";
+                    importDialog.Filter = "Pagefile|oPage.json";
+                    importDialog.Multiselect = false;
 
-                string filename = name + ".qPage.cs";
-                page.Filename = filename;
-                page.RoslynCodeDoc = Core.Roslyn.AddCodeDocument(filename, Snippets.NewPageCode(name), true);
-                page.RoslynCodeDoc.UpdateCode();
-                page.CodeOrder = new List<string>();
-                page.Includes = new List<string>();
-                page.Section = "";
-      
+                    if (importDialog.ShowDialog(this) == DialogResult.OK)
+                    {
+                        string filePath = importDialog.FileName;
 
-                pageNode = new BookNode(page.RoslynCodeDoc.Filename, NodeType.Page) { ImageIndex = 2 };
-                pageNode.Editor = new DocumentEditor(page.RoslynCodeDoc, page);
-                
-                await pageNode.Editor.UpdateRoslyn("InsertPage");
-
-
+                        string source = System.IO.Path.GetDirectoryName(filePath);
+                        string target = System.IO.Path.Combine(Core.ThisBook.Directory, "Pages", name);
+                        string sourceName = new DirectoryInfo(source).Name;
+                        await ImportPage(source, target, sourceName, name, offset);
+                    }
+                }
+                return;
             }
+            else
+            {
+                if (!string.IsNullOrWhiteSpace(name))
+                {
+                    page = new oPage(name, name);
+
+                    string filename = name + ".qPage.cs";
+                    page.Filename = filename;
+                    page.RoslynCodeDoc = Core.Roslyn.AddCodeDocument(filename, Snippets.NewPageCode(name), true);
+                    page.RoslynCodeDoc.UpdateCode();
+                    page.CodeOrder = new List<string>();
+                    page.Includes = new List<string>();
+                    page.Section = "";
+
+                    pageNode = new BookNode(page.RoslynCodeDoc.Filename, NodeType.Page) { ImageIndex = 2 };
+                    pageNode.Editor = new DocumentEditor(page.RoslynCodeDoc, page);
+
+                    await pageNode.Editor.UpdateRoslyn("InsertPage");
+                    await insertPageInTree(page, pageNode, offset);
+                }
+            }
+        }
+
+        async Task insertPageInTree(oPage page, BookNode pageNode, int offset)
+        {
+            BeginUpdate();
             if (page == null)
             {
                 EndUpdate();
@@ -1042,13 +1067,83 @@ namespace qbookCode.Controls
                 {
                     Core.ThisBook.PageOrder.Insert(origin + offset, pageNode.Text);
                 }
-             Core.ThisBook.Pages.Add(page.Name,page);
+                Core.ThisBook.Pages.Add(page.Name, page);
             }
+
             EndUpdate();
+        }
+
+        public async Task ImportPage(string sourceDir, string destDir, string sourceName, string newName, int offset)
+        {
+            PageCopy(sourceDir, destDir, sourceName, newName);
+            string json = string.Empty;
+
+            BookNode pageNode = null;
+            json = File.ReadAllText(System.IO.Path.Combine(destDir, "oPage.json"));
+            json = json.Replace(sourceName, newName);
+            oPage opage = JsonSerializer.Deserialize<oPage>(json);
+            json = JsonSerializer.Serialize<oPage>(opage, new JsonSerializerOptions() { WriteIndented = true });
+            File.WriteAllText(System.IO.Path.Combine(destDir, "oPage.json"), json);
+
+            opage.Filename = $"{newName}.qPage.cs";
+
+            Debug.WriteLine(opage.Filename + " exists: " + System.IO.File.Exists(opage.Filename));
+            string code = File.ReadAllText(System.IO.Path.Combine(destDir, opage.Filename));
+            opage.RoslynCodeDoc = Core.Roslyn.AddCodeDocument(opage.Filename, code, true);
+
+            pageNode = new BookNode(newName, NodeType.Page) { ImageIndex = 2 };
+            pageNode.Editor = new DocumentEditor(opage.RoslynCodeDoc, opage);
+            await pageNode.Editor.UpdateRoslyn("InsertPage");
+
+
+            foreach (string codeFile in opage.CodeOrder)
+            {
+
+                Debug.WriteLine(" --- " + codeFile);
+                code = System.IO.File.ReadAllText(System.IO.Path.Combine(destDir, codeFile));
+                BookNode subNode = new BookNode(codeFile, NodeType.SubCode) { ImageIndex = 3 };
+
+                opage.SubCodeDocuments[codeFile] = Core.Roslyn.AddCodeDocument(codeFile, code, opage.Includes.Contains(codeFile));
+                subNode.Editor = new DocumentEditor(opage.SubCodeDocuments[codeFile], opage);
+                await subNode.Editor.UpdateRoslyn("New CustomCode");
+                pageNode.Nodes.Add(subNode);
+            }
+
+            await insertPageInTree(opage, pageNode, offset);
+
 
         }
-        public static string ShowInputDialog(string prompt, string title, string defaultValue = "")
+
+        public static void PageCopy(string sourceDir, string destDir, string oldName, string newName)
         {
+            if (Directory.Exists(destDir))
+                Directory.CreateDirectory(destDir);
+
+            Directory.CreateDirectory(destDir);
+
+            foreach (var file in Directory.GetFiles(sourceDir))
+            {
+
+                string code = File.ReadAllText(file);
+                code = code.Replace(oldName, newName);
+                File.WriteAllText(System.IO.Path.Combine(destDir, System.IO.Path.GetFileName(file.Replace(oldName, newName))), code);
+            }
+
+            foreach (var directory in Directory.GetDirectories(sourceDir))
+            {
+                string targetSubDir = System.IO.Path.Combine(destDir, System.IO.Path.GetFileName(directory));
+                PageCopy(directory, targetSubDir, oldName, newName);
+            }
+        }
+
+
+
+
+
+        public static bool ImportFromFile = false;
+        public static string ShowInputDialog(string sender, string prompt, string title, string defaultValue = "")
+        {
+
             Form inputForm = new Form()
             {
                 Width = 400,
@@ -1060,14 +1155,34 @@ namespace qbookCode.Controls
 
             System.Windows.Forms.Label textLabel = new System.Windows.Forms.Label() { Left = 10, Top = 20, Text = prompt, AutoSize = true };
             System.Windows.Forms.TextBox textBox = new System.Windows.Forms.TextBox() { Left = 10, Top = 50, Width = 360, Text = defaultValue };
+            System.Windows.Forms.Button import = new System.Windows.Forms.Button() { Text = "Import", Left = 190, Width = 80, Top = 80 };
             System.Windows.Forms.Button confirmation = new System.Windows.Forms.Button() { Text = "OK", Left = 290, Width = 80, Top = 80, DialogResult = System.Windows.Forms.DialogResult.OK };
 
             inputForm.Controls.Add(textLabel);
             inputForm.Controls.Add(textBox);
+            inputForm.Controls.Add(import);
             inputForm.Controls.Add(confirmation);
             inputForm.AcceptButton = confirmation;
 
-            return inputForm.ShowDialog() == DialogResult.OK ? textBox.Text : null;
+            import.MouseClick += (s, e) =>
+            {
+                ImportFromFile = true;
+                inputForm.DialogResult = DialogResult.OK;
+
+            };
+            confirmation.MouseClick += (s, e) =>
+            {
+                ImportFromFile = false;
+                inputForm.DialogResult = DialogResult.OK;
+
+            };
+
+            if (inputForm.ShowDialog() == DialogResult.OK)
+            {
+                return textBox.Text;
+            }
+
+            return "";
         }
 
         private void addPageAfterToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1104,7 +1219,7 @@ namespace qbookCode.Controls
 
             var symbol = semanticModel.GetSymbolInfo(nodeParent).Symbol ?? semanticModel.GetDeclaredSymbol(nodeParent);
 
-            var input = ShowInputDialog("Input new name:", $"Rename Symbol {nodeParent}", $"NewName");
+            var input = ShowInputDialog(sender: "RenameSymbolAsync", "Input new name:", $"Rename Symbol {nodeParent}", $"NewName");
             if (string.IsNullOrWhiteSpace(input)) return;
             string newName = input.Trim();
 
@@ -1137,7 +1252,7 @@ namespace qbookCode.Controls
                     if (node != null)
                     {
                         node.Editor.Text = newTextStr;
-                        node.Editor.UpdateDocument(); 
+                        node.Editor.UpdateDocument();
                         updatedCount++;
                     }
                 }
@@ -1149,7 +1264,7 @@ namespace qbookCode.Controls
                 return;
             }
 
-          //  OpenNode(SelectedNode);
+            //  OpenNode(SelectedNode);
             // Cursor und Auswahl wiederherstellen
             int newLen = SelectedCodeNode.Editor.TextLength;
             SelectedCodeNode.Editor.SetSelection(Math.Min(selEndBefore, newLen), Math.Min(selStartBefore, newLen));
@@ -1233,19 +1348,19 @@ namespace qbookCode.Controls
         }
         private BookNode GetNodeByFilenameRecursive(BookNode node, string name)
         {
-                //Debug.WriteLine($"R {node.Editor.Target.Filename}");
-                //Debug.WriteLine($"S {name}");
+            //Debug.WriteLine($"R {node.Editor.Target.Filename}");
+            //Debug.WriteLine($"S {name}");
 
             if (node.Editor.Target.Filename == name)
-                    return node;
+                return node;
 
-                foreach (BookNode child in node.Nodes)
-                {
-                    BookNode found = GetNodeByFilenameRecursive(child, name);
-                    if (found != null)
-                        return found;
-                }
-            
+            foreach (BookNode child in node.Nodes)
+            {
+                BookNode found = GetNodeByFilenameRecursive(child, name);
+                if (found != null)
+                    return found;
+            }
+
 
             return null;
         }
@@ -1259,23 +1374,23 @@ namespace qbookCode.Controls
                 {
                     SelectedCodeNode.Editor.HidePopups();
 
-                     SelectedCodeNode = found;
-                    
+                    SelectedCodeNode = found;
+
 
                     await SelectedCodeNode.Editor.UpdateRoslyn("TreeView OpenNodeByName");
                     if (View != null)
                     {
                         View.SetTarget("Open Node", SelectedCodeNode.Editor);
-                        
+
                     }
                     SelectedCodeNode.Editor.ApplyTheme();
                     SelectedCodeNode.EnsureVisible();
                     break;
 
-                    
+
                 }
             }
-         
+
         }
         private BookNode FindNodeByNameRecursive(BookNode node, string name)
         {

@@ -73,7 +73,7 @@ namespace qbookCode.Roslyn
         {
             if (Editor?.Target?.Document == null) return;
 
-            List<CompletionItem> items = await Editor.UpdateReferences();
+            List<CompletionItem> items = await Editor.GetReferencesItemsAsync();
 
             var caretPos = Editor.CurrentPosition;
            

@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Microsoft.Build.Tasks;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -84,7 +85,7 @@ namespace qbookCode.Controls
 
         public Form View { get; set; }
 
-        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        protected override bool ProcessCmdKey(ref System.Windows.Forms.Message msg, Keys keyData)
         {
             if (AutoComplete.Visible)
             {
@@ -143,13 +144,19 @@ namespace qbookCode.Controls
         }
 
         DataTable References = new DataTable();
+        DataTable ReferencesFiltered = new DataTable();
         public DocumentEditor(CodeDocument doc, oPage page) : base()
         {
             References = new DataTable();
-            References.Columns.Add("Method", typeof(string));
+            References.Columns.Add("Method", typeof(string));           // Fully qualified (error format) for display
+            References.Columns.Add("MethodName", typeof(string));       // Simple method name
+            References.Columns.Add("ContainingType", typeof(string));   // Simple class/record/struct name
             References.Columns.Add("Document", typeof(string));
             References.Columns.Add("Line", typeof(int));
             References.Columns.Add("Span", typeof(string));
+            References.Columns.Add("Code", typeof(string));
+
+            ReferencesFiltered = References.Copy();
 
             Init();
             InitFolding();
@@ -208,6 +215,12 @@ namespace qbookCode.Controls
             {
                 IndicatorClearRange(16, TextLength);
             };
+
+            MouseDwellTime = 400;
+            DwellStart += DocumentEditor_DwellStart;
+            DwellEnd += DocumentEditor_DwellEnd;
+            // Optional for keyboard navigation:
+            UpdateUI += DocumentEditor_UpdateUI;
         }
 
         private void CursorUpDown(object? sender, KeyEventArgs e)
@@ -441,6 +454,14 @@ namespace qbookCode.Controls
 
             Indicators[16].Style = IndicatorStyle.StraightBox; //FInd Code
             Indicators[16].ForeColor = Color.Yellow;
+
+            Indicators[20].Style = IndicatorStyle.TextFore; // has refs
+            Indicators[20].ForeColor = Color.Brown; // cyan-ish
+            Indicators[20].Under = false;
+
+            Indicators[21].Style = IndicatorStyle.Squiggle; // no refs
+            Indicators[21].ForeColor = Color.Blue; // red-ish
+            Indicators[21].Under = true;
 
 
             Indicators[1].Style = IndicatorStyle.StraightBox;
@@ -1019,6 +1040,12 @@ namespace qbookCode.Controls
             //NameSpace
             Indicators[15].ForeColor = NameSpaceName;
 
+
+            Indicators[20].ForeColor = vsMethod; // red-ish
+            Indicators[21].Style = IndicatorStyle.Squiggle; // no refs
+            Indicators[21].ForeColor = Color.Blue; // red-ish
+            Indicators[21].Under = true;
+
             // Caret Line
             CaretLineVisible = true;
             CaretLineBackColor = Color.FromArgb(0xF3, 0xF9, 0xFF);
@@ -1131,6 +1158,11 @@ namespace qbookCode.Controls
             //NameSpace
             Indicators[15].ForeColor = NameSpaceName;
 
+            Indicators[20].ForeColor = vsDarkMethod; // red-ish
+            Indicators[21].Style = IndicatorStyle.Squiggle; // no refs
+            Indicators[21].ForeColor = Color.Blue; // red-ish
+            Indicators[21].Under = true;
+
             CaretLineVisible = true;
             CaretLineBackColor = Color.FromArgb(0x2A, 0x2A, 0x2A);
 
@@ -1149,9 +1181,13 @@ namespace qbookCode.Controls
                 Markers[i].SetBackColor(foldBack);
             }
 
-            
+            Indicators[17].Style = IndicatorStyle.StraightBox;
+            Indicators[17].ForeColor = Color.FromArgb(0x4E, 0xC9, 0xB0); // matches your vsDarkClass
+            Indicators[17].Under = true;
 
-
+            Indicators[18].Style = IndicatorStyle.StraightBox;
+            Indicators[18].ForeColor = Color.FromArgb(0xF4, 0x43, 0x36); // error red
+            Indicators[18].Under = true;
         }
 
    
@@ -1417,10 +1453,50 @@ namespace qbookCode.Controls
             }
         }
 
+        public async Task ApplyMethodReferenceHighlightsAsync()
+        {
+            // Clear previous method highlights (both indicators)
+            IndicatorClearRange(20, TextLength);
+            IndicatorClearRange(21, TextLength);
+
+            var doc = Target?.Document;
+            if (doc == null) return;
+
+            var root = await doc.GetSyntaxRootAsync().ConfigureAwait(false);
+            if (root == null) return;
+
+            // Get the full reference table (not the filtered 'References')
+            var all = await RosylnSemantic.FindAllMethodReferencesAsync(doc);
+
+            // Build counts by type+method
+            var countsByName = new Dictionary<(string type, string method), int>();
+            foreach (DataRow row in all.Rows)
+            {
+                var type = row["ContainingType"]?.ToString() ?? "";
+                var method = row["MethodName"]?.ToString() ?? "";
+                var key = (type, method);
+                countsByName[key] = countsByName.TryGetValue(key, out var n) ? n + 1 : 1;
+            }
+
+            // Paint identifier spans
+            var methodDecls = root.DescendantNodes().OfType<MethodDeclarationSyntax>();
+            foreach (var md in methodDecls)
+            {
+                var typeName = (md.Parent as ClassDeclarationSyntax)?.Identifier.Text ?? "";
+                var methodName = md.Identifier.Text;
+                var key = (typeName, methodName);
+                var count = countsByName.TryGetValue(key, out var n) ? n : 0;
+
+                var span = md.Identifier.Span;
+                IndicatorCurrent = count > 0 ? 20 : 21;
+                IndicatorFillRange(span.Start, span.Length);
+            }
+        }
+
 
         #region Roslyn Integration
 
-        
+
 
 
         bool init = true;
@@ -1441,19 +1517,15 @@ namespace qbookCode.Controls
         {
             using (this.SuspendUpdates())
             {
-                
                 if (Target == null) return;
-
                 if (Active)
                 {
-
                     if (init)
                     {
                         await FormatDocumentAsync();
-       
                         init = false;
                     }
-                 
+
                     UpdateDocument();
                     LockNecessary();
 
@@ -1464,33 +1536,28 @@ namespace qbookCode.Controls
 
                     await RosylnSemantic.ApplyAsync(this, Target.Document);
                     await UpdateMethodesFromRoslynAsync();
+
+                    // Update reference cache for highlighting
+                  //  await UpdateReferences();
+                    References = await RosylnSemantic.FindAllMethodReferencesAsync(Target.Document);
+                    await ApplyMethodReferenceHighlightsAsync();
                 }
                 LockNecessary();
             }
         }
 
 
-        public async Task<List<CompletionItem>> UpdateReferences()
+        public async Task<List<CompletionItem>> GetReferencesItemsAsync()
         {
             List<CompletionItem> items = new List<CompletionItem>();
 
+            DataTable filtered = References.Copy();
 
-            if (Target?.Document == null) return items;
-
-            // Get all references first
-            var all = await RosylnSemantic.FindAllMethodReferencesAsync(Target.Document);
-
-            // Determine caret position
-            int caretPos = CurrentPosition;
-
-            // Get syntax root and find the method under caret
             var root = await Target.Document.GetSyntaxRootAsync().ConfigureAwait(false);
-            if (root == null)
-            {
-                References = all;
-                return items;
-            }
+            if (root == null) return items;
+            
 
+            int caretPos = CurrentPosition;
             var token = root.FindToken(Math.Max(0, Math.Min(caretPos, TextLength)));
             var node = token.Parent;
 
@@ -1504,23 +1571,17 @@ namespace qbookCode.Controls
                 }
             }
 
-            if (methodDecl == null)
-            {
-                // No method under caret → show all
-                References = all;
-                return items;
-            }
+            if (methodDecl == null) return items;
+            
 
             // Names for filtering
             var classDecl = methodDecl.Parent as Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax;
             string methodName = methodDecl.Identifier.Text;
             string? className = classDecl?.Identifier.Text;
 
-            Debug.WriteLine(category: "UpdateReferences", message: $"Method under caret: {className}.{methodName}");
+            filtered.Rows.Clear();
 
-            // Filter rows by MethodName and ContainingType
-            var filtered = all.Clone();
-            foreach (DataRow row in all.Rows)
+            foreach (DataRow row in References.Rows)
             {
                 var rowMethodName = row["MethodName"]?.ToString() ?? string.Empty;
                 var rowContainingType = row["ContainingType"]?.ToString() ?? string.Empty;
@@ -1528,61 +1589,29 @@ namespace qbookCode.Controls
                 if (string.Equals(rowMethodName, methodName, StringComparison.Ordinal) &&
                     (string.IsNullOrEmpty(className) || string.Equals(rowContainingType, className, StringComparison.Ordinal)))
                 {
+                    Debug.WriteLine(rowMethodName);
+                    Debug.WriteLine($"{row["Document"].ToString().Replace(".cs", "")}.{row["Line"]}: {row["Code"].ToString().Trim()}");
                     filtered.ImportRow(row);
                 }
             }
 
-            // If nothing matched (e.g., overloads with different containers), fall back to method name only
-            if (filtered.Rows.Count == 0)
-            {
-                foreach (DataRow row in all.Rows)
-                {
-                    var rowMethodName = row["MethodName"]?.ToString() ?? string.Empty;
-                    if (string.Equals(rowMethodName, methodName, StringComparison.Ordinal))
-                    {
-                        filtered.ImportRow(row);
-                    }
-                }
-            }
+            Debug.WriteLine("items: " + filtered.Rows.Count);
 
-            References = filtered;
+            if (filtered.Rows.Count == 0) return items;
 
-            //ReferencesList.
-          
-            foreach (DataRow row in References.Rows)
+            foreach (DataRow row in filtered.Rows)
             {
-             
                 items.Add(new CompletionItem
                 {
                     Text = $"{row["Document"].ToString().Replace(".cs", "")}.{row["Line"]}: {row["Code"].ToString().Trim()}",
                     Value = $"{row["Document"]}|{row["Line"]}"
                 });
-
-
-                Debug.WriteLine($"{row["Line"]}: Reference: {row["Document"]} =  {row["Code"]}");
             }
 
             return items;
 
-            //ReferencesList.ListView.SetItems(items);
 
-            //// Position relativ zur Caret-Position bestimmen
-            //int pos = CurrentPosition;
-            //int x = PointXFromPosition(pos);
-            //int y = PointYFromPosition(pos) + 18;
-            //Point screenPoint = PointToScreen(new Point(x, y));
 
-            //ReferencesList.Height = ReferencesList.ListView.GetAutoHeightForItems(maxVisibleItems: 10);
-            //ReferencesList.Width = 800;
-
-            //ReferencesList.Location = screenPoint;
-            //ReferencesList.Show();
-            //Focus();
-            //GotoPosition(pos);
-
-            // Visual feedback: highlight the method start line
-            //var methodLine = methodDecl.GetLocation().GetLineSpan().StartLinePosition.Line + 1; // 1-based
-            //HighlightLine(methodLine, Color.Yellow);
         }
 
 
@@ -1701,8 +1730,112 @@ namespace qbookCode.Controls
 
         #endregion
 
+        public void InitReferenceCountMargin()
+        {
+            const int REFCOUNT_MARGIN = 3; // pick a free margin index
+            Margins[REFCOUNT_MARGIN].Type = MarginType.Text;
+            Margins[REFCOUNT_MARGIN].Sensitive = false;
+            Margins[REFCOUNT_MARGIN].Width = 40; // adjust for expected digits
+        }
+
+        public async Task RenderReferenceCountsInMarginAsync()
+        {
+            const int REFCOUNT_MARGIN = 3;
+            // Clear previous texts
+            for (int i = 0; i < Lines.Count; i++)
+                Lines[i].MarginText = string.Empty;
+
+            var doc = Target?.Document;
+            if (doc == null) return;
+
+            var root = await doc.GetSyntaxRootAsync().ConfigureAwait(false);
+            if (root == null) return;
+
+            var methodDecls = root.DescendantNodes().OfType<MethodDeclarationSyntax>();
+            foreach (var md in methodDecls)
+            {
+                var typeName = (md.Parent as ClassDeclarationSyntax)?.Identifier.Text ?? "";
+                var methodName = md.Identifier.Text;
+                var key = (typeName, methodName);
+                var count = 0;
+                if (References.Rows.Count > 0)
+                {
+                    // same aggregation as above
+                    count = References.AsEnumerable().Count(r =>
+                        string.Equals(r["ContainingType"]?.ToString() ?? "", typeName, StringComparison.Ordinal) &&
+                        string.Equals(r["MethodName"]?.ToString() ?? "", methodName, StringComparison.Ordinal));
+                }
+
+                var line = md.GetLocation().GetLineSpan().StartLinePosition.Line; // 0-based
+                if (line >= 0 && line < Lines.Count)
+                {
+                    Lines[line].MarginText = count > 0 ? count.ToString() : string.Empty;
+                }
+            }
+        }
+
+        private async void DocumentEditor_DwellStart(object? sender, DwellEventArgs e)
+        {
+            if (e.Position < 0) return;
+
+            var doc = Target?.Document;
+            if (doc == null) return;
+
+            var root = await doc.GetSyntaxRootAsync().ConfigureAwait(false);
+            if (root == null) return;
+
+           
+
+            var token = root.FindToken(Math.Clamp(e.Position, 0, TextLength));
+            if (token.Parent is not MethodDeclarationSyntax md) return;
+
+            string typeName = (md.Parent as ClassDeclarationSyntax)?.Identifier.Text ?? "";
+            string methodName = md.Identifier.Text;
+
+            int refCount = References.AsEnumerable().Count(r =>
+                string.Equals(r["ContainingType"]?.ToString() ?? "", typeName, StringComparison.Ordinal) &&
+                string.Equals(r["MethodName"]?.ToString() ?? "", methodName, StringComparison.Ordinal));
+
+            string tip = refCount == 1 ? "1 Reference" : $"{refCount} References";
+            CallTipShow(e.Position, tip);
+        }
+
+        private void DocumentEditor_DwellEnd(object? sender, DwellEventArgs e)
+        {
+            CallTipCancel();
+        }
+
+        // Optional: show count when caret moves onto a method identifier
+        private async void DocumentEditor_UpdateUI(object? sender, UpdateUIEventArgs e)
+        {
+            if ((e.Change & UpdateChange.Selection) == 0) return;
+
+            int pos = CurrentPosition;
+            var doc = Target?.Document;
+            if (doc == null) return;
+
+            var root = await doc.GetSyntaxRootAsync().ConfigureAwait(false);
+            if (root == null) return;
+
+           
+            var token = root.FindToken(Math.Clamp(pos, 0, TextLength));
+            if (token.Parent is not MethodDeclarationSyntax md)
+            {
+                CallTipCancel();
+                return;
+            }
+
+            string typeName = (md.Parent as ClassDeclarationSyntax)?.Identifier.Text ?? "";
+            string methodName = md.Identifier.Text;
 
 
+            int refCount = References.AsEnumerable().Count(r =>
+                string.Equals(r["ContainingType"]?.ToString() ?? "", typeName, StringComparison.Ordinal) &&
+                string.Equals(r["MethodName"]?.ToString() ?? "", methodName, StringComparison.Ordinal));
+
+            string tip = refCount == 1 ? "1 Reference" : $"{refCount} References";
+            CallTipShow(pos, tip);
+        }
     }
     public static class SimpleIndentFormatter
     {
