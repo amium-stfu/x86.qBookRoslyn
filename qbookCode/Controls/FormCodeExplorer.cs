@@ -180,7 +180,7 @@ namespace qbookCode.Controls
         }
         private async void btnRebuild_Click(object sender, EventArgs e)
         {
-
+            SelectedCodeNode.Editor.HidePopups();
             await Save();
             await Reload();
 

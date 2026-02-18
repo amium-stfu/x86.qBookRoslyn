@@ -185,9 +185,7 @@ namespace QB.Helpers
             if (double.IsNaN(raw.Value))
                 return;
 
-            double v = Adjust.raw.Value;
-
-            Adjust.raw.Value = raw.Value + Adjust.offset.Value * Adjust.gain.Value;
+            double v = raw.Value * Adjust.gain.Value + Adjust.offset.Value;
 
             if (Filter.zeroClipping.Value == 1)
                 Adjust.raw.Value = Adjust.raw.Value < 0 ? 0 : Adjust.raw.Value;
@@ -470,6 +468,7 @@ namespace QB.Helpers
                 return;
             }
             recordValues();
+
             if (Filter.mode.Value == 0) Value = Adjust.raw.Value;
             if (Filter.mode.Value == 1) Value = avg();
             if (Filter.mode.Value == 2) Value = wma();
