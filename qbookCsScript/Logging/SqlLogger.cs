@@ -28,7 +28,6 @@ namespace QB.Logging
         string connectionString;
 
         public string File = "default";
-
         private Task writingTask;
 
         List<Task> loggingTasks = new List<Task>();
@@ -36,13 +35,10 @@ namespace QB.Logging
         Dictionary<string, int> loggers = new Dictionary<string, int>();
         string insertString;
 
-
         public SqlLogger(string name) : base(name)
         {
 
         }
-
-
         public void Add(string name, string text, string unit, string format, int period, Func<object> value)
         {
             string type = "TEXT";
@@ -67,19 +63,16 @@ namespace QB.Logging
             else
                 QB.Logger.Error($"SQLlogger '{Name}' already contains Key: '" + name + "'");
         }
-
         public void AddSignal(Signal signal, int period) 
         {
             Add(signal.Name, signal.Text, signal.Unit, signal.DefaultDisplayFormat, period, () => signal.Value);
 
         }
-
         public void AddStringSignal(StringSignal signal, int period)
         {
             Add(signal.Name, signal.Text, "", "", period, () => signal.Value);
 
         }
-
         public bool Init()
         {
             initDb = true;
@@ -121,15 +114,16 @@ namespace QB.Logging
                         cmd = $"INSERT INTO valueData (name, description, unit, valueType, format, sqlTable) VALUES ('{i.Value.Name}','{i.Value.Description}', '{i.Value.Unit}', '{i.Value.ValueType}', '{i.Value.Format}','{i.Value.SqlTable}');";
                         command = new SQLiteCommand(cmd, database);
                         command.ExecuteNonQuery();
+
                         if (!tables.ContainsKey(i.Value.SqlTable))
                         {
-                            tables.Add(i.Value.SqlTable, new List<string>() { i.Value.Name + " " + i.Value.ValueType });
+                            tables.Add(i.Value.SqlTable, new List<string>() 
+                                { i.Value.Name + " " + i.Value.ValueType });
                         }
                         else
                         {
                             tables[i.Value.SqlTable].Add(i.Value.Name + " " + i.Value.ValueType);
                         }
-
                     }
 
                     foreach (var entry in tables)
@@ -141,7 +135,6 @@ namespace QB.Logging
                         command.ExecuteNonQuery();
                     }
                     database.Close();
-
                 }
 
                 catch (SQLiteException ex)
@@ -161,12 +154,10 @@ namespace QB.Logging
 
             }
         }
-
         public void Reset()
         {
             initDb = false;
         }
-
         public void Start()
         {
 
@@ -188,7 +179,6 @@ namespace QB.Logging
             writingTask = Task.Run(() => WriteLogsToFile(cts.Token));
             start = DateTime.Now;
         }
-
         public async Task Stop()
         {
             try
@@ -216,7 +206,6 @@ namespace QB.Logging
             }
 
         }
-
         public bool DatabaseIsOpen()
         {
             try
@@ -233,12 +222,9 @@ namespace QB.Logging
                 return false;
             }
         }
-
         public bool DatabaseIsClosed() { 
             return !DatabaseIsOpen();
         }
-
-
         private void RunLogger(System.Threading.CancellationToken token, int interval, string logger)
         {
             string insertValues = "";
@@ -276,14 +262,8 @@ namespace QB.Logging
             {
                 QB.Logger.Error($"{Name}.SqlLogger logging task encountered an error: {ex.Message}");
             }
-     
 
         }
-
-        //public void OpenFolder()
-        //{
-        //    System.Diagnostics.Process.Start("explorer.exe", Folder);
-        //}
         private async Task WriteLogsToFile(System.Threading.CancellationToken token)
         {
             //myWriter = new StreamWriter(Folder + "\\" + Filename, append: true, encoding: Encoding.UTF8);
@@ -322,7 +302,6 @@ namespace QB.Logging
             }
 
         }
-
         public virtual string getValues(string logger)
         {
 
@@ -367,7 +346,6 @@ namespace QB.Logging
             {
                 return "Error";
             }
-
         }
     }
 }

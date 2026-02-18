@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 
 namespace QB.Controls
 {
@@ -128,6 +129,7 @@ namespace QB.Controls
 
             if (double.IsNaN(v))
             {
+
                 return;
             }
             else
@@ -345,6 +347,10 @@ namespace QB.Controls
                 }
                 
             );
+
+            MenuButton.ZOrder = hSet.ZOrder;
+            MenuButton.Clickable = true;
+            MenuButton.BackgroundColorHover = System.Drawing.Color.Red;
             
             RecordControl = new QB.Controls.Box("record", x: X + W - 30, y: Y+ sizeBar, w: 30, h: 60, style: $"bg:#F0F0F0,align:ml,bg-hover:#e6e6e6"
                     , boxes: new[] {
@@ -360,7 +366,11 @@ namespace QB.Controls
                         Directory = Page
                     },
 
-                    new QB.Controls.Box("text", text: "1Hz",x:4, y:sizeBar / 4 + 0.2, w:10, h:sizeBar / 2,style:"font::7.5,align:ml")
+                    new QB.Controls.Box("text", text: "1Hz",x:4, y:sizeBar / 4 + 0.2, w:10, h:sizeBar / 2,style:"font::7.5,align:ml", onClick:(s) => chart.Log.Interval = 1000)
+                    {
+                        Directory = Page,
+                        Clickable = true
+                    }
                     }
                     ),
 
@@ -373,10 +383,15 @@ namespace QB.Controls
                         BorderTColor = "Black".ToColor(),
                         BorderLColor = "Black".ToColor(),
                         BorderRColor = "Black".ToColor(),
-                        Directory = Page
+                        Directory = Page,
+                        Clickable = true
                     },
 
-                    new QB.Controls.Box("text", text: "10Hz", x:4, y:sizeBar / 4 + 0.2, w:10, h:sizeBar / 2,style:"font::8,align:ml")
+                    new QB.Controls.Box("text", text: "10Hz", x:4, y:sizeBar / 4 + 0.2, w:10, h:sizeBar / 2,style:"font::8,align:ml", onClick:(s) => chart.Log.Interval = 100)
+                    {
+                        Directory = Page,
+                        Clickable = true
+                    }
                     }
                     ),
 
@@ -388,10 +403,15 @@ namespace QB.Controls
                         BorderTColor = "Black".ToColor(),
                         BorderLColor = "Black".ToColor(),
                         BorderRColor = "Black".ToColor(),
-                        Directory = Page
+                        Directory = Page,
+                        Clickable = true
                     },
 
-                    new QB.Controls.Box("text", text: "100Hz", x:4, y:sizeBar / 4 + 0.2, h:sizeBar / 2,style:"font::8,align:ml")
+                    new QB.Controls.Box("text", text: "100Hz", x:4, y:sizeBar / 4 + 0.2, h:sizeBar / 2,style:"font::8,align:ml", onClick:(s) => chart.Log.Interval = 10)
+                    {
+                        Directory = Page,
+                        Clickable = true
+                    }
                     }
                     ),
 
@@ -406,14 +426,18 @@ namespace QB.Controls
                         Directory = Page
                     },
 
-                    new QB.Controls.Box("text", text: "1kHz", x:4, y:sizeBar / 4 + 0.2, h:sizeBar / 2,style:"font::8,align:ml")
+                    new QB.Controls.Box("text", text: "1kHz", x:4, y:sizeBar / 4 + 0.2, h:sizeBar / 2,style:"font::8,align:ml", onClick:(s) => chart.Log.Interval = 1)
+                    {
+                        Directory = Page,
+                        Clickable = true
+                    }
                     }
                     ),
 
                            record = new QB.Controls.Box("csv", x:2, y:sizeBar * 4 + 1,w:26, h:6, onClick:(s) => toggleRecording(), style:"font::7:b,align:ml",
                            boxes: new[] {
-                        new QB.Controls.Box("led",text:"Record", x:6,style:"font::7.5:b,align:ml"),
-                        new QB.Controls.Box("led",icon:"fa:circle-dot", x:1,y:0.25,h:5,w:5)
+                        new QB.Controls.Box("led",text:"Record", x:6,style:"font::7.5:b,align:ml"){Directory = Page},
+                        new QB.Controls.Box("led",icon:"fa:circle-dot", x:1,y:0.25,h:5,w:5){Directory = Page}
                            }
                            )
                            {
@@ -422,8 +446,8 @@ namespace QB.Controls
 
                     folder = new QB.Controls.Box("folder", x:2, y:sizeBar * 5 + 1, w:26, h:6,style:"font::7.5:b,align:mc", onClick:(s) => chart.Log.OpenFolder(),
                            boxes: new[] {
-                        new QB.Controls.Box("led",text:"Folder", x:6,style:"font::7.5:b,align:ml"),
-                        new QB.Controls.Box("led",icon:"fa:folder", x:1,y:0.25,h:5,w:5)
+                        new QB.Controls.Box("led",text:"Folder", x:6,style:"font::7.5:b,align:ml") { Directory = Page },
+                        new QB.Controls.Box("led",icon:"fa:folder", x:1,y:0.25,h:5,w:5) { Directory = Page }
                            }
                            )
                            {
@@ -431,14 +455,14 @@ namespace QB.Controls
                 },
                      UdpStream = new QB.Controls.Box("udpStream", x:2, y:sizeBar * 6 + 1, w:26, h:6,style:"font::7.5:b,align:mc", onClick:(s) => toggleStream(),
                            boxes: new[] {
-                        new QB.Controls.Box("led",text:"UDP Stream", x:6,style:"font::7.5:b,align:ml"),
-                        new QB.Controls.Box("led",icon:"fa:share", x:1,y:0.25,h:5,w:5)
+                        new QB.Controls.Box("led",text:"UDP Stream", x:6,style:"font::7.5:b,align:ml") { Directory = Page },
+                        new QB.Controls.Box("led",icon:"fa:share", x:1,y:0.25,h:5,w:5) { Directory = Page }
                            }
                            )
                            {
                     Directory = Page
                 },
-                    UdpPort = new QB.Controls.Box("udpStream", x:2, y:sizeBar * 7 + 1, w:26, h:6,style:"font::7.5:b,align:mc", onClick:(s) => Streamer.StartSteam(),
+                    UdpPort = new QB.Controls.Box("udpStream", x:2, y:sizeBar * 7 + 1, w:26, h:6,style:"font::7.5:b,align:mc",
                            boxes: new[] {
                         new QB.Controls.Box("led",textFunction:() => Streamer.Port.ToString(), x:6,style:"font::7.5:b,align:ml"),
                         new QB.Controls.Box("led",icon:"fa:at", x:1,y:0.25,h:5,w:5)
@@ -459,14 +483,9 @@ namespace QB.Controls
                
                 }
                 )
-            { Visible = false}
-                ;
+            { Visible = false};
 
-
-
-
-          
-            RecordControl.Clickable = false;
+         //   RecordControl.Clickable = false;
             RecordControl.BackgroundColorHover = RecordControl.BackgroundColor;
             RecordControl.Visible = false;
 
@@ -507,11 +526,12 @@ namespace QB.Controls
 
            
 
-            AxisControl = new BoxTable("AxisControl", x: X, y: Y + sizeBar, h: 35, w: 30, columns: 1, rows: 4, gap: 0.2, backColor: col, page: Page);
-            AxisControl.Add(yMin = new BoxSignal("min", target: this.SelectedAxisMin, locked: false, backColor: col, valueColor: "white", textPosition:"ml"), column: 1, row: 1);
-            AxisControl.Add(yMax = new BoxSignal("max", target: this.SelectedAxisMax, locked: false, backColor: col,valueColor:"white", textPosition: "ml"), column: 1, row: 2);
-            AxisControl.Add(yAuto = new BoxSignalOnOff("auto", target: this.SelectedAxisAuto, locked: false, backColor: col,ledStyle:true), column: 1, row: 3);
-            AxisControl.Add(Execute = new BoxButton("play", icon: "fa:play-circle", locked: false, backColor: col, ledStyle: false,iconSizeFactor:1,onClick:(e) => this.SetAxis()), column: 1, row: 4,rowSpan:1);
+            AxisControl = new BoxTable("AxisControl", x: X, y: Y + sizeBar, h: 35, w: 50, columns: 1, rows: 4, gap: 0.2, backColor: col, page: Page);
+            AxisControl.Add(yMin = new BoxSignal("min", target: this.SelectedAxisMin, locked: false, backColor: col, valueColor: "white", textPosition: "ml") { Directory = Page}, column: 1, row: 1)
+            ;
+            AxisControl.Add(yMax = new BoxSignal("max", target: this.SelectedAxisMax, locked: false, backColor: col,valueColor:"white", textPosition: "ml") { Directory = Page }, column: 1, row: 2);
+            AxisControl.Add(yAuto = new BoxSignalOnOff("auto", target: this.SelectedAxisAuto, locked: false, backColor: col,ledStyle:false) { Directory = Page }, column: 1, row: 3);
+            AxisControl.Add(Execute = new BoxButton("play", icon: "fa:play-circle", locked: false, backColor: col, ledStyle: false,iconSizeFactor:1,onClick:(e) => this.SetAxis()) { Directory = Page }, column: 1, row: 4,rowSpan:1);
 
             AxisControl.Visible = false;
             AxisControl.ZOrder = 10;
@@ -523,13 +543,33 @@ namespace QB.Controls
 
             chart.Directory = Page;
             y1Control.Directory = Page;
+            y2Control.Directory = Page;
+            y3Control.Directory = Page;
+            y4Control.Directory = Page;
+            RecordControl.Directory = Page;
+
             xControl.Directory = Page;
-          
+            MenuButton.Directory = Page;
+            MenuButton.Clickable = true;
+            yMin.Directory = Page;
+            yMax.Directory = Page;
+            yAuto.Directory = Page;
+
+            yMin.ZOrder = 10;
+            yMax.ZOrder = 10;
+            yAuto.ZOrder = 10;
+
+
+
+
+
+
             reset();
 
             xControl.BackgroundColor = System.Drawing.Color.Transparent;
             xControl.BackgroundColorHover = System.Drawing.Color.Transparent;
         }
+
 
 
         void toggleStream()
@@ -583,11 +623,10 @@ namespace QB.Controls
                 y4Control.Boxes[1].BackgroundColor = "transparent".ToColor();
                 return;
             }
-
+          
+           
             AxisControl.Visible = true;
             AxisControl.ZOrder = 10;
-        
-      //      Debug.WriteLine("AxisControl: " + AxisControl.GetHashCode());
 
             double min = double.NaN;
             double max = double.NaN;
@@ -654,6 +693,7 @@ namespace QB.Controls
                 else
                 {
                     Y1autoRange = true;
+                    reset();
                 }
 
             }
@@ -666,6 +706,7 @@ namespace QB.Controls
                     chart.AxisY2.Min = SelectedAxisMin.Value;
                     chart.AxisY2.Max = SelectedAxisMax.Value;
                     scaleY(10, 20, 2);
+                    reset();
                 }
                 else
                 {
@@ -686,6 +727,7 @@ namespace QB.Controls
                 else
                 {
                     Y3autoRange = true;
+                    reset();
                 }
 
             }
@@ -702,6 +744,7 @@ namespace QB.Controls
                 else
                 {
                     Y4autoRange = true;
+                    reset();
                 }
 
             }
@@ -730,9 +773,9 @@ namespace QB.Controls
             if (AutoColor) s.Color = ChartColors.GetNextColor();
 
             signals.Add(new ChartSeries(s.Text, s, chart, History, legendIndex++, this, X, Y + 6, Page, yAxis,UserNormName));
-            if (yAxis == 2) { y2Control.Visible = true; y2Active = true; };
-            if (yAxis == 3) { y3Control.Visible = true; y3Active = true; };
-            if (yAxis == 4) { y4Control.Visible = true; y4Active = true; } ;
+            if (yAxis == 2) { y2Control.Visible = true; y2Active = true; y2Control.Clickable = true; y2Control.Directory = Page; };
+            if (yAxis == 3) { y3Control.Visible = true; y3Active = true; y3Control.Clickable = true; y3Control.Directory = Page; };
+            if (yAxis == 4) { y4Control.Visible = true; y4Active = true; y4Control.Clickable = true; y4Control.Directory = Page; } ;
 
             Streamer.Add(s);
         }
@@ -808,7 +851,7 @@ namespace QB.Controls
         int ledCounter = -1;
         void idle(Timer t, TimerEventArgs ea)
         {
-
+         
             if (Visible)
             {
                 if (Recording == null) return;
@@ -855,11 +898,8 @@ namespace QB.Controls
 
           
             acutalSecond = seconds();
-            List<ChartSeries> signalsWork;
-            lock (signals)
-            {
-                signalsWork = signals;
-            }
+            List<ChartSeries> signalsWork = new List<ChartSeries>(signals);
+      
 
             foreach (ChartSeries s in signalsWork)
                 s.Update(seconds());
@@ -1115,6 +1155,7 @@ namespace QB.Controls
             y3Control.Clickable = y3Active && Visible ? true : false;
             y4Control.Clickable = y4Active && Visible ? true : false;
             MenuButton.Clickable = Visible;
+            MenuButton.ZOrder = 10;
             
 
 
