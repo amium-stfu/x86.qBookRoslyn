@@ -79,6 +79,10 @@ namespace qbookCode.Controls
         {
             InsertPage(offset: -1);
         }
+        /// <summary>
+        /// Insert page 
+        /// </summary>
+        /// <param name="offset">-1 Page before,  1 Page after</param>
         private void InsertPage(int offset = 1)
         {
             bookTreeView.BeginUpdate();

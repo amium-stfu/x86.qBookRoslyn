@@ -29,6 +29,7 @@
 
 	<ItemGroup>
     <Compile Remove="Controls\CodeNode.cs" />
+    <Compile Remove="Roslyn\RoslynSignatureHelper.cs" />
   </ItemGroup>
 
   <ItemGroup>

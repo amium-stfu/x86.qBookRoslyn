@@ -34,7 +34,9 @@ namespace qbookCode.Controls
     public class DocumentEditor : Scintilla
     {
 
+
         ControlAutoComplete AutoComplete;
+
         ControlSignatureHelper SignatureHelper;
 
         ReferencesHelperControl ReferencesList;
@@ -197,6 +199,7 @@ namespace qbookCode.Controls
            
             CharAdded += RoslynAutoComplete_CharAdded;
             CharAdded += SignatureHelper_CharAdded;
+            CharAdded += AutoInsertSummary_CharAdded;
             KeyDown += RoslynAutoComplete_KeyDown;
             KeyDown += CursorUpDown;
             KeyDown += ReferenceList_KeyDown;
@@ -299,7 +302,7 @@ namespace qbookCode.Controls
                 completeText = string.Empty; // Reset
                 UpdateDocument();
 
-                var suggestions = await Core.Roslyn.GetAutoCompleteSuggestionsAsync(
+                var suggestions = await Core.Roslyn.GetFullAutoCompleteSuggestionsAsync(
                     Target.Document,
                     Target.Code,
                     CurrentPosition,
@@ -307,7 +310,10 @@ namespace qbookCode.Controls
                 );
 
                 if (suggestions.Count > 0)
+                {
                     AutoComplete.ShowCompletionList(suggestions);
+                    AutoComplete.ShowSummaryForSelectedItem();
+                }
                 else
                     AutoComplete.Hide();
 
@@ -319,12 +325,15 @@ namespace qbookCode.Controls
 
             UpdateDocument();
 
-            var filteredSuggestions = await Core.Roslyn.GetAutoCompleteSuggestionsAsync(
+            var filteredSuggestions = await Core.Roslyn.GetFullAutoCompleteSuggestionsAsync(
                 Target.Document,
                 Target.Code,
                 CurrentPosition,
                 completeText
             );
+
+            //foreach (var item in filteredSuggestions)
+            //    Debug.WriteLine(item);
 
             if (filteredSuggestions.Count > 0)
                 AutoComplete.ShowCompletionList(filteredSuggestions);
@@ -350,7 +359,7 @@ namespace qbookCode.Controls
                 completeText = completeText.Substring(0, completeText.Length - 1);
                 UpdateDocument(); // Synchronisiert den Editor-Inhalt mit Roslyn
 
-                var suggestions = await Core.Roslyn.GetAutoCompleteSuggestionsAsync(
+                var suggestions = await Core.Roslyn.GetFullAutoCompleteSuggestionsAsync(
                        Target.Document,
                        Target.Code,
                        CurrentPosition,
@@ -377,7 +386,11 @@ namespace qbookCode.Controls
         {
             char c = (char)e.Char;
             if (c == '(' || c == ',')
+            {
                 await SignatureHelper.ShowSignaturePopupAsync();
+                SignatureHelper.ShowDocumentation();
+            }
+         
 
             if (c == ';')
                     SignatureHelper.Hide();
@@ -1455,41 +1468,48 @@ namespace qbookCode.Controls
 
         public async Task ApplyMethodReferenceHighlightsAsync()
         {
-            // Clear previous method highlights (both indicators)
-            IndicatorClearRange(20, TextLength);
-            IndicatorClearRange(21, TextLength);
-
-            var doc = Target?.Document;
-            if (doc == null) return;
-
-            var root = await doc.GetSyntaxRootAsync().ConfigureAwait(false);
-            if (root == null) return;
-
-            // Get the full reference table (not the filtered 'References')
-            var all = await RosylnSemantic.FindAllMethodReferencesAsync(doc);
-
-            // Build counts by type+method
-            var countsByName = new Dictionary<(string type, string method), int>();
-            foreach (DataRow row in all.Rows)
+            try
             {
-                var type = row["ContainingType"]?.ToString() ?? "";
-                var method = row["MethodName"]?.ToString() ?? "";
-                var key = (type, method);
-                countsByName[key] = countsByName.TryGetValue(key, out var n) ? n + 1 : 1;
+                // Clear previous method highlights (both indicators)
+                IndicatorClearRange(20, TextLength);
+                IndicatorClearRange(21, TextLength);
+
+                var doc = Target?.Document;
+                if (doc == null) return;
+
+                var root = await doc.GetSyntaxRootAsync().ConfigureAwait(false);
+                if (root == null) return;
+
+                // Get the full reference table (not the filtered 'References')
+                var all = await RosylnSemantic.FindAllMethodReferencesAsync(doc);
+
+                // Build counts by type+method
+                var countsByName = new Dictionary<(string type, string method), int>();
+                foreach (DataRow row in all.Rows)
+                {
+                    var type = row["ContainingType"]?.ToString() ?? "";
+                    var method = row["MethodName"]?.ToString() ?? "";
+                    var key = (type, method);
+                    countsByName[key] = countsByName.TryGetValue(key, out var n) ? n + 1 : 1;
+                }
+
+                // Paint identifier spans
+                var methodDecls = root.DescendantNodes().OfType<MethodDeclarationSyntax>();
+                foreach (var md in methodDecls)
+                {
+                    var typeName = (md.Parent as ClassDeclarationSyntax)?.Identifier.Text ?? "";
+                    var methodName = md.Identifier.Text;
+                    var key = (typeName, methodName);
+                    var count = countsByName.TryGetValue(key, out var n) ? n : 0;
+
+                    var span = md.Identifier.Span;
+                    IndicatorCurrent = count > 0 ? 20 : 21;
+                    IndicatorFillRange(span.Start, span.Length);
+                }
             }
-
-            // Paint identifier spans
-            var methodDecls = root.DescendantNodes().OfType<MethodDeclarationSyntax>();
-            foreach (var md in methodDecls)
-            {
-                var typeName = (md.Parent as ClassDeclarationSyntax)?.Identifier.Text ?? "";
-                var methodName = md.Identifier.Text;
-                var key = (typeName, methodName);
-                var count = countsByName.TryGetValue(key, out var n) ? n : 0;
-
-                var span = md.Identifier.Span;
-                IndicatorCurrent = count > 0 ? 20 : 21;
-                IndicatorFillRange(span.Start, span.Length);
+            catch (Exception ex) 
+            { 
+            
             }
         }
 
@@ -1595,7 +1615,7 @@ namespace qbookCode.Controls
                 }
             }
 
-            Debug.WriteLine("items: " + filtered.Rows.Count);
+         //   Debug.WriteLine("items: " + filtered.Rows.Count);
 
             if (filtered.Rows.Count == 0) return items;
 
@@ -1685,6 +1705,87 @@ namespace qbookCode.Controls
                     methodRow["Name"] = "[M] " + fullName;
                     MethodesClasses.Rows.Add(methodRow);
                 }
+            }
+        }
+
+        #endregion
+
+        #region Create Summary
+
+        private async void AutoInsertSummary_CharAdded(object? sender, CharAddedEventArgs e)
+        {
+            if (e.Char != '/') return;
+
+            int pos = CurrentPosition;
+            int line = LineFromPosition(pos);
+            var lineText = Lines[line].Text.TrimEnd('\r', '\n');
+
+            if (!lineText.Trim().Equals("///")) return;
+
+            // Finde die nächste sinnvolle Zeile (nicht leer)
+            int nextLine = line + 1;
+            while (nextLine < Lines.Count && string.IsNullOrWhiteSpace(Lines[nextLine].Text))
+                nextLine++;
+
+            if (nextLine >= Lines.Count) return;
+
+            int methodLineStart = Lines[nextLine].Position;
+            int methodLineEnd = Lines[nextLine].EndPosition;
+            string methodLineText = Lines[nextLine].Text.Trim();
+
+            // Mit Roslyn prüfen, ob es wirklich eine Methode ist
+            var doc = Target?.Document;
+            if (doc == null) return;
+            var root = await doc.GetSyntaxRootAsync().ConfigureAwait(false);
+            if (root == null) return;
+
+            // Ermittle die Methode an der Position
+            var methodNode = root.DescendantNodes()
+                .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax>()
+                .FirstOrDefault(m =>
+                {
+                    var span = m.GetLocation().GetLineSpan();
+                    return span.StartLinePosition.Line == nextLine;
+                });
+
+            if (methodNode == null) return;
+
+            // XML-Stub generieren
+            string indent = new string(' ', Lines[line].Indentation);
+            var sb = new StringBuilder();
+            sb.AppendLine($"{indent}/// <summary>");
+            sb.AppendLine($"{indent}/// ");
+            sb.AppendLine($"{indent}/// </summary>");
+
+            foreach (var param in methodNode.ParameterList.Parameters)
+            {
+                sb.AppendLine($"{indent}/// <param name=\"{param.Identifier.Text}\"></param>");
+            }
+
+            if (methodNode.ReturnType is not Microsoft.CodeAnalysis.CSharp.Syntax.PredefinedTypeSyntax predef ||
+                predef.Keyword.Text != "void")
+            {
+                sb.AppendLine($"{indent}/// <returns></returns>");
+            }
+
+            string summaryStub = sb.ToString().TrimEnd('\r', '\n');
+
+            // Ersetze die aktuelle Zeile durch den Stub
+            BeginUndoAction();
+            try
+            {
+                int lineStart = Lines[line].Position;
+                int lineEnd = Lines[line].EndPosition;
+                SelectionStart = lineStart;
+                SelectionEnd = lineEnd;
+                ReplaceSelection(summaryStub + "\n");
+                // Cursor in die Mitte der summary setzen
+                int summaryPos = lineStart + summaryStub.IndexOf($"{indent}/// ") + ($"{indent}/// ").Length;
+                GotoPosition(summaryPos);
+            }
+            finally
+            {
+                EndUndoAction();
             }
         }
 
@@ -1784,20 +1885,50 @@ namespace qbookCode.Controls
             var root = await doc.GetSyntaxRootAsync().ConfigureAwait(false);
             if (root == null) return;
 
-           
+            var model = await doc.GetSemanticModelAsync().ConfigureAwait(false);
+            if (model == null) return;
 
             var token = root.FindToken(Math.Clamp(e.Position, 0, TextLength));
-            if (token.Parent is not MethodDeclarationSyntax md) return;
+            var node = token.Parent;
 
-            string typeName = (md.Parent as ClassDeclarationSyntax)?.Identifier.Text ?? "";
-            string methodName = md.Identifier.Text;
+            // Prüfe, ob es eine Methodendeklaration ist
+            if (node is MethodDeclarationSyntax md)
+            {
+                // Zeige Referenzanzahl wie bisher
+                string typeName = (md.Parent as ClassDeclarationSyntax)?.Identifier.Text ?? "";
+                string methodName = md.Identifier.Text;
 
-            int refCount = References.AsEnumerable().Count(r =>
-                string.Equals(r["ContainingType"]?.ToString() ?? "", typeName, StringComparison.Ordinal) &&
-                string.Equals(r["MethodName"]?.ToString() ?? "", methodName, StringComparison.Ordinal));
+                int refCount = References.AsEnumerable().Count(r =>
+                    string.Equals(r["ContainingType"]?.ToString() ?? "", typeName, StringComparison.Ordinal) &&
+                    string.Equals(r["MethodName"]?.ToString() ?? "", methodName, StringComparison.Ordinal));
 
-            string tip = refCount == 1 ? "1 Reference" : $"{refCount} References";
-            CallTipShow(e.Position, tip);
+                string summary = refCount == 1 ? "1 Reference" : $"{refCount} References";
+                CallTipShow(e.Position, summary);
+                return;
+            }
+
+            // Prüfe, ob es ein Methodenaufruf ist
+            // Suche nach dem nächsten aufsteigenden InvocationExpressionSyntax-Knoten
+            var invocation = node.AncestorsAndSelf().OfType<InvocationExpressionSyntax>().FirstOrDefault();
+            if (invocation != null)
+            {
+                var symbolInfo = model.GetSymbolInfo(invocation);
+                var methodSymbol = symbolInfo.Symbol as IMethodSymbol;
+                if (methodSymbol != null)
+                {
+                    var fqName = methodSymbol.ToDisplayString();
+                    var summary = qbookCode.Roslyn.RoslynSummarys.GetSummary(fqName);
+                    if (!string.IsNullOrWhiteSpace(summary))
+                    {
+                        CallTipShow(e.Position, summary);
+                        return;
+                    }
+                }
+            }
+
+            // Fallback: Kein Tooltip
+            CallTipCancel();
+
         }
 
         private void DocumentEditor_DwellEnd(object? sender, DwellEventArgs e)

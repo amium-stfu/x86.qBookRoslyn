@@ -184,7 +184,7 @@ namespace qbookCode
               
                 Core.Explorer.Opacity = 1;
 
-           
+                _= Roslyn.RoslynSummarys.CollectAll();
                 Application.Run(Core.Explorer);
             }
         }

@@ -4,6 +4,7 @@ using ScintillaNET;
 using qbookCode.Controls;
 
 using RoslynDocument = Microsoft.CodeAnalysis.Document;
+using System.Diagnostics;
 
 namespace qbookCode.Roslyn
 {
@@ -16,6 +17,8 @@ namespace qbookCode.Roslyn
 
         static FormPopup popup;
         public static Font ListFont;
+
+        static FormSummary MethodeDocumentation;
 
         public static Font EditorFont => Editor.GetFont();
 
@@ -33,7 +36,7 @@ namespace qbookCode.Roslyn
             else
                 popup.ListView.ApplyLightTheme();
 
-            
+            MethodeDocumentation = new FormSummary();
             popup.ListView.ItemSelected += item => CommitSelection();
         }
 
@@ -45,6 +48,7 @@ namespace qbookCode.Roslyn
         {
             if (popup.Visible)
             {
+                Debug.WriteLine("Next item" + popup.ListView.SelectedItem.FullyQualifiedName );
                 popup.ListView.SelectNext();
             }
         }
@@ -53,6 +57,7 @@ namespace qbookCode.Roslyn
         {
             if (popup.Visible)
             {
+                Debug.WriteLine("Next item" + popup.ListView.SelectedItem.FullyQualifiedName);
                 popup.ListView.SelectPrevious();
             }
         }

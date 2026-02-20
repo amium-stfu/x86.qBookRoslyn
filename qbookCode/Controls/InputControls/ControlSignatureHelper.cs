@@ -1,7 +1,9 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using qbookCode.Roslyn;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -16,6 +18,10 @@ namespace qbookCode.Controls.InputControls
         static FormPopup popup;
         public static Font ListFont;
         private DocumentEditor Editor;
+
+        public string FullyQualifiedName;
+
+        public FormSummary Documentation;
 
         public Font EditorFont => Editor.GetFont();
         public ControlSignatureHelper(DocumentEditor editor)
@@ -32,11 +38,14 @@ namespace qbookCode.Controls.InputControls
             else
                 popup.ListView.ApplyLightTheme();
 
+            Documentation = new FormSummary();
+
         }
 
         public bool Visible => popup?.Visible ?? false;
-        public void Hide() => popup?.Hide();
+        public void Hide() { popup?.Hide(); Documentation?.Hide(); }
 
+        MethodDocumentation methode;
         public async Task ShowSignaturePopupAsync()
         {
             if (Editor?.Target?.Document == null) return;
@@ -50,13 +59,22 @@ namespace qbookCode.Controls.InputControls
                 return;
             }
 
+            FullyQualifiedName = await RoslynService.GetFullQualityNameOfCarretAsync(Editor.Target.Document, caretPos);
+
+            methode = RoslynSummarys.GetMethodDocumentation(FullyQualifiedName);
+
+
+
             var items = parameters.Select(p => new CompletionItem
             {
+                
                 Type = p.Type,
                 Text = p.Name + ":",
                 Value = p.CurrentValue.Replace("-", "????"),
                 Description = p.Type
             }).ToList();
+
+          
 
             popup.ListView.SetItems(items);
             popup.EditorFont = EditorFont;
@@ -86,19 +104,53 @@ namespace qbookCode.Controls.InputControls
             return null;
         }
 
+        public void ShowDocumentation()
+        {
+          if(methode == null) return;
+
+            if (methode.Parameters.TryGetValue(popup.ListView.SelectedItem.Text.Replace(":",""), out string doc))
+            {
+                int pos = Editor.CurrentPosition;
+                int x = Editor.PointXFromPosition(pos);
+                int y = Editor.PointYFromPosition(pos) + 18;
+                Point screenPoint = Editor.PointToScreen(new Point(x + popup.ListView.Width, y));
+                
+                Documentation.ShowSummary(doc, screenPoint, 600);
+                Documentation.EditorFont = EditorFont;
+                Documentation.Height = popup.ListView.Height;
+                Documentation.Show();
+                Editor.Focus();
+                Editor.GotoPosition(pos);
+            }
+
+        }
+
+
+
+
         public void Next()
         {
             if (popup.Visible)
             {
+                
                 popup.ListView.SelectNext();
+                Debug.WriteLine("Next item " + FullyQualifiedName + "." + popup.ListView.SelectedItem.Text);
+                ShowDocumentation();
+
             }
         }
+
+
+
+
 
         public void Previous()
         {
             if (popup.Visible)
             {
                 popup.ListView.SelectPrevious();
+                Debug.WriteLine("Next item " + FullyQualifiedName + "." + popup.ListView.SelectedItem.Text);
+                ShowDocumentation();
             }
         }
 

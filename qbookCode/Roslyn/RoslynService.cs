@@ -198,43 +198,7 @@ namespace qbookCode.Roslyn
             _docMap.Clear();
         }
 
-        //public void ResetDocumentsOnly()
-        //{
-        //    if (_adhocWs == null)
-        //        _adhocWs = new AdhocWorkspace(s_host);
-
-        //    try
-        //    {
-        //        // Projekt entfernen, statt ClearSolution()
-        //        if (_projectId != null)
-        //        {
-        //            var newSolution = _adhocWs.CurrentSolution.RemoveProject(_projectId);
-        //            _adhocWs.TryApplyChanges(newSolution);
-        //        }
-
-        //        // Neues Projekt mit gecachten Referenzen
-        //        var projectInfo = ProjectInfo.Create(
-        //            _projectId ?? ProjectId.CreateNewId(),
-        //            VersionStamp.Create(),
-        //            "InMemoryProject",
-        //            "InMemoryAssembly",
-        //            LanguageNames.CSharp,
-        //            metadataReferences: _referenceCache ?? GetOrBuildDefaultReferences(),
-        //            parseOptions: new CSharpParseOptions(LanguageVersion.Preview),
-        //            compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-        //        );
-
-        //        _adhocWs.AddProject(projectInfo);
-        //        _projectId = projectInfo.Id;
-        //        _project = _adhocWs.CurrentSolution.GetProject(_projectId);
-        //        _docMap.Clear();
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        QB.Logger.Error("[Roslyn] ResetDocumentsOnly failed: " + ex.Message);
-        //    }
-        //}
-
+ 
         public async Task ReloadDocumentsAsync(IEnumerable<(string fileName, string code)> files)
         {
             ResetDocumentsOnly();
@@ -530,6 +494,8 @@ namespace qbookCode.Roslyn
 
         private List<MetadataReference> _referenceCache = new();
 
+
+    
 
 
         public async Task RebuildProjectWithActiveFilesAsync()
@@ -1277,24 +1243,6 @@ namespace qbookCode.Roslyn
 
 
         #region Auto-Complete
-        public async Task<IReadOnlyList<string>> GetAutoCompleteSuggestionsAsync(RoslynDocument document, string text, int caretPosition, char? triggerChar = null)
-        {
-            if (document == null) return Array.Empty<string>();
-
-            // Dokument aktualisieren
-            var updatedDoc = document.WithText(SourceText.From(text, Encoding.UTF8));
-
-            // Completions abrufen
-            var (items, _) = await GetCompletionsAsync(updatedDoc, caretPosition);
-            if (items == null || items.Length == 0) return Array.Empty<string>();
-
-            // Nur DisplayText zurückgeben, sortiert und ohne Duplikate
-            return items
-                .Select(i => i.DisplayText)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(s => s)
-                .ToList();
-        }
 
         public async Task<IReadOnlyList<string>> GetAutoCompleteSuggestionsAsync(
             RoslynDocument document,
@@ -1317,6 +1265,87 @@ namespace qbookCode.Roslyn
                 .ToList();
         }
 
+        public async Task<IReadOnlyList<qbookCode.Controls.CompletionItem>> GetFullAutoCompleteSuggestionsAsync(
+    RoslynDocument document,
+    string text,
+    int caretPosition,
+    string prefix)
+        {
+            if (document == null) return Array.Empty<qbookCode.Controls.CompletionItem>();
+
+            var updatedDoc = document.WithText(SourceText.From(text, Encoding.UTF8));
+            var (items, _) = await GetCompletionsAsync(updatedDoc, caretPosition);
+
+            if (items == null || items.Length == 0) return Array.Empty<qbookCode.Controls.CompletionItem>();
+
+            var semanticModel = await updatedDoc.GetSemanticModelAsync();
+            var root = await updatedDoc.GetSyntaxRootAsync();
+
+            var result = new List<qbookCode.Controls.CompletionItem>();
+
+            foreach (var item in items)
+            {
+                // Filter nach Prefix
+                if (!string.IsNullOrEmpty(prefix) && !item.DisplayText.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                string? fqName = null;
+
+                // Versuche das Symbol zu bekommen (z.B. für Methoden)
+                if (semanticModel != null && root != null)
+                {
+                    var completionChange = await CompletionService.GetService(updatedDoc)
+                        .GetChangeAsync(updatedDoc, item);
+
+                    // Versuche, die Position des eingefügten Textes zu bestimmen
+                    int pos = caretPosition;
+                    if (completionChange != null)
+                    {
+                        pos = completionChange.TextChange.Span.Start;
+                    }
+
+                    var token = root.FindToken(Math.Max(0, pos - 1));
+                    var node = token.Parent;
+
+                    // Versuche, das Symbol zu bekommen
+                    ISymbol? symbol = null;
+                    if (item.Properties.TryGetValue("SymbolId", out var symbolId))
+                    {
+                        // SymbolId ist nicht immer verfügbar, daher heuristisch:
+                        symbol = semanticModel.LookupSymbols(pos, name: item.DisplayText).FirstOrDefault();
+                    }
+                    else
+                    {
+                        symbol = semanticModel.LookupSymbols(pos, name: item.DisplayText).FirstOrDefault();
+                    }
+
+                    if (symbol is IMethodSymbol ms)
+                    {
+                        fqName = ms.ToDisplayString();
+                    }
+                    else if (symbol != null)
+                    {
+                        fqName = symbol.ToDisplayString();
+                    }
+                }
+
+                result.Add(new qbookCode.Controls.CompletionItem()
+                {
+                    Text = item.DisplayText,
+                    Value = item.FilterText ?? item.DisplayText,
+                    FullyQualifiedName = fqName,
+                    // Icon etc. kann hier ergänzt werden
+                });
+            }
+
+            // Optional: Duplikate entfernen (z.B. nach fqName)
+            return result
+                .GroupBy(c => c.FullyQualifiedName ?? c.Text)
+                .Select(g => g.First())
+                .OrderBy(c => c.Text)
+                .ToList();
+        }
+
         #endregion
 
         #region Signature Help
@@ -1327,6 +1356,35 @@ namespace qbookCode.Roslyn
             public string Type { get; set; }
             public string DefaultValue { get; set; }
             public string CurrentValue { get; set; }
+        }
+
+        public static async Task<string?> GetFullQualityNameOfCarretAsync(RoslynDocument doc, int position)
+        {
+            var root = await doc.GetSyntaxRootAsync().ConfigureAwait(false);
+            if (root == null) return null;
+
+            var token = root.FindToken(position);
+            var node = token.Parent;
+
+            // Find the invocation or creation expression
+            var expression = node?.AncestorsAndSelf().OfType<ExpressionSyntax>()
+                .FirstOrDefault(e => e is InvocationExpressionSyntax || e is ObjectCreationExpressionSyntax);
+
+            if (expression == null) return null;
+
+            var model = await doc.GetSemanticModelAsync().ConfigureAwait(false);
+            if (model == null) return null;
+
+            var symbolInfo = model.GetSymbolInfo(expression);
+            var symbol = symbolInfo.Symbol;
+
+            // For generic methods, we might get a candidate symbol list
+            if (symbol == null && symbolInfo.CandidateSymbols.Any())
+            {
+                symbol = symbolInfo.CandidateSymbols.FirstOrDefault();
+            }
+
+            return symbol?.ToDisplayString();
         }
 
         public async Task<IReadOnlyList<SignatureParameter>> GetSignatureParametersAsync(RoslynDocument document, int caretPosition)

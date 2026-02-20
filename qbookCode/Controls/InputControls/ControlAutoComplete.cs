@@ -1,10 +1,13 @@
-﻿using System;
+﻿using qbookCode.Roslyn;
+using ScintillaNET;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 using System.Text;
-
+using System.Windows.Controls.Primitives;
 using System.Windows.Forms;
-using System.Drawing;
 
 namespace qbookCode.Controls.InputControls
 {
@@ -22,7 +25,12 @@ namespace qbookCode.Controls.InputControls
 
         private ToolStripControlHost host;
         public FormPopup popup;
+        public FormSummary summary;
+      
+
         private DocumentEditor Editor;
+        private Label summaryLabel;
+       
 
         public ControlAutoComplete(DocumentEditor editor)
         {
@@ -46,6 +54,9 @@ namespace qbookCode.Controls.InputControls
                     CommitSelection();
                     e.Handled = true;
                 }
+
+                if (e.KeyCode == Keys.Down) ShowSummaryForSelectedItem();
+                if (e.KeyCode == Keys.Up) ShowSummaryForSelectedItem();
             };
 
             dropDown = new ToolStripDropDown
@@ -57,6 +68,10 @@ namespace qbookCode.Controls.InputControls
             host = new ToolStripControlHost(listBox);
 
             popup = new FormPopup();
+          
+            summary = new FormSummary();
+
+
             popup.ListView.ItemSelected += item =>
             {
                 CommitSelection(item.Text);
@@ -64,7 +79,40 @@ namespace qbookCode.Controls.InputControls
             };
         }
 
-        public void ShowCompletionList(IEnumerable<string> suggestions)
+        public void ShowSummaryForSelectedItem()
+        {
+
+            Debug.WriteLine(popup.ListView.SelectedItem.FullyQualifiedName);
+            var selectedItem = popup.ListView.SelectedItem as CompletionItem;
+            var fqName = selectedItem.FullyQualifiedName;
+
+            if (selectedItem == null || string.IsNullOrEmpty(popup.ListView.SelectedItem.FullyQualifiedName))
+            {
+                summary.Hide();
+                return;
+            }
+
+            var summaryText =  qbookCode.Roslyn.RoslynSummarys.GetSummary(popup.ListView.SelectedItem.FullyQualifiedName);
+
+            if (!string.IsNullOrWhiteSpace(summaryText))
+            {
+                int pos = Editor.CurrentPosition;
+                int x = Editor.PointXFromPosition(pos);
+                int y = Editor.PointYFromPosition(pos) + 18;
+                Point screenPoint = Editor.PointToScreen(new Point(x + popup.ListView.Width, y));
+                summary.EditorFont = Editor.GetFont();
+                summary.Height = popup.Height;
+                summary.ShowSummary(popup.ListView.SelectedItem.FullyQualifiedName + "\r\n\r\n" + summaryText, screenPoint,600);
+                Editor.Focus();
+                Editor.GotoPosition(pos);
+            }
+            else
+            {
+                summary.Hide();
+            }
+        }
+
+        public void ShowCompletionList(IEnumerable<CompletionItem> suggestions)
         {
             var list = suggestions.ToList();
             if (list.Count == 0)
@@ -76,7 +124,8 @@ namespace qbookCode.Controls.InputControls
             // CompletionItem-Liste bauen (du kannst später Icons ergänzen)
             var completionItems = list.Select(s => new CompletionItem
             {
-                Text = s,
+                Text = s.Text,
+                FullyQualifiedName = s.FullyQualifiedName,
                 Icon = null // oder aus Symboltyp ableiten
             }).ToList();
 
@@ -106,6 +155,10 @@ namespace qbookCode.Controls.InputControls
             popup.Show();
             Editor.Focus();
             Editor.GotoPosition(pos);
+
+         //   popup.ListView.SelectedItem = 
+
+            ShowSummaryForSelectedItem();
         }
 
         public  void Next()
@@ -113,6 +166,7 @@ namespace qbookCode.Controls.InputControls
             if (popup.Visible)
             {
                 popup.ListView.SelectNext();
+                ShowSummaryForSelectedItem();
             }
         }
 
@@ -121,11 +175,13 @@ namespace qbookCode.Controls.InputControls
             if (popup.Visible)
             {
                 popup.ListView.SelectPrevious();
+                ShowSummaryForSelectedItem();
             }
         }
 
         public  void Commit(string complete)
         {
+            summary.Hide();
             prefix = complete;
             if (popup.Visible)
             {
@@ -205,7 +261,7 @@ namespace qbookCode.Controls.InputControls
 
             popup.Hide();
         }
-        public void Hide() => popup.Hide();
+        public void Hide() { popup.Hide(); summary.Hide(); }
         public bool Visible => popup.Visible;
 
     }

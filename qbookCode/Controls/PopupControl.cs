@@ -7,6 +7,9 @@ using System.Windows.Forms;
 namespace qbookCode.Controls
 {
 
+ 
+
+
     public class CompletionItem
     {
         public string Text { get; set; }
@@ -14,6 +17,7 @@ namespace qbookCode.Controls
         public Image Icon { get; set; }
         public string Description { get; set; } // optional
         public string Value { get; set; } = null;
+        public string? FullyQualifiedName { get; set; }
 
     }
 
