@@ -209,6 +209,14 @@ namespace QB.Automation
     }
 
 
+    /// <summary>
+    /// Represents a signal module that simulates a dynamic value influenced by noise and a time constant.
+    /// </summary>
+    /// <remarks>DemoSignal provides a configurable simulation of a signal whose value evolves over time based
+    /// on parameters such as Tau, NoiseStrength, and NoiseFrequence. The signal updates in a timed loop, allowing for
+    /// realistic modeling of gradual changes and random noise effects. This class is useful for testing or emulating
+    /// sensor-like behaviors in automation scenarios. Thread safety is not guaranteed; external synchronization may be
+    /// required if accessed concurrently.</remarks>
     public class DemoSignal : Module
     {
 

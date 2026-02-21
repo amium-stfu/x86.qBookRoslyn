@@ -77,6 +77,8 @@ namespace qbookCode.Controls.InputControls
                 CommitSelection(item.Text);
                 popup.Hide();
             };
+
+            popup.ListView.OnSelected = () => { Editor.Focus(); };
         }
 
         public void ShowSummaryForSelectedItem()

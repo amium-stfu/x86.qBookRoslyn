@@ -13,6 +13,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{37D2784C-B920-4FDD-A3E5-EDC81B68550A}</ProjectGuid>
     <OutputType>Library</OutputType>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+     <DocumentationFile>bin\Debug\qbookCsScript.xml</DocumentationFile>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>QB</RootNamespace>
     <AssemblyName>qbookCsScript</AssemblyName>

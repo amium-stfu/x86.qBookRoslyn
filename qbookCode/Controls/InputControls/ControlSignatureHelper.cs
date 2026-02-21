@@ -19,7 +19,7 @@ namespace qbookCode.Controls.InputControls
         public static Font ListFont;
         private DocumentEditor Editor;
 
-        public string FullyQualifiedName;
+        public string? FullyQualifiedName;
 
         public FormSummary Documentation;
 
@@ -40,12 +40,14 @@ namespace qbookCode.Controls.InputControls
 
             Documentation = new FormSummary();
 
+            popup.ListView.OnSelected = () => { Editor.Focus(); };
+
         }
 
         public bool Visible => popup?.Visible ?? false;
         public void Hide() { popup?.Hide(); Documentation?.Hide(); }
 
-        MethodDocumentation methode;
+        MethodDocumentations methode;
         public async Task ShowSignaturePopupAsync()
         {
             if (Editor?.Target?.Document == null) return;
@@ -124,9 +126,6 @@ namespace qbookCode.Controls.InputControls
             }
 
         }
-
-
-
 
         public void Next()
         {

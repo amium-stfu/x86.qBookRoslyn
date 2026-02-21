@@ -14,31 +14,61 @@ using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace QB.Logging
 {
-
+    /// <summary>
+    /// Represents a logger that writes data to an SQLite database file.
+    /// </summary>
     public class SqlLogger : Item
     {
         Dictionary<string,LogObject> logList = new Dictionary<string,LogObject>();
         private System.Threading.CancellationTokenSource cts;
+        /// <summary>
+        /// A thread-safe queue that holds the SQL commands to be written to the database.
+        /// </summary>
         public ConcurrentQueue<string> Lines = new ConcurrentQueue<string>();
+        /// <summary>
+        /// Gets the relative time elapsed since the logger started.
+        /// </summary>
         public TimeSpan timeRel;
+        /// <summary>
+        /// Gets the exact date and time when the logger was started.
+        /// </summary>
         public DateTime start;
+        /// <summary>
+        /// Gets a value indicating whether the logger is currently running.
+        /// </summary>
         public bool Running = false;
         bool initDb = false;
 
         string connectionString;
 
+        /// <summary>
+        /// Gets or sets the path to the database file. If set to "default", a new file is created with a timestamp.
+        /// </summary>
         public string File = "default";
         private Task writingTask;
 
         List<Task> loggingTasks = new List<Task>();
 
-        Dictionary<string, int> loggers = new Dictionary<string, int>();
+        protected Dictionary<string, int> loggers = new Dictionary<string, int>();
         string insertString;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SqlLogger"/> class with a specified name.
+        /// </summary>
+        /// <param name="name">The name of the logger instance.</param>
         public SqlLogger(string name) : base(name)
         {
 
         }
+        /// <summary>
+        /// Adds a data point to be logged periodically.
+        /// </summary>
+        /// <param name="name">The unique name for the log value (used as a column name).</param>
+        /// <param name="text">A descriptive text for the value.</param>
+        /// <param name="unit">The unit of the value.</param>
+        /// <param name="format">The string format for the value.</param>
+        /// <param name="period">The logging interval in milliseconds.</param>
+        /// <param name="value">A function that returns the value to be logged.</param>
         public void Add(string name, string text, string unit, string format, int period, Func<object> value)
         {
             string type = "TEXT";
@@ -63,16 +93,30 @@ namespace QB.Logging
             else
                 QB.Logger.Error($"SQLlogger '{Name}' already contains Key: '" + name + "'");
         }
+        /// <summary>
+        /// Adds a Signal to be logged.
+        /// </summary>
+        /// <param name="signal">The signal to log.</param>
+        /// <param name="period">The logging interval in milliseconds.</param>
         public void AddSignal(Signal signal, int period) 
         {
             Add(signal.Name, signal.Text, signal.Unit, signal.DefaultDisplayFormat, period, () => signal.Value);
 
         }
+        /// <summary>
+        /// Adds a StringSignal to be logged.
+        /// </summary>
+        /// <param name="signal">The string signal to log.</param>
+        /// <param name="period">The logging interval in milliseconds.</param>
         public void AddStringSignal(StringSignal signal, int period)
         {
             Add(signal.Name, signal.Text, "", "", period, () => signal.Value);
 
         }
+        /// <summary>
+        /// Initializes the database. This includes creating the DB file and setting up tables.
+        /// </summary>
+        /// <returns><c>true</c> if initialization is successful; otherwise, <c>false</c>.</returns>
         public bool Init()
         {
             initDb = true;
@@ -154,10 +198,16 @@ namespace QB.Logging
 
             }
         }
+        /// <summary>
+        /// Resets the initialization status of the database, forcing a re-initialization on the next <see cref="Start"/>.
+        /// </summary>
         public void Reset()
         {
             initDb = false;
         }
+        /// <summary>
+        /// Starts the logging process by initiating background tasks for data collection and writing.
+        /// </summary>
         public void Start()
         {
 
@@ -179,6 +229,10 @@ namespace QB.Logging
             writingTask = Task.Run(() => WriteLogsToFile(cts.Token));
             start = DateTime.Now;
         }
+        /// <summary>
+        /// Stops the logging process gracefully and waits for all pending data to be written to the database.
+        /// </summary>
+        /// <returns>A task that represents the asynchronous stop operation.</returns>
         public async Task Stop()
         {
             try
@@ -206,6 +260,10 @@ namespace QB.Logging
             }
 
         }
+        /// <summary>
+        /// Checks if the database connection can be successfully opened.
+        /// </summary>
+        /// <returns><c>true</c> if the database is accessible; otherwise, <c>false</c>.</returns>
         public bool DatabaseIsOpen()
         {
             try
@@ -222,6 +280,10 @@ namespace QB.Logging
                 return false;
             }
         }
+        /// <summary>
+        /// Checks if the database connection is closed.
+        /// </summary>
+        /// <returns><c>true</c> if the database is not accessible; otherwise, <c>false</c>.</returns>
         public bool DatabaseIsClosed() { 
             return !DatabaseIsOpen();
         }
@@ -302,6 +364,11 @@ namespace QB.Logging
             }
 
         }
+        /// <summary>
+        /// Retrieves and formats the current values of all data points for a specific logger table.
+        /// </summary>
+        /// <param name="logger">The name of the logger table (e.g., "p1000").</param>
+        /// <returns>A comma-separated string of formatted values for an SQL INSERT statement.</returns>
         public virtual string getValues(string logger)
         {
 

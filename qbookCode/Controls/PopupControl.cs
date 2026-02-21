@@ -158,6 +158,8 @@ namespace qbookCode.Controls
             base.OnKeyDown(e);
         }
 
+
+        public Action OnSelected;
         protected override void OnMouseDown(MouseEventArgs e)
         {
             base.OnMouseDown(e);
@@ -175,6 +177,8 @@ namespace qbookCode.Controls
                 _selectedIndex = itemIndex;
                 ScrollIntoView();
                 Invalidate();
+
+                OnSelected?.Invoke();
             }
         }
 

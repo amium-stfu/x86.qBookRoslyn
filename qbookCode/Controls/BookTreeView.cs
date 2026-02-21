@@ -221,12 +221,42 @@ namespace qbookCode.Controls
 
         public async Task ApplyTheme()
         {
-            BeginUpdate();
-            BackColor = Theme.PanelBackColor;
-            ForeColor = Theme.GridForeColor;
-            BorderStyle = System.Windows.Forms.BorderStyle.None;
+            // UI-related work before await
+            Action preAwaitAction = () =>
+            {
+                BeginUpdate();
+                BackColor = Theme.PanelBackColor;
+                ForeColor = Theme.GridForeColor;
+                BorderStyle = System.Windows.Forms.BorderStyle.None;
+            };
+
+            if (InvokeRequired)
+            {
+                Invoke(preAwaitAction);
+            }
+            else
+            {
+                preAwaitAction();
+            }
+
             await UpdateSelectedNode();
-            EndUpdate();
+
+            // UI-related work after await
+            Action postAwaitAction = () =>
+            {
+                EndUpdate();
+            };
+
+            if (InvokeRequired)
+            {
+                // Use BeginInvoke for the final part to avoid potential deadlocks
+                // and because we don't need to wait for this to complete within this method.
+                BeginInvoke(postAwaitAction);
+            }
+            else
+            {
+                postAwaitAction();
+            }
         }
 
 

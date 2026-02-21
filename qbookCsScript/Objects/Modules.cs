@@ -180,6 +180,13 @@ namespace QB
 
     }
 
+    /// <summary>
+    /// Represents a signal that holds a string value and tracks the last time the value was updated.
+    /// </summary>
+    /// <remarks>The StringSignal class allows for the storage of a string value along with a timestamp
+    /// indicating when the value was last modified. The Text property can be used to provide a description of the
+    /// signal. The lastValueUpdate field is automatically set to the current UTC time whenever the Value property is
+    /// updated.</remarks>
     public class StringSignal : Item
     {
         string _value;
@@ -210,6 +217,15 @@ namespace QB
         }
     }
 
+    /// <summary>
+    /// Represents a signal with a name, description, value, unit, and color, enabling the management and recording of
+    /// signal data for monitoring or analysis purposes.
+    /// </summary>
+    /// <remarks>The Signal class provides functionality to track and update signal values, manage display
+    /// formatting, and record historical values using an internal recorder. It supports customization of unit and color
+    /// for display, and offers methods to initialize and retrieve a recorder for logging value changes. The class is
+    /// suitable for scenarios where signal data needs to be monitored, logged, and presented with contextual
+    /// information such as units and formatting.</remarks>
     public class Signal : Item
     {
         public Signal(string name, string text = null, double value = double.NaN, string unit = "", string colorName = null, System.Drawing.Color? color = null, Access access = default)

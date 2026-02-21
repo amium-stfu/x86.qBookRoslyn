@@ -4,6 +4,9 @@
     <_LastSelectedProfileId>B:\Github\amium-stfu\x86.qBookRoslyn\qbookCode\Properties\PublishProfiles\FolderProfile.pubxml</_LastSelectedProfileId>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Update="Controls\FormDocumentation.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Controls\FormSummary.cs">
       <SubType>Form</SubType>
     </Compile>

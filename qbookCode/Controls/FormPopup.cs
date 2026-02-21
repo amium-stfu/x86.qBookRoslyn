@@ -43,6 +43,8 @@ namespace qbookCode.Controls
 
             ListView = new PopupControl { Dock = DockStyle.Fill };
             Controls.Add(ListView);
+
+           
         }
 
         protected override bool ShowWithoutActivation => true;

@@ -217,13 +217,28 @@ namespace qbookCode.Controls
             Click += (s, e) =>
             {
                 IndicatorClearRange(16, TextLength);
+               
+
             };
+
+            MouseDown += async (s, e) =>
+            {
+                if(e.Button == MouseButtons.Right)
+                {
+                    int r = await CountReferences();
+                    miRef.Text = "Show References (" + r + ")";
+
+                }
+            };
+          
+
+          
 
             MouseDwellTime = 400;
             DwellStart += DocumentEditor_DwellStart;
             DwellEnd += DocumentEditor_DwellEnd;
             // Optional for keyboard navigation:
-            UpdateUI += DocumentEditor_UpdateUI;
+          //  UpdateUI += DocumentEditor_UpdateUI;
         }
 
         private void CursorUpDown(object? sender, KeyEventArgs e)
@@ -285,6 +300,8 @@ namespace qbookCode.Controls
         private async void RoslynAutoComplete_CharAdded(object sender, CharAddedEventArgs e)
         {
             if (!Target.Active) return;
+
+            if (SignatureHelper.Visible) return;
 
             char c = (char)e.Char;
 
@@ -1287,10 +1304,14 @@ namespace qbookCode.Controls
 
 
         ContextMenuStrip EditorContextMenu = new ContextMenuStrip();
+
+        int references = 0;
+
+        ToolStripMenuItem miRef = new ToolStripMenuItem("Show References");
+
         private void InitEditorContextMenu()
         {
 
-            var miRef = new ToolStripMenuItem("Show References");
             miRef.Click += async (_, __) => await ReferencesList.ShowAsync();
             EditorContextMenu.Items.Add(miRef);
 
@@ -1470,20 +1491,15 @@ namespace qbookCode.Controls
         {
             try
             {
-                // Clear previous method highlights (both indicators)
-                IndicatorClearRange(20, TextLength);
-                IndicatorClearRange(21, TextLength);
-
                 var doc = Target?.Document;
                 if (doc == null) return;
 
+                // Perform all non-UI work first on a background thread.
                 var root = await doc.GetSyntaxRootAsync().ConfigureAwait(false);
                 if (root == null) return;
 
-                // Get the full reference table (not the filtered 'References')
-                var all = await RosylnSemantic.FindAllMethodReferencesAsync(doc);
+                var all = await RosylnSemantic.FindAllMethodReferencesAsync(doc).ConfigureAwait(false);
 
-                // Build counts by type+method
                 var countsByName = new Dictionary<(string type, string method), int>();
                 foreach (DataRow row in all.Rows)
                 {
@@ -1493,25 +1509,86 @@ namespace qbookCode.Controls
                     countsByName[key] = countsByName.TryGetValue(key, out var n) ? n + 1 : 1;
                 }
 
-                // Paint identifier spans
-                var methodDecls = root.DescendantNodes().OfType<MethodDeclarationSyntax>();
-                foreach (var md in methodDecls)
-                {
-                    var typeName = (md.Parent as ClassDeclarationSyntax)?.Identifier.Text ?? "";
-                    var methodName = md.Identifier.Text;
-                    var key = (typeName, methodName);
-                    var count = countsByName.TryGetValue(key, out var n) ? n : 0;
+                var methodHighlights = root.DescendantNodes().OfType<MethodDeclarationSyntax>()
+                    .Select(md =>
+                    {
+                        var typeName = (md.Parent as ClassDeclarationSyntax)?.Identifier.Text ?? "";
+                        var methodName = md.Identifier.Text;
+                        var key = (typeName, methodName);
+                        var count = countsByName.TryGetValue(key, out var n) ? n : 0;
+                        var span = md.Identifier.Span;
+                        return new { Span = span, HasReferences = count > 0 };
+                    })
+                    .ToList();
 
-                    var span = md.Identifier.Span;
-                    IndicatorCurrent = count > 0 ? 20 : 21;
-                    IndicatorFillRange(span.Start, span.Length);
-                }
+                // Marshal all UI updates to the UI thread at once.
+                OnUi(() =>
+                {
+                    IndicatorClearRange(20, TextLength);
+                    IndicatorClearRange(21, TextLength);
+
+                    foreach (var highlight in methodHighlights)
+                    {
+                        IndicatorCurrent = highlight.HasReferences ? 20 : 21;
+                        IndicatorFillRange(highlight.Span.Start, highlight.Span.Length);
+                    }
+                });
             }
-            catch (Exception ex) 
-            { 
-            
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in ApplyMethodReferenceHighlightsAsync: {ex.Message}");
             }
         }
+
+
+
+        //public async Task ApplyMethodReferenceHighlightsAsync()
+        //{
+        //    try
+        //    {
+
+        //        // Clear previous method highlights (both indicators)
+        //        IndicatorClearRange(20, TextLength);
+        //        IndicatorClearRange(21, TextLength);
+
+        //        var doc = Target?.Document;
+        //        if (doc == null) return;
+
+        //        var root = await doc.GetSyntaxRootAsync().ConfigureAwait(false);
+        //        if (root == null) return;
+
+        //        // Get the full reference table (not the filtered 'References')
+        //        var all = await RosylnSemantic.FindAllMethodReferencesAsync(doc);
+
+        //        // Build counts by type+method
+        //        var countsByName = new Dictionary<(string type, string method), int>();
+        //        foreach (DataRow row in all.Rows)
+        //        {
+        //            var type = row["ContainingType"]?.ToString() ?? "";
+        //            var method = row["MethodName"]?.ToString() ?? "";
+        //            var key = (type, method);
+        //            countsByName[key] = countsByName.TryGetValue(key, out var n) ? n + 1 : 1;
+        //        }
+
+        //        // Paint identifier spans
+        //        var methodDecls = root.DescendantNodes().OfType<MethodDeclarationSyntax>();
+        //        foreach (var md in methodDecls)
+        //        {
+        //            var typeName = (md.Parent as ClassDeclarationSyntax)?.Identifier.Text ?? "";
+        //            var methodName = md.Identifier.Text;
+        //            var key = (typeName, methodName);
+        //            var count = countsByName.TryGetValue(key, out var n) ? n : 0;
+
+        //            var span = md.Identifier.Span;
+        //            IndicatorCurrent = count > 0 ? 20 : 21;
+        //            IndicatorFillRange(span.Start, span.Length);
+        //        }
+        //    }
+        //    catch (Exception ex) 
+        //    { 
+
+        //    }
+        //}
 
 
         #region Roslyn Integration
@@ -1560,6 +1637,7 @@ namespace qbookCode.Controls
                     // Update reference cache for highlighting
                   //  await UpdateReferences();
                     References = await RosylnSemantic.FindAllMethodReferencesAsync(Target.Document);
+                   
                     await ApplyMethodReferenceHighlightsAsync();
                 }
                 LockNecessary();
@@ -1646,31 +1724,34 @@ namespace qbookCode.Controls
 
         public void LockNecessary()
         {
-            ResetHideProteced();
-            var lines = Text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-            int startLine = -1;
-            int endLine = -1;
-
-            for (int i = 0; i < lines.Length; i++)
+            OnUi(() =>
             {
-                if (startLine == -1 && lines[i].Contains("//<CodeStart>"))
-                    startLine = i;
+                ResetHideProteced();
+                var lines = Text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+                int startLine = -1;
+                int endLine = -1;
 
-                if (startLine != -1 && lines[i].Contains("//<CodeEnd>"))
+                for (int i = 0; i < lines.Length; i++)
                 {
-                    endLine = i;
-                    break;
-                }
-            }
+                    if (startLine == -1 && lines[i].Contains("//<CodeStart>"))
+                        startLine = i;
 
-            if (startLine != -1 && endLine != -1)
-            {
-                // Zeilen außerhalb des SubCode-Bereichs ausblenden
-                HideProtectLines(0, startLine); // Zeilen vor SubCode
-                HideProtectLines(endLine, Lines.Count - 1); // Zeilen nach SubCode
-                //Debug.WriteLine("StartLine " + startLine);
-                //Debug.WriteLine("EndLine " + endLine + ".." + Lines.Count);
-            }
+                    if (startLine != -1 && lines[i].Contains("//<CodeEnd>"))
+                    {
+                        endLine = i;
+                        break;
+                    }
+                }
+
+                if (startLine != -1 && endLine != -1)
+                {
+                    // Zeilen außerhalb des SubCode-Bereichs ausblenden
+                    HideProtectLines(0, startLine); // Zeilen vor SubCode
+                    HideProtectLines(endLine, Lines.Count - 1); // Zeilen nach SubCode
+                                                                //Debug.WriteLine("StartLine " + startLine);
+                                                                //Debug.WriteLine("EndLine " + endLine + ".." + Lines.Count);
+                }
+            });
         }
         public async Task UpdateMethodesFromRoslynAsync()
         {
@@ -1875,98 +1956,286 @@ namespace qbookCode.Controls
             }
         }
 
-        private async void DocumentEditor_DwellStart(object? sender, DwellEventArgs e)
+ 
+        private async Task<int> MapScintillaToRoslynPositionAsync(RoslynDocument roslynDoc, int scintillaPos)
         {
-            if (e.Position < 0) return;
+            // Zeile & Spalte im Editor ermitteln
+            int line = LineFromPosition(scintillaPos);
+            var lineStartInEditor = Lines[line].Position;
+            int column = Math.Max(0, scintillaPos - lineStartInEditor);
 
-            var doc = Target?.Document;
-            if (doc == null) return;
+            // Roslyn-Text & Line-Mapping
+            var text = await roslynDoc.GetTextAsync().ConfigureAwait(false);
+            if (line < 0 || line >= text.Lines.Count)
+                return -1;
 
-            var root = await doc.GetSyntaxRootAsync().ConfigureAwait(false);
-            if (root == null) return;
+            var roslynLine = text.Lines[line];
+            int roslynCol = Math.Min(column, roslynLine.Span.Length); // Clamp am Zeilenende
+            return roslynLine.Start + roslynCol;
+        }
 
-            var model = await doc.GetSemanticModelAsync().ConfigureAwait(false);
-            if (model == null) return;
+        private DocPopup _popup;
 
-            var token = root.FindToken(Math.Clamp(e.Position, 0, TextLength));
-            var node = token.Parent;
+        /// <summary>Zeigt das Popup mit Text an der Scintilla-Position.</summary>
+        private void ShowDocPopup(int editorPosition, string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return;
 
-            // Prüfe, ob es eine Methodendeklaration ist
-            if (node is MethodDeclarationSyntax md)
+            int pos = CurrentPosition;
+
+            _popup ??= new DocPopup(this);
+
+            _popup.SetText(text);
+
+            // Editor-Koordinaten -> Bildschirm
+            int x = PointXFromPosition(editorPosition);
+            int y = PointYFromPosition(editorPosition);
+
+            // Unterhalb des Carets, etwas nach rechts/unten versetzen
+            var screen = PointToScreen(new Point(x + 8, y + 4));
+
+            // Bildschirmgrenzen berücksichtigen (rechts/unten clampen)
+            var workArea = Screen.FromControl(this).WorkingArea;
+            var popupSize = _popup.Size;
+
+            int px = Math.Min(screen.X, workArea.Right - popupSize.Width - 4);
+            int py = Math.Min(screen.Y, workArea.Bottom - popupSize.Height - 4);
+
+            _popup.Location = new Point(Math.Max(workArea.Left + 4, px), Math.Max(workArea.Top + 4, py));
+
+            if (!_popup.Visible) _popup.Show(this); // Besitzer setzen → schließt beim Editor-Fokuswechsel korrekt
+            _popup.BringToFront();
+            this.Focus();
+         //   GotoPosition(pos);
+            
+        }
+
+        private void HideDocPopup()
+        {
+            if (_popup != null && _popup.Visible)
             {
-                // Zeige Referenzanzahl wie bisher
-                string typeName = (md.Parent as ClassDeclarationSyntax)?.Identifier.Text ?? "";
-                string methodName = md.Identifier.Text;
-
-                int refCount = References.AsEnumerable().Count(r =>
-                    string.Equals(r["ContainingType"]?.ToString() ?? "", typeName, StringComparison.Ordinal) &&
-                    string.Equals(r["MethodName"]?.ToString() ?? "", methodName, StringComparison.Ordinal));
-
-                string summary = refCount == 1 ? "1 Reference" : $"{refCount} References";
-                CallTipShow(e.Position, summary);
-                return;
+                _popup.Hide();
             }
+        }
 
-            // Prüfe, ob es ein Methodenaufruf ist
-            // Suche nach dem nächsten aufsteigenden InvocationExpressionSyntax-Knoten
-            var invocation = node.AncestorsAndSelf().OfType<InvocationExpressionSyntax>().FirstOrDefault();
-            if (invocation != null)
+
+
+        private async void DocumentEditor_DwellStart(object? sender, ScintillaNET.DwellEventArgs e)
+        {
+            try
             {
-                var symbolInfo = model.GetSymbolInfo(invocation);
-                var methodSymbol = symbolInfo.Symbol as IMethodSymbol;
-                if (methodSymbol != null)
+                if (e.Position < 0 || TextLength == 0)
+                    return;
+
+                var roslynDoc = Target?.Document;
+                if (roslynDoc is null)
                 {
-                    var fqName = methodSymbol.ToDisplayString();
-                    var summary = qbookCode.Roslyn.RoslynSummarys.GetSummary(fqName);
-                    if (!string.IsNullOrWhiteSpace(summary))
-                    {
-                        CallTipShow(e.Position, summary);
-                        return;
-                    }
+                    CallTipCancel();
+                    return;
                 }
+
+                // Scintilla-Position (Byte/Zeichen) -> Roslyn-Position (UTF-16) mappen
+                int roslynPos = await MapScintillaToRoslynPositionAsync(roslynDoc, e.Position).ConfigureAwait(true);
+                if (roslynPos < 0)
+                {
+                    CallTipCancel();
+                    return;
+                }
+
+                // On-Demand Doku abfragen (nutzt Symbolauflösung + Fallback auf Syntax-Trivia)
+                var doc = await Core.Roslyn.Documentation.GetAtPositionAsync(roslynDoc, roslynPos).ConfigureAwait(true);
+
+                string? refLine = null;
+                var text = string.Empty;
+                if (BuildTooltipText(doc ?? new MethodDocumentation(), extraFooter: refLine) != null)
+                {
+                    
+                    text = BuildTooltipText(doc ?? new MethodDocumentation(), extraFooter: refLine);
+                    Debug.WriteLine(text);
+                }
+                else
+                {
+                    HideDocPopup();
+                    CallTipCancel();
+                    return;
+                }
+
+
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                  //  HideCallTip();       // falls parallel noch CallTip aktiv
+                    ShowDocPopup(e.Position, text);
+                }
+                else
+                {
+                    HideDocPopup();
+                }
+
+            }
+            catch
+            {
+                // Bei Fehler: Tooltip schließen, UI stabil halten
+                HideDocPopup();
+             //   CallTipCancel();
+            }
+        }
+
+        private static string BuildTooltipText(MethodDocumentation d, string? extraFooter = null, bool appendReferenceWhenDocExists = true)
+        {
+            bool hasSummary = !string.IsNullOrWhiteSpace(d.Summary);
+            bool hasParams = d.Parameters is { Count: > 0 };
+            bool hasReturns = !string.IsNullOrWhiteSpace(d.Returns);
+            bool hasRemarks = !string.IsNullOrWhiteSpace(d.Remarks);
+
+            var refLine = BuildReferenceLine(d);
+
+            // === FALL 1: KEINE DOKU → NUR Referenzzeile (und ggf. extraFooter) ===
+            if (!hasSummary && !hasParams && !hasReturns && !hasRemarks)
+            {
+                // nur refLine (wenn vorhanden); sonst extraFooter
+                var only = string.Empty;
+                if (!string.IsNullOrWhiteSpace(refLine))
+                    only = refLine.Trim();
+
+                if (!string.IsNullOrWhiteSpace(extraFooter))
+                    only = string.IsNullOrWhiteSpace(only) ? extraFooter.Trim()
+                                                           : only + Environment.NewLine + extraFooter.Trim();
+
+                return only; // ← WICHTIG: hier wird zurückgegeben, NICHTS mehr anhängen!
             }
 
-            // Fallback: Kein Tooltip
-            CallTipCancel();
+            // === FALL 2: DOKU VORHANDEN → Doc-Blöcke + optional Ref-Footer ===
+            var sb = new System.Text.StringBuilder();
 
+            if (hasSummary)
+                sb.AppendLine(d.Summary.Trim());
+
+            if (hasParams)
+            {
+                if (sb.Length > 0) sb.AppendLine();
+                foreach (var p in d.Parameters)
+                    sb.AppendLine($"• {p.Key}: {p.Value}");
+            }
+
+            if (hasReturns)
+            {
+                if (sb.Length > 0) sb.AppendLine();
+                sb.AppendLine($"Rückgabe: {d.Returns}");
+            }
+
+            if (hasRemarks)
+            {
+                if (sb.Length > 0) sb.AppendLine();
+                sb.AppendLine(d.Remarks.Trim());
+            }
+
+            // Nur wenn DOKU existiert und es gewünscht ist: Referenzzeile als Footer anhängen
+            if (appendReferenceWhenDocExists && !string.IsNullOrWhiteSpace(refLine))
+            {
+                if (sb.Length > 0) sb.AppendLine();
+                sb.AppendLine(refLine.Trim());
+            }
+
+            if (!string.IsNullOrWhiteSpace(extraFooter))
+            {
+                if (sb.Length > 0) sb.AppendLine();
+                sb.AppendLine(extraFooter.Trim());
+            }
+
+            return sb.ToString().Trim();
+        }
+
+        private static string? BuildReferenceLine(MethodDocumentation d)
+        {
+            // Priorität: Source → Assembly → DocId
+            if (!string.IsNullOrWhiteSpace(d.SourceFilePath) && d.SourceLineNumber.HasValue)
+            {
+                var file = System.IO.Path.GetFileName(d.SourceFilePath);
+                var sym = d.SymbolDisplay ?? d.ContainingType ?? "";
+                return $"— {sym}  ({file}:{d.SourceLineNumber})";
+              //  return $"{sym}";
+            }
+
+            if (!string.IsNullOrWhiteSpace(d.ContainingAssembly))
+            {
+                var sym = d.SymbolDisplay ?? d.ContainingType ?? "";
+               // return $"— {sym}  ({d.ContainingAssembly}.dll)";
+                return $"{d.DocumentationCommentId}.{sym}";
+            }
+
+            if (!string.IsNullOrWhiteSpace(d.DocumentationCommentId))
+            {
+                return $"— {d.DocumentationCommentId}";
+            }
+
+            return null;
         }
 
         private void DocumentEditor_DwellEnd(object? sender, DwellEventArgs e)
         {
-            CallTipCancel();
+            HideDocPopup();
+         //   CallTipCancel();
         }
 
         // Optional: show count when caret moves onto a method identifier
-        private async void DocumentEditor_UpdateUI(object? sender, UpdateUIEventArgs e)
-        {
-            if ((e.Change & UpdateChange.Selection) == 0) return;
+        //private async void DocumentEditor_UpdateUI(object? sender, UpdateUIEventArgs e)
+        //{
+        //    if ((e.Change & UpdateChange.Selection) == 0) return;
 
-            int pos = CurrentPosition;
-            var doc = Target?.Document;
-            if (doc == null) return;
+        //    int pos = CurrentPosition;
+        //    var doc = Target?.Document;
+        //    if (doc == null) return;
 
-            var root = await doc.GetSyntaxRootAsync().ConfigureAwait(false);
-            if (root == null) return;
+        //    var root = await doc.GetSyntaxRootAsync().ConfigureAwait(false);
+        //    if (root == null) return;
 
            
+        //    var token = root.FindToken(Math.Clamp(pos, 0, TextLength));
+        //    if (token.Parent is not MethodDeclarationSyntax md)
+        //    {
+        //        CallTipCancel();
+        //        return;
+        //    }
+
+        //    string typeName = (md.Parent as ClassDeclarationSyntax)?.Identifier.Text ?? "";
+        //    string methodName = md.Identifier.Text;
+
+
+        //    int refCount = References.AsEnumerable().Count(r =>
+        //        string.Equals(r["ContainingType"]?.ToString() ?? "", typeName, StringComparison.Ordinal) &&
+        //        string.Equals(r["MethodName"]?.ToString() ?? "", methodName, StringComparison.Ordinal));
+
+        //    //string tip = refCount == 1 ? "1 Reference" : $"{refCount} References";
+        //    //CallTipShow(pos, tip);
+        //}
+
+        async Task<int> CountReferences()
+        {
+            int pos = CurrentPosition;
+            var doc = Target?.Document;
+            if (doc == null) return 0;
+
+            var root = await doc.GetSyntaxRootAsync().ConfigureAwait(false);
+            if (root == null) return 0;
+
+
             var token = root.FindToken(Math.Clamp(pos, 0, TextLength));
             if (token.Parent is not MethodDeclarationSyntax md)
             {
                 CallTipCancel();
-                return;
+                return 0;
             }
 
             string typeName = (md.Parent as ClassDeclarationSyntax)?.Identifier.Text ?? "";
             string methodName = md.Identifier.Text;
 
 
-            int refCount = References.AsEnumerable().Count(r =>
+            return  References.AsEnumerable().Count(r =>
                 string.Equals(r["ContainingType"]?.ToString() ?? "", typeName, StringComparison.Ordinal) &&
                 string.Equals(r["MethodName"]?.ToString() ?? "", methodName, StringComparison.Ordinal));
 
-            string tip = refCount == 1 ? "1 Reference" : $"{refCount} References";
-            CallTipShow(pos, tip);
         }
+
     }
     public static class SimpleIndentFormatter
     {
@@ -2051,12 +2320,33 @@ namespace qbookCode.Controls
             {
                 if (_disposed) return;
 
-                if (_coalesceUndo)
-                    _scintilla.DirectMessage(SCI_ENDUNDOACTION, IntPtr.Zero, IntPtr.Zero);
+                // The action to restore updates must run on the UI thread.
+                Action restoreUpdatesAction = () =>
+                {
+                    // Check again inside the action, as it may be invoked later.
+                    if (_scintilla.IsDisposed) return;
 
-                // Repaint an + Refresh erzwingen
-                SendMessage(_scintilla.Handle, WM_SETREDRAW, new IntPtr(1), IntPtr.Zero);
-                _scintilla.Refresh();
+                    if (_coalesceUndo)
+                        _scintilla.DirectMessage(SCI_ENDUNDOACTION, IntPtr.Zero, IntPtr.Zero);
+
+                    // Re-enable repaint and force a refresh.
+                    SendMessage(_scintilla.Handle, WM_SETREDRAW, new IntPtr(1), IntPtr.Zero);
+                    _scintilla.Refresh();
+                };
+
+                if (!_scintilla.IsDisposed)
+                {
+                    if (_scintilla.InvokeRequired)
+                    {
+                        // Asynchronously invoke the action on the control's thread.
+                        _scintilla.BeginInvoke(restoreUpdatesAction);
+                    }
+                    else
+                    {
+                        // Execute directly if already on the UI thread.
+                        restoreUpdatesAction();
+                    }
+                }
 
                 _disposed = true;
             }

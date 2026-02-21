@@ -98,11 +98,13 @@ namespace qbookCode.Roslyn
     public sealed partial class RoslynService
     {
 
-        DataTable? Dummy = new DataTable();
+      
         private MSBuildWorkspace? _ws;
         private Project? _project;
         private readonly SemaphoreSlim _loadSemaphore = new(1, 1);
         private bool _isLoading;
+
+        public DocumentationService Documentation = new DocumentationService(capacity: 4000);
 
 
         public Project GetProject => _project;
@@ -374,7 +376,7 @@ namespace qbookCode.Roslyn
             }
         }
 
-        public void CreateEmptyProject(string csprojPath)
+        public void CreateEmptyProjectOld(string csprojPath)
         {
             // Workspace vorbereiten
             if (_adhocWs == null)
@@ -419,7 +421,426 @@ namespace qbookCode.Roslyn
             RoslynDiagnostic.InitDiagnostic();
         }
 
+        /// <summary>
+        /// Creates an empty project in the ad-hoc workspace, optionally loading references from a specified .csproj
+        /// file.
+        /// </summary>
+        /// <remarks>If a valid .csproj path is provided, the method parses the file to gather references,
+        /// including <Reference> and <ProjectReference> elements. It also adds basic references from the .NET runtime
+        /// and local libraries. The method initializes the workspace if it is not already set up and clears any
+        /// existing solution.</remarks>
+        /// <param name="csprojPath">The path to the .csproj file from which to load project references. If the path is null or does not exist,
+        /// no references will be loaded from the project file.</param>
+        public void CreateEmptyProject(string csprojPath)
+        {
+            // 0) Workspace vorbereiten
+            if (_adhocWs == null)
+                _adhocWs = new AdhocWorkspace(s_host);
+            else
+                try { _adhocWs.ClearSolution(); } catch { /* ignore */ }
+
+            var projectId = ProjectId.CreateNewId();
+            _projectId = projectId;
+
+            // 1) .csproj parsen (optional)
+            XDocument csproj = null;
+            string csprojDir = null;
+            if (!string.IsNullOrWhiteSpace(csprojPath) && File.Exists(csprojPath))
+            {
+                csproj = XDocument.Load(csprojPath);
+                csprojDir = Path.GetDirectoryName(Path.GetFullPath(csprojPath));
+            }
+
+            // 2) Referenzen sammeln
+            var references = new List<MetadataReference>();
+            var dedup = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            void AddRefPath(string dllPath)
+            {
+                if (string.IsNullOrWhiteSpace(dllPath) || !File.Exists(dllPath)) return;
+                var full = Path.GetFullPath(dllPath);
+                if (!dedup.Add(full)) return;
+
+                var r = CreateReferenceWithDocs(full); // hängt XML-Doku an, wenn vorhanden
+                if (r != null) references.Add(r);
+            }
+
+            // 2a) <Reference><HintPath> aus der csproj
+            if (csproj != null)
+            {
+                foreach (var r in csproj.Descendants().Where(e => e.Name.LocalName == "Reference"))
+                {
+                    var hint = r.Elements().FirstOrDefault(e => e.Name.LocalName == "HintPath")?.Value?.Trim();
+                    if (string.IsNullOrWhiteSpace(hint)) continue;
+
+                    var abs = ResolvePath(csprojDir, hint);
+                    if (abs != null) AddRefPath(abs);
+                    Debug.WriteLine($"[Roslyn] +Ref from csproj (HintPath): {abs ?? hint} {(abs == null ? "[missing]" : "")}");
+                }
+
+                // 2b) <ProjectReference> (wir laden nur die Ausgabe-DLL, falls vorhanden)
+                foreach (var pr in csproj.Descendants().Where(e => e.Name.LocalName == "ProjectReference"))
+                {
+                    var include = pr.Attribute("Include")?.Value?.Trim();
+                    if (string.IsNullOrWhiteSpace(include)) continue;
+
+                    var projAbs = ResolvePath(csprojDir, include);
+                    if (projAbs == null || !File.Exists(projAbs)) continue;
+
+                    // Heuristik: Versuche, zum Output zu kommen (bin/Debug|Release/<TFM>/<Name>.dll)
+                    // Ohne MSBuild-Evaluation ist das unzuverlässig, deshalb:
+                    //  - Versuche bin/Debug; wenn Release existiert, alternativ prüfen.
+                    var projDir = Path.GetDirectoryName(projAbs);
+                    var projName = Path.GetFileNameWithoutExtension(projAbs);
+
+                    // Probiere einige typische Orte für .NET SDK-Projekte (Debug/Release + häufige TFMs)
+                    var candidateDirs = new[]
+                    {
+                Path.Combine(projDir, "bin", "Debug"),
+                Path.Combine(projDir, "bin", "Release")
+            };
+
+                    var tfms = new[] { "net8.0", "net7.0", "net6.0", "net48", "net472", "netstandard2.1", "netstandard2.0" };
+                    string foundDll = null;
+
+                    foreach (var baseOut in candidateDirs)
+                    {
+                        if (!Directory.Exists(baseOut)) continue;
+
+                        // Falls TFM-Verzeichnisse existieren
+                        foreach (var tfm in tfms)
+                        {
+                            var dll = Path.Combine(baseOut, tfm, projName + ".dll");
+                            if (File.Exists(dll)) { foundDll = dll; break; }
+                        }
+                        if (foundDll != null) break;
+
+                        // Oder direkt im baseOut (ältere .NET Framework Projekte)
+                        var directDll = Path.Combine(baseOut, projName + ".dll");
+                        if (File.Exists(directDll)) { foundDll = directDll; break; }
+                    }
+
+                    if (foundDll != null)
+                    {
+                        AddRefPath(foundDll);
+                        Debug.WriteLine($"[Roslyn] +Ref from ProjectReference: {foundDll}");
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[Roslyn] ProjectReference output not found: {projAbs}");
+                    }
+                }
+
+                // 2c) (Optional) <PackageReference>: einfache Heuristik über globales NuGet-Cacheverzeichnis
+                // Achtung: Ohne MSBuild-Evaluation und TFM-Kenntnis ist das nicht 100% robust.
+                // Wenn du willst, kannst du das aktivieren und weiter verfeinern.
+
+                /*
+                foreach (var pr in csproj.Descendants().Where(e => e.Name.LocalName == "PackageReference"))
+                {
+                    var id = pr.Attribute("Include")?.Value?.Trim();
+                    var version = pr.Attribute("Version")?.Value?.Trim()
+                                 ?? pr.Elements().FirstOrDefault(e => e.Name.LocalName == "Version")?.Value?.Trim();
+                    if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(version)) continue;
+
+                    var pkgDlls = TryResolvePackageDlls(id, version);
+                    foreach (var dll in pkgDlls)
+                        AddRefPath(dll);
+                }
+                */
+            }
+
+            // 2d) Basis-Referenzen (BCL etc.)
+            AddRefPath(typeof(object).Assembly.Location);
+            AddRefPath(typeof(Enumerable).Assembly.Location);
+            AddRefPath(typeof(System.Windows.Forms.Form).Assembly.Location);
+            AddRefPath(typeof(System.Drawing.Point).Assembly.Location);
+            AddRefPath(typeof(Microsoft.CSharp.RuntimeBinder.Binder).Assembly.Location);
+
+            // 2e) .NET Runtime-Verzeichnis (nur Managed-Assemblies; einfache Heuristik)
+            string runtimeDir = RuntimeEnvironment.GetRuntimeDirectory();
+            foreach (var dllPath in SafeEnumerateFiles(runtimeDir, "*.dll"))
+            {
+                if (!IsManagedAssembly(dllPath)) continue;
+                AddRefPath(dllPath);
+            }
+
+            // 2f) Dein lokaler libs-Ordner
+            string libsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libs");
+            foreach (var dllPath in SafeEnumerateFiles(libsDir, "*.dll"))
+            {
+                if (!IsManagedAssembly(dllPath)) continue;
+                AddRefPath(dllPath);
+            }
+
+            // 3) Parse-/Compilation-Optionen (LangVersion aus csproj lesen, Fallback Preview)
+            var langVersion = TryReadLangVersion(csproj) ?? LanguageVersion.Preview;
+            var parseOptions = new CSharpParseOptions(langVersion);
+
+            var compilationOptions = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
+
+            // 4) Projekt erstellen
+            var projectInfo = ProjectInfo.Create(
+                projectId,
+                VersionStamp.Create(),
+                name: "DynamicProject",
+                assemblyName: "DynamicAssembly",
+                language: LanguageNames.CSharp,
+                metadataReferences: references,
+                parseOptions: parseOptions,
+                compilationOptions: compilationOptions
+            );
+
+            _adhocWs.AddProject(projectInfo);
+            _project = _adhocWs.CurrentSolution.GetProject(projectId);
+
+            Debug.WriteLine($"[Roslyn] Project created with {references.Count} references.");
+
+            // Optional: Dein Diagnostik-Setup
+            RoslynDiagnostic.InitDiagnostic();
+        }
+
+
+
+
+
+        /// <summary>
+        /// (Optional) Sehr einfache Auflösung von PackageReference-DLLs im globalen NuGet-Verzeichnis.
+        /// Für robuste Ergebnisse wäre MSBuild-Evaluation ideal.
+        /// </summary>
+        private static IEnumerable<string> TryResolvePackageDlls(string packageId, string version)
+        {
+            var results = new List<string>();
+            try
+            {
+                var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                var root = Path.Combine(home, ".nuget", "packages", packageId.ToLowerInvariant(), version);
+                if (!Directory.Exists(root)) return results;
+
+                // Häufige TFM-Verzeichnisse durchsuchen
+                var libDir = Path.Combine(root, "lib");
+                if (!Directory.Exists(libDir)) return results;
+
+                var tfms = new[] { "net8.0", "net7.0", "net6.0", "netstandard2.1", "netstandard2.0", "net48", "net472" };
+                foreach (var tfm in tfms)
+                {
+                    var dir = Path.Combine(libDir, tfm);
+                    if (!Directory.Exists(dir)) continue;
+
+                    foreach (var dll in Directory.GetFiles(dir, "*.dll"))
+                        results.Add(dll);
+                }
+            }
+            catch { /* ignore */ }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Liest die C#-LangVersion aus der csproj (PropertyGroup -> LangVersion), sonst null.
+        /// </summary>
+        private static LanguageVersion? TryReadLangVersion(XDocument csproj)
+        {
+            if (csproj == null) return null;
+
+            var lang = csproj
+                .Descendants()
+                .Where(e => e.Name.LocalName == "LangVersion")
+                .Select(e => e.Value?.Trim())
+                .FirstOrDefault();
+
+            if (string.IsNullOrWhiteSpace(lang)) return null;
+
+            // Roslyn-Parser für LanguageVersion:
+            if (LanguageVersionFacts.TryParse(lang, out var parsed))
+                return parsed;
+
+            // Häufige Synonyme
+            if (string.Equals(lang, "default", StringComparison.OrdinalIgnoreCase)) return LanguageVersion.Default;
+            if (string.Equals(lang, "latest", StringComparison.OrdinalIgnoreCase)) return LanguageVersion.Latest;
+            if (string.Equals(lang, "preview", StringComparison.OrdinalIgnoreCase)) return LanguageVersion.Preview;
+
+            return null;
+        }
+
+        /// <summary>
+        /// Sehr einfache Heuristik: Prüft, ob Datei wie eine .NET-Assembly aussieht.
+        /// </summary>
+        private static bool IsManagedAssembly(string path)
+        {
+            try
+            {
+                // Minimal: auf ".dll" prüfen und grob Größe > 0
+                if (!path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)) return false;
+                var info = new FileInfo(path);
+                return info.Exists && info.Length > 0;
+            }
+            catch { return false; }
+        }
+
+        /// <summary>
+        /// Gibt absolute Pfade zurück; löst relative Pfade relativ zur csproj aus.
+        /// </summary>
+        private static string ResolvePath(string baseDir, string candidate)
+        {
+            if (string.IsNullOrWhiteSpace(candidate)) return null;
+
+            // Umgebungsvariablen expandieren
+            candidate = Environment.ExpandEnvironmentVariables(candidate);
+
+            // Falls bereits absolut
+            if (Path.IsPathRooted(candidate))
+                return File.Exists(candidate) ? candidate : null;
+
+            if (string.IsNullOrWhiteSpace(baseDir) || !Directory.Exists(baseDir))
+                return null;
+
+            var combined = Path.GetFullPath(Path.Combine(baseDir, candidate));
+            return File.Exists(combined) ? combined : null;
+        }
+
+        /// <summary>
+        /// Sicheres Enumerieren von Dateien (Verzeichnisse dürfen nicht existieren, Fehler werden abgefangen).
+        /// </summary>
+        private static IEnumerable<string> SafeEnumerateFiles(string dir, string pattern)
+        {
+            if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir)) yield break;
+
+            string[] files = Array.Empty<string>();
+            try { files = Directory.GetFiles(dir, pattern); } catch { yield break; }
+            foreach (var f in files) yield return f;
+        }
+
+
+
+
+        /// <summary>
+        /// Erzeugt eine MetadataReference inkl. XmlDocumentationProvider (falls .xml neben .dll liegt).
+        /// </summary>
+        private static MetadataReference CreateReferenceWithDocs(string dllPath)
+        {
+            if(dllPath.Contains("qbookCsScript"))
+            Debug.WriteLine("Check " + dllPath);
+            if (string.IsNullOrWhiteSpace(dllPath) || !File.Exists(dllPath))
+                return null;
+
+            try
+            {
+                var xmlPath = Path.ChangeExtension(dllPath, ".xml");
+                if (File.Exists(xmlPath))
+                {
+                    var provider = Microsoft.CodeAnalysis.XmlDocumentationProvider.CreateFromFile(xmlPath);
+                    return MetadataReference.CreateFromFile(dllPath, documentation: provider);
+                }
+                return MetadataReference.CreateFromFile(dllPath);
+            }
+            catch
+            {
+                return MetadataReference.CreateFromFile(dllPath);
+            }
+        }
+
         public void CreateProject()
+        {
+            // Workspace bereitstellen / leeren
+            if (_adhocWs == null)
+                _adhocWs = new AdhocWorkspace(s_host);
+            else
+                try { _adhocWs.ClearSolution(); } catch { /* ignore */ }
+
+            // Neues Projekt vorbereiten
+            var projectId = ProjectId.CreateNewId();
+            _projectId = projectId;
+
+            List<MetadataReference> references;
+
+            // 1) Versuchen, Referenz-Cache zu laden
+            if (TryLoadReferenceCache(out references))
+            {
+                Debug.WriteLine("[Roslyn] Reference cache loaded.");
+            }
+            else
+            {
+                Debug.WriteLine("[Roslyn] Building references (no cache available)...");
+
+                references = new List<MetadataReference>();
+                var dedup = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                void AddRef(string path)
+                {
+                    if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                        return;
+
+                    var full = Path.GetFullPath(path);
+                    if (!dedup.Add(full))
+                        return; // dedupe
+
+                    var r = CreateReferenceWithDocs(full);
+                    if (r != null)
+                        references.Add(r);
+                }
+
+                // --- Basis-Referenzen
+                AddRef(typeof(object).Assembly.Location);
+                AddRef(typeof(Enumerable).Assembly.Location);
+                AddRef(typeof(System.Windows.Forms.Form).Assembly.Location);
+                AddRef(typeof(System.Drawing.Point).Assembly.Location);
+                AddRef(typeof(Microsoft.CSharp.RuntimeBinder.Binder).Assembly.Location);
+
+                // --- Bereits geladene Assemblies (deine bestehende Logik)
+                foreach (var r in AddLoadedAssembliesAsReferences())
+                {
+                    // Wenn du hier bereits PortableExecutableReference-Objekte lieferst,
+                    // kannst du – falls FilePath vorhanden – auf "CreateReferenceWithDocs" umstellen.
+                    references.Add(r);
+                }
+
+                // --- .NET Runtime-Verzeichnis (nur Managed-Assemblies)
+                string runtimeDir = RuntimeEnvironment.GetRuntimeDirectory();
+                foreach (var dllPath in Directory.GetFiles(runtimeDir, "*.dll"))
+                {
+                    if (!IsManagedAssembly(dllPath))
+                        continue;
+
+                    try { AddRef(dllPath); } catch { /* ignore */ }
+                }
+
+                // --- Lokaler "libs"-Ordner
+                string baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libs");
+                if (Directory.Exists(baseDir))
+                {
+                    foreach (var dllPath in Directory.GetFiles(baseDir, "*.dll"))
+                    {
+                        if (!IsManagedAssembly(dllPath))
+                            continue;
+
+                        try { AddRef(dllPath); } catch { /* ignore */ }
+                    }
+                }
+
+                // 2) Cache speichern (optional, für schnelleren App-Start)
+                SaveReferenceCache(references);
+            }
+
+            // 3) Projekt erstellen (Parse/Compilation-Optionen nach Bedarf)
+            var projectInfo = ProjectInfo.Create(
+                projectId,
+                VersionStamp.Create(),
+                name: "InMemoryProject",
+                assemblyName: "InMemoryAssembly",
+                language: LanguageNames.CSharp,
+                metadataReferences: references,
+                parseOptions: new CSharpParseOptions(LanguageVersion.Preview),
+                compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+            );
+
+            _adhocWs.AddProject(projectInfo);
+            _project = _adhocWs.CurrentSolution.GetProject(projectId);
+
+            Debug.WriteLine("[Roslyn] Project created with " + references.Count + " references.");
+        }
+
+        public void CreateProjectOld()
         {
             if (_adhocWs == null)
                 _adhocWs = new AdhocWorkspace(s_host);
@@ -490,13 +911,293 @@ namespace qbookCode.Roslyn
         }
 
 
+        public void CreateEmptyProjectUsingRefPacks(string csprojPath)
+        {
+            // 0) Workspace vorbereiten
+            if (_adhocWs == null)
+                _adhocWs = new AdhocWorkspace(s_host);
+            else
+                try { _adhocWs.ClearSolution(); } catch { /* ignore */ }
+
+            var projectId = ProjectId.CreateNewId();
+            _projectId = projectId;
+
+            // 1) .csproj laden (TFM + optional LangVersion)
+            XDocument csproj = null;
+            string csprojDir = null;
+            if (!string.IsNullOrWhiteSpace(csprojPath) && File.Exists(csprojPath))
+            {
+                csproj = XDocument.Load(csprojPath);
+                csprojDir = Path.GetDirectoryName(Path.GetFullPath(csprojPath));
+            }
+            string tfm = TryReadTargetFramework(csproj) ?? "net8.0"; // Fallback
+            string normalizedTfm = NormalizeTfmForPacks(tfm);        // z.B. "net8.0-windows10.0.19041.0" -> "net8.0-windows" -> "net8.0"
+
+            // 2) Packs-Wurzel finden (DOTNET_ROOT oder übliche Installationsorte)
+            string dotnetRoot = FindDotnetRoot();
+            if (string.IsNullOrEmpty(dotnetRoot))
+                throw new InvalidOperationException("DOTNET_ROOT/.NET SDK nicht gefunden – Reference Packs können nicht geladen werden.");
+
+            string packsRoot = Path.Combine(dotnetRoot, "packs");
+            string packBase = Path.Combine(packsRoot, "Microsoft.NETCore.App.Ref");
+            if (!Directory.Exists(packBase))
+                throw new DirectoryNotFoundException($"Reference Pack-Basis nicht gefunden: {packBase}");
+
+            // 3) Höchste installierte Pack-Version wählen, die das gewünschte TFM enthält
+            var candidates = SafeEnumerateDirectories(packBase)
+                .OrderByDescending(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            string refDir = null;
+            foreach (var packVersionDir in candidates)
+            {
+                var tryDir = Path.Combine(packVersionDir, "ref", normalizedTfm);
+                if (Directory.Exists(tryDir)) { refDir = tryDir; break; }
+            }
+
+            if (refDir == null)
+            {
+                // Fallback: z. B. von "net8.0-windows" auf "net8.0"
+                var baseTfm = CutAtDash(normalizedTfm); // "net8.0-windows" -> "net8.0"
+                if (!string.Equals(baseTfm, normalizedTfm, StringComparison.OrdinalIgnoreCase))
+                {
+                    foreach (var packVersionDir in candidates)
+                    {
+                        var tryDir = Path.Combine(packVersionDir, "ref", baseTfm);
+                        if (Directory.Exists(tryDir)) { refDir = tryDir; break; }
+                    }
+                }
+            }
+
+            if (refDir == null)
+                throw new DirectoryNotFoundException($"Kein Reference-Pack für TFM '{tfm}' gefunden (versucht: '{normalizedTfm}').");
+
+            // 4) Kandidaten sammeln (zuerst: Ref-Pack-DLLs -> hohe Priorität)
+            var byName = new Dictionary<string, (int prio, Version ver, string path)>(StringComparer.OrdinalIgnoreCase);
+
+            void AddCandidate(string dllPath, int priority)
+            {
+                if (string.IsNullOrWhiteSpace(dllPath) || !File.Exists(dllPath)) return;
+                if (!TryGetAssemblyIdentity(dllPath, out var name, out var ver)) return;
+
+                if (byName.TryGetValue(name, out var cur))
+                {
+                    // Bevorzuge höhere Priorität (Ref-Pack > alles andere).
+                    if (priority > cur.prio)
+                    {
+                        byName[name] = (priority, ver, dllPath);
+                    }
+                    else if (priority == cur.prio && ver > cur.ver)
+                    {
+                        // Bei gleicher Priorität: höhere Version
+                        byName[name] = (priority, ver, dllPath);
+                    }
+                }
+                else
+                {
+                    byName[name] = (priority, ver, dllPath);
+                }
+            }
+
+            // 4a) Alle DLLs aus dem Reference-Pack
+            foreach (var dll in SafeEnumerateFiles(refDir, "*.dll"))
+                AddCandidate(dll, priority: 100); // höchste Priorität
+
+            // 4b) Aus csproj: HintPaths (nur ergänzen, BCL-Namen bleiben vom Pack belegt)
+            if (csproj != null)
+            {
+                foreach (var r in csproj.Descendants().Where(e => e.Name.LocalName == "Reference"))
+                {
+                    var hint = r.Elements().FirstOrDefault(e => e.Name.LocalName == "HintPath")?.Value?.Trim();
+                    if (string.IsNullOrWhiteSpace(hint)) continue;
+                    var abs = ResolvePath(csprojDir, hint);
+                    if (abs != null) AddCandidate(abs, priority: 10);
+                }
+
+                // 4c) ProjectReference → Output-DLL heuristisch (Debug/Release + TFM)
+                foreach (var pr in csproj.Descendants().Where(e => e.Name.LocalName == "ProjectReference"))
+                {
+                    var include = pr.Attribute("Include")?.Value?.Trim();
+                    if (string.IsNullOrWhiteSpace(include)) continue;
+
+                    var projAbs = ResolvePath(csprojDir, include);
+                    if (projAbs == null || !File.Exists(projAbs)) continue;
+
+                    var projDir = Path.GetDirectoryName(projAbs);
+                    var projName = Path.GetFileNameWithoutExtension(projAbs);
+
+                    var outs = new[]
+                    {
+                Path.Combine(projDir, "bin", "Debug"),
+                Path.Combine(projDir, "bin", "Release")
+            };
+                    var tfms = new[] { normalizedTfm, CutAtDash(normalizedTfm), "net8.0", "net7.0", "net6.0", "netstandard2.1", "netstandard2.0" };
+
+                    string found = null;
+                    foreach (var baseOut in outs)
+                    {
+                        if (!Directory.Exists(baseOut)) continue;
+
+                        foreach (var t in tfms.Where(t => !string.IsNullOrEmpty(t)))
+                        {
+                            var dll = Path.Combine(baseOut, t, projName + ".dll");
+                            if (File.Exists(dll)) { found = dll; break; }
+                        }
+                        if (found != null) break;
+
+                        var direct = Path.Combine(baseOut, projName + ".dll");
+                        if (File.Exists(direct)) { found = direct; break; }
+                    }
+                    if (found != null) AddCandidate(found, priority: 50);
+                }
+            }
+
+            // 5) Jetzt erst MetadataReferences erzeugen (mit Xml-Doku-Provider)
+            var references = new List<MetadataReference>(byName.Count);
+            foreach (var kv in byName.Values)
+            {
+                var r = CreateReferenceWithDocs(kv.path); // hängt Xml-Doku an, wenn vorhanden
+                if (r != null) references.Add(r);
+            }
+
+            // 6) Optionen (LangVersion aus csproj, Fallback: Preview)
+            var langVersion = TryReadLangVersion(csproj) ?? LanguageVersion.Preview;
+            var parseOptions = new CSharpParseOptions(langVersion);
+            var compilationOptions = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
+
+            // 7) Projekt anlegen
+            var projectInfo = ProjectInfo.Create(
+                projectId,
+                VersionStamp.Create(),
+                name: "DynamicProject",
+                assemblyName: "DynamicAssembly",
+                language: LanguageNames.CSharp,
+                metadataReferences: references,
+                parseOptions: parseOptions,
+                compilationOptions: compilationOptions);
+
+            _adhocWs.AddProject(projectInfo);
+            _project = _adhocWs.CurrentSolution.GetProject(projectId);
+
+            RoslynDiagnostic.InitDiagnostic();
+
+            Debug.WriteLine($"[Roslyn] RefPack-Project created ({references.Count} references) for {tfm}.");
+        }
+
+
+        private static string FindDotnetRoot()
+        {
+            // 1) DOTNET_ROOT (empfohlen von Microsoft)
+            var env = Environment.GetEnvironmentVariable("DOTNET_ROOT");
+            if (!string.IsNullOrWhiteSpace(env) && Directory.Exists(env))
+                return env;
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                // 2) Windows: %ProgramFiles%\dotnet
+                var pf = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+                var path = Path.Combine(pf, "dotnet");
+                if (Directory.Exists(path)) return path;
+            }
+            else
+            {
+                // 3) Linux/macOS: übliche Orte
+                var candidates = new[]
+                {
+            Environment.GetEnvironmentVariable("DOTNET_ROOT(x86)"),
+            "/usr/share/dotnet",
+            "/usr/local/share/dotnet"
+        };
+                foreach (var c in candidates)
+                    if (!string.IsNullOrWhiteSpace(c) && Directory.Exists(c))
+                        return c;
+            }
+            return null;
+        }
+
+        private static string NormalizeTfmForPacks(string tfm)
+        {
+            if (string.IsNullOrWhiteSpace(tfm)) return null;
+            // MSBuild-TFMs können RIDs enthalten, z. B. net8.0-windows10.0.19041.0
+            // Für Packs existiert i. d. R. "net8.0-windows" oder "net8.0".
+            // Reduziere ggf. mehrfach.
+            var t = tfm.Trim();
+            if (DirectoryNameExistsInPacksPattern(t)) return t; // bereits nutzbar
+
+            // Schrittweise kürzen
+            var dashIdx = t.IndexOf('-');
+            if (dashIdx > 0)
+            {
+                var short1 = t[..dashIdx];           // "net8.0"
+                var prefix = t[..t.LastIndexOf('-')];// z.B. "net8.0-windows"
+                                                     // Bevorzugt: "net8.0-windows", sonst "net8.0"
+                return prefix.Contains('-') ? prefix : short1;
+            }
+            return t;
+        }
+
+        private static string CutAtDash(string tfm)
+        {
+            if (string.IsNullOrWhiteSpace(tfm)) return tfm;
+            var dashIdx = tfm.IndexOf('-');
+            return dashIdx > 0 ? tfm[..dashIdx] : tfm;
+        }
+
+        // Du kannst hier smarter prüfen, aber oft reicht es, die Form "netX.Y" oder "netX.Y-qualifier" zu akzeptieren.
+        private static bool DirectoryNameExistsInPacksPattern(string tfm) => tfm.StartsWith("net", StringComparison.OrdinalIgnoreCase);
+
+        private static IEnumerable<string> SafeEnumerateDirectories(string dir)
+        {
+            if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir)) yield break;
+            string[] d; try { d = Directory.GetDirectories(dir); } catch { yield break; }
+            foreach (var x in d) yield return x;
+        }
+
+     
+
+     
+
+        private static bool TryGetAssemblyIdentity(string path, out string name, out Version ver)
+        {
+            name = null; ver = null;
+            try
+            {
+                var an = System.Reflection.AssemblyName.GetAssemblyName(path);
+                name = an.Name;
+                ver = an.Version ?? new Version(0, 0, 0, 0);
+                return true;
+            }
+            catch { return false; }
+        }
+
+   
+
+        private static string TryReadTargetFramework(XDocument csproj)
+        {
+            if (csproj == null) return null;
+
+            // TargetFrameworks hat Vorrang (erstes nehmen)
+            var multi = csproj.Descendants().FirstOrDefault(e => e.Name.LocalName == "TargetFrameworks")?.Value?.Trim();
+            if (!string.IsNullOrWhiteSpace(multi))
+            {
+                var first = multi.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim();
+                if (!string.IsNullOrWhiteSpace(first)) return first;
+            }
+
+            // Single-TargetFramework
+            var single = csproj.Descendants().FirstOrDefault(e => e.Name.LocalName == "TargetFramework")?.Value?.Trim();
+            return string.IsNullOrWhiteSpace(single) ? null : single;
+        }
+
+        /// <summary>
+        /// Erzeugt eine MetadataReference inkl. XmlDocumentationProvider (falls .xml neben .dll liegt).
+        /// </summary>
+    
+
+
 
 
         private List<MetadataReference> _referenceCache = new();
-
-
-    
-
 
         public async Task RebuildProjectWithActiveFilesAsync()
         {
@@ -1214,32 +1915,34 @@ namespace qbookCode.Roslyn
                 lock (_buildLock) _isBuildingAssembly = false;
             }
         }
-        private static bool IsManagedAssembly(string path)
-        {
-            try
-            {
-                using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read))
-                using (var br = new BinaryReader(fs))
-                {
-                    if (fs.Length < 0x3C + 4) return false;
-                    fs.Position = 0x3C;
-                    int peHeaderOffset = br.ReadInt32();
-                    if (peHeaderOffset + 0x18 + 2 > fs.Length) return false;
-                    fs.Position = peHeaderOffset + 0x18;
-                    ushort magic = br.ReadUInt16();
-                    long pos = (magic == 0x010b) ? peHeaderOffset + 0xF8 : peHeaderOffset + 0x108;
-                    if (pos + 0x70 + 8 > fs.Length) return false;
-                    fs.Position = pos + 0x70;
-                    uint cliHeaderRva = br.ReadUInt32();
-                    uint cliHeaderSize = br.ReadUInt32();
-                    return cliHeaderRva != 0 && cliHeaderSize != 0;
-                }
-            }
-            catch
-            {
-                return false;
-            }
-        }
+
+
+        //private static bool IsManagedAssembly(string path)
+        //{
+        //    try
+        //    {
+        //        using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read))
+        //        using (var br = new BinaryReader(fs))
+        //        {
+        //            if (fs.Length < 0x3C + 4) return false;
+        //            fs.Position = 0x3C;
+        //            int peHeaderOffset = br.ReadInt32();
+        //            if (peHeaderOffset + 0x18 + 2 > fs.Length) return false;
+        //            fs.Position = peHeaderOffset + 0x18;
+        //            ushort magic = br.ReadUInt16();
+        //            long pos = (magic == 0x010b) ? peHeaderOffset + 0xF8 : peHeaderOffset + 0x108;
+        //            if (pos + 0x70 + 8 > fs.Length) return false;
+        //            fs.Position = pos + 0x70;
+        //            uint cliHeaderRva = br.ReadUInt32();
+        //            uint cliHeaderSize = br.ReadUInt32();
+        //            return cliHeaderRva != 0 && cliHeaderSize != 0;
+        //        }
+        //    }
+        //    catch
+        //    {
+        //        return false;
+        //    }
+        //}
 
 
         #region Auto-Complete
@@ -1461,6 +2164,8 @@ namespace qbookCode.Roslyn
 
 
         #endregion
+
+
 
 
 

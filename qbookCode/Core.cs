@@ -18,6 +18,8 @@ namespace qbookCode
 {
     internal static class Core
     {
+
+        
         public static RoslynService Roslyn { get; } = new RoslynService();
         public static Book ThisBook { get; set; } = new Book();
         public static DataTable ComLog;

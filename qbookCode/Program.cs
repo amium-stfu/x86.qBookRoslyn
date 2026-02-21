@@ -4,6 +4,7 @@ using Serilog;
 using Serilog.Sinks.WinForms.Base;
 using System.Collections;
 using System.Diagnostics;
+using qbookCode.Roslyn;
 
 
 namespace qbookCode
@@ -74,9 +75,14 @@ namespace qbookCode
     }
 
 
+   
+
+
     internal static class Program
     {
         public static string ActualBookPath = string.Empty;
+
+       
         [STAThread]
         static void Main(string[] args)
         {
@@ -153,7 +159,8 @@ namespace qbookCode
 
                 ActualBookPath = directory;
 
-                Core.Roslyn.CreateEmptyProject(inputPath);
+             //   Core.Roslyn.CreateEmptyProject(inputPath);
+                Core.Roslyn.CreateEmptyProjectUsingRefPacks(inputPath);
 
                 splash.SetStatus("Creating Workspace...");
                 Core.ThisBook = Core.BookFromFolder(directory, name).GetAwaiter().GetResult();
@@ -184,7 +191,10 @@ namespace qbookCode
               
                 Core.Explorer.Opacity = 1;
 
-                _= Roslyn.RoslynSummarys.CollectAll();
+
+
+                //var includedReferences = new List<string> { "qbookCsScript" };
+                //_ = Roslyn.RoslynSummarys.CollectAll(includedReferences);
                 Application.Run(Core.Explorer);
             }
         }
