@@ -69,7 +69,6 @@ namespace qbookCode.Controls
             };
 
             FindReplace = new FormFindReplace(this);
-
         }
 
         void UpdatePageText()
@@ -178,6 +177,17 @@ namespace qbookCode.Controls
 
             ApplyTheme("btnToggleTheme");
         }
+
+        public async Task CheckCode()
+        {
+            if (await BookTree.CheckCode())
+            {
+                SetStatusText("Code errors detected! Please fix them first.", Color.Red);
+                return;
+            }
+            SetStatusText("No code errors detected.", Color.Green);
+        }
+
         private async void btnRebuild_Click(object sender, EventArgs e)
         {
             SelectedCodeNode.Editor.HidePopups();

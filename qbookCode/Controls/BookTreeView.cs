@@ -431,6 +431,7 @@ namespace qbookCode.Controls
                 BookNode pageNode = new BookNode(page.RoslynCodeDoc.Filename, NodeType.Page) { ImageIndex = 2 };
                 pageNode.Editor = new DocumentEditor(page.RoslynCodeDoc, page);
                 pageNode.Editor.GoToDefinition = async () => await GoToDefinitionAsync();
+                if(pageNode.Editor.Page.Hidden) pageNode.ImageIndex = 5;
 
 
                 if (SelectedCodeNode == null)
@@ -442,6 +443,10 @@ namespace qbookCode.Controls
                     BookNode subNode = new BookNode(doc.Filename, NodeType.SubCode) { ImageIndex = 3 };
                     subNode.Text = doc.Filename.Split('.')[1];
                     subNode.Editor = new DocumentEditor(doc, page);
+                    if(!subNode.Editor.Target.Active)  
+                    {
+                        subNode.ImageIndex = 4;
+                    }
                     subEditors.Add(subNode.Editor);
                     subNode.Editor.Page = page;
                     pageNode.Nodes.Add(subNode);

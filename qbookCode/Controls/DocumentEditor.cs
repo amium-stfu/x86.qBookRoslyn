@@ -20,6 +20,7 @@ using System.Threading.Tasks;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Forms;
+using System.Windows.Shapes;
 using VPKSoft.ScintillaLexers;
 using static System.ComponentModel.Design.ObjectSelectorEditor;
 using RoslynDocument = Microsoft.CodeAnalysis.Document; // Alias gegen Kollision mit ScintillaNET.Document
@@ -1793,34 +1794,38 @@ namespace qbookCode.Controls
 
         #region Create Summary
 
+        // Klassebene:
+
+        private bool _suppressAutoSummary;
+        private bool _suppressFormatting; // Unterdrückt Auto-Indent / InsertCheck / CharAdded-bezogene Formatierung
+
+
         private async void AutoInsertSummary_CharAdded(object? sender, CharAddedEventArgs e)
         {
+            if (_suppressAutoSummary) return;
             if (e.Char != '/') return;
 
             int pos = CurrentPosition;
             int line = LineFromPosition(pos);
-            var lineText = Lines[line].Text.TrimEnd('\r', '\n');
+            var rawLine = Lines[line].Text; // enthält EOL
+            var lineText = rawLine.TrimEnd('\r', '\n');
 
-            if (!lineText.Trim().Equals("///")) return;
+            if (!lineText.Trim().Equals("///"))
+                return;
 
-            // Finde die nächste sinnvolle Zeile (nicht leer)
+            // Nächste nicht-leere Zeile suchen
             int nextLine = line + 1;
             while (nextLine < Lines.Count && string.IsNullOrWhiteSpace(Lines[nextLine].Text))
                 nextLine++;
-
             if (nextLine >= Lines.Count) return;
 
-            int methodLineStart = Lines[nextLine].Position;
-            int methodLineEnd = Lines[nextLine].EndPosition;
-            string methodLineText = Lines[nextLine].Text.Trim();
-
-            // Mit Roslyn prüfen, ob es wirklich eine Methode ist
+            // Roslyn: Handelt es sich wirklich um eine Methode?
             var doc = Target?.Document;
             if (doc == null) return;
+
             var root = await doc.GetSyntaxRootAsync().ConfigureAwait(false);
             if (root == null) return;
 
-            // Ermittle die Methode an der Position
             var methodNode = root.DescendantNodes()
                 .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax>()
                 .FirstOrDefault(m =>
@@ -1831,44 +1836,114 @@ namespace qbookCode.Controls
 
             if (methodNode == null) return;
 
-            // XML-Stub generieren
-            string indent = new string(' ', Lines[line].Indentation);
-            var sb = new StringBuilder();
-            sb.AppendLine($"{indent}/// <summary>");
-            sb.AppendLine($"{indent}/// ");
-            sb.AppendLine($"{indent}/// </summary>");
-
-            foreach (var param in methodNode.ParameterList.Parameters)
+            // Zurück auf den UI-Thread, bevor wir Scintilla anfassen
+            if (InvokeRequired)
             {
-                sb.AppendLine($"{indent}/// <param name=\"{param.Identifier.Text}\"></param>");
+                BeginInvoke((Action)(() => InsertSummaryForMethod(line, nextLine, methodNode)));
             }
-
-            if (methodNode.ReturnType is not Microsoft.CodeAnalysis.CSharp.Syntax.PredefinedTypeSyntax predef ||
-                predef.Keyword.Text != "void")
+            else
             {
-                sb.AppendLine($"{indent}/// <returns></returns>");
+                InsertSummaryForMethod(line, nextLine, methodNode);
             }
+        }
 
-            string summaryStub = sb.ToString().TrimEnd('\r', '\n');
+        private void InsertSummaryForMethod(
+    int slashLine,
+    int methodLine,
+    Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax methodNode)
+        {
+            if (_suppressAutoSummary) return;
 
-            // Ersetze die aktuelle Zeile durch den Stub
-            BeginUndoAction();
+            _suppressAutoSummary = true;
+            _suppressFormatting = true; // Auto-Indent/Formatting während des Inserts unterdrücken
             try
             {
-                int lineStart = Lines[line].Position;
-                int lineEnd = Lines[line].EndPosition;
-                SelectionStart = lineStart;
-                SelectionEnd = lineEnd;
-                ReplaceSelection(summaryStub + "\n");
-                // Cursor in die Mitte der summary setzen
-                int summaryPos = lineStart + summaryStub.IndexOf($"{indent}/// ") + ($"{indent}/// ").Length;
-                GotoPosition(summaryPos);
+                // Scrollzustand sichern (optional Selektion/Caret ebenfalls sichern)
+                int oldFirstVisible = FirstVisibleLine;
+                int oldXOffset = XOffset;
+
+                // Editor-EOL bestimmen (kein Fallback auf NewLine nötig)
+                string nl = EolMode switch
+                {
+                    Eol.CrLf => "\r\n",
+                    Eol.Lf => "\n",
+                    Eol.Cr => "\r",
+                };
+
+                // Einrückung exakt von der Methodenzeile übernehmen (Tabs bleiben Tabs)
+                var methodLineRaw = Lines[methodLine].Text;
+                string indent = new string(methodLineRaw.TakeWhile(ch => ch == ' ' || ch == '\t').ToArray());
+
+                // Summary-Stub bauen
+                var sb = new StringBuilder();
+                sb.Append(indent).Append("/// <summary>").Append(nl);
+                sb.Append(indent).Append("/// ").Append(nl); // <- hierhin kommt der Caret
+                sb.Append(indent).Append("/// </summary>").Append(nl);
+
+                foreach (var p in methodNode.ParameterList.Parameters)
+                {
+                    sb.Append(indent).Append("/// <param name=\"")
+                      .Append(p.Identifier.Text)
+                      .Append("\"></param>").Append(nl);
+                }
+
+                // returns nur, wenn nicht void
+                if (!(methodNode.ReturnType is Microsoft.CodeAnalysis.CSharp.Syntax.PredefinedTypeSyntax predef &&
+                      predef.Keyword.Text == "void"))
+                {
+                    sb.Append(indent).Append("/// <returns></returns>").Append(nl);
+               
+                }
+
+                string summaryStub = sb.Append(indent).ToString();
+
+                // Ganze "///"-Zeile INKLUSIVE EOL ersetzen (wichtig!)
+                int lineStart = Lines[slashLine].Position;
+                int lineEndIncludingEol = lineStart + Lines[slashLine].Length; // Length enthält EOL
+                //int lineEndIncludingEol = lineStart; // Length enthält EOL
+
+
+                BeginUndoAction();
+                try
+                {
+                    string r = Lines[methodLine].Text.Replace(indent, "");
+                    TargetStart = Lines[methodLine].Position;
+                    TargetEnd = TargetStart + Lines[methodLine].Length;
+                    ReplaceTarget(r);
+
+
+
+
+                    TargetStart = lineStart;
+                    TargetEnd = lineEndIncludingEol;
+                    ReplaceTarget(summaryStub);
+
+                    // Caret in die **mittlere** "/// " Zeile setzen:
+                    int firstNl = summaryStub.IndexOf(nl, StringComparison.Ordinal); // nach <summary>
+                    int midIdx = summaryStub.IndexOf($"{indent}/// ", firstNl + nl.Length, StringComparison.Ordinal);
+                    int caretPos = (midIdx >= 0)
+                        ? lineStart + midIdx + ($"{indent}/// ").Length
+                        : lineStart + summaryStub.Length;
+
+                    SetSelection(caretPos, caretPos);
+                }
+                finally
+                {
+                    EndUndoAction();
+                }
+
+                // Scroll wiederherstellen
+                FirstVisibleLine = oldFirstVisible;
+                XOffset = oldXOffset;
             }
             finally
             {
-                EndUndoAction();
+                _suppressFormatting = false;
+                _suppressAutoSummary = false;
             }
         }
+
+
 
         #endregion
 

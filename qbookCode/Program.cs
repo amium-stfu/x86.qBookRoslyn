@@ -100,10 +100,6 @@ namespace qbookCode
                     
    
                 }
-                else
-                {
-                    Application.Run(new Form1());
-                }
             });
 
             uiThread.SetApartmentState(ApartmentState.STA);
@@ -159,8 +155,9 @@ namespace qbookCode
 
                 ActualBookPath = directory;
 
-             //   Core.Roslyn.CreateEmptyProject(inputPath);
-                Core.Roslyn.CreateEmptyProjectUsingRefPacks(inputPath);
+             //   Core.Roslyn.CreateEmptyProjectSimpleHybrid_Strict(inputPath);
+                //Core.Roslyn.CreateEmptyProjectUsingRefPacks(inputPath);
+                Core.Roslyn.CreateEmptyProjectOld_Improved(inputPath);
 
                 splash.SetStatus("Creating Workspace...");
                 Core.ThisBook = Core.BookFromFolder(directory, name).GetAwaiter().GetResult();
@@ -177,9 +174,7 @@ namespace qbookCode
                 Core.Explorer.RefreshPageData();
                 Core.Explorer.InitView();
 
-
-
-                 splash.Close();
+                splash.Close();
 
               
                 Theme.Current = Theme.EditorTheme.Light;
@@ -196,6 +191,10 @@ namespace qbookCode
                 //var includedReferences = new List<string> { "qbookCsScript" };
                 //_ = Roslyn.RoslynSummarys.CollectAll(includedReferences);
                 Application.Run(Core.Explorer);
+
+               
+
+
             }
         }
     }
