@@ -226,8 +226,13 @@ namespace qbookCode.Controls
         }
         private async void btnSave_Click(object sender, EventArgs e)
         {
+            await SelectedCodeNode.Editor.UpdateMethodesFromRoslynAsync();
+            await SelectedCodeNode.Editor.UpdateReferences();
+
             await Save();
-            await Roslyn.RoslynSummarys.CollectAll();
+           
+            
+
         }
 
         async Task Save()

@@ -47,7 +47,7 @@ namespace qbookCode.Controls.InputControls
         public bool Visible => popup?.Visible ?? false;
         public void Hide() { popup?.Hide(); Documentation?.Hide(); }
 
-        MethodDocumentations methode;
+      
         public async Task ShowSignaturePopupAsync()
         {
             if (Editor?.Target?.Document == null) return;
@@ -63,7 +63,7 @@ namespace qbookCode.Controls.InputControls
 
             FullyQualifiedName = await RoslynService.GetFullQualityNameOfCarretAsync(Editor.Target.Document, caretPos);
 
-            methode = RoslynSummarys.GetMethodDocumentation(FullyQualifiedName);
+         
 
 
 
@@ -108,22 +108,22 @@ namespace qbookCode.Controls.InputControls
 
         public void ShowDocumentation()
         {
-          if(methode == null) return;
+          //if(methode == null) return;
 
-            if (methode.Parameters.TryGetValue(popup.ListView.SelectedItem.Text.Replace(":",""), out string doc))
-            {
-                int pos = Editor.CurrentPosition;
-                int x = Editor.PointXFromPosition(pos);
-                int y = Editor.PointYFromPosition(pos) + 18;
-                Point screenPoint = Editor.PointToScreen(new Point(x + popup.ListView.Width, y));
+          //  if (methode.Parameters.TryGetValue(popup.ListView.SelectedItem.Text.Replace(":",""), out string doc))
+          //  {
+          //      int pos = Editor.CurrentPosition;
+          //      int x = Editor.PointXFromPosition(pos);
+          //      int y = Editor.PointYFromPosition(pos) + 18;
+          //      Point screenPoint = Editor.PointToScreen(new Point(x + popup.ListView.Width, y));
                 
-                Documentation.ShowSummary(doc, screenPoint, 600);
-                Documentation.EditorFont = EditorFont;
-                Documentation.Height = popup.ListView.Height;
-                Documentation.Show();
-                Editor.Focus();
-                Editor.GotoPosition(pos);
-            }
+          //      Documentation.ShowSummary(doc, screenPoint, 600);
+          //      Documentation.EditorFont = EditorFont;
+          //      Documentation.Height = popup.ListView.Height;
+          //      Documentation.Show();
+          //      Editor.Focus();
+          //      Editor.GotoPosition(pos);
+          //  }/  
 
         }
 

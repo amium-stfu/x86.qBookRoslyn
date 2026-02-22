@@ -55,8 +55,8 @@ namespace qbookCode.Controls.InputControls
                     e.Handled = true;
                 }
 
-                if (e.KeyCode == Keys.Down) ShowSummaryForSelectedItem();
-                if (e.KeyCode == Keys.Up) ShowSummaryForSelectedItem();
+                //if (e.KeyCode == Keys.Down) ShowSummaryForSelectedItem();
+                //if (e.KeyCode == Keys.Up) ShowSummaryForSelectedItem();
             };
 
             dropDown = new ToolStripDropDown
@@ -81,38 +81,38 @@ namespace qbookCode.Controls.InputControls
             popup.ListView.OnSelected = () => { Editor.Focus(); };
         }
 
-        public void ShowSummaryForSelectedItem()
-        {
+        //public void ShowSummaryForSelectedItem()
+        //{
 
-            Debug.WriteLine(popup.ListView.SelectedItem.FullyQualifiedName);
-            var selectedItem = popup.ListView.SelectedItem as CompletionItem;
-            var fqName = selectedItem.FullyQualifiedName;
+        //    Debug.WriteLine(popup.ListView.SelectedItem.FullyQualifiedName);
+        //    var selectedItem = popup.ListView.SelectedItem as CompletionItem;
+        //    var fqName = selectedItem.FullyQualifiedName;
 
-            if (selectedItem == null || string.IsNullOrEmpty(popup.ListView.SelectedItem.FullyQualifiedName))
-            {
-                summary.Hide();
-                return;
-            }
+        //    if (selectedItem == null || string.IsNullOrEmpty(popup.ListView.SelectedItem.FullyQualifiedName))
+        //    {
+        //        summary.Hide();
+        //        return;
+        //    }
 
-            var summaryText =  qbookCode.Roslyn.RoslynSummarys.GetSummary(popup.ListView.SelectedItem.FullyQualifiedName);
+        //    var summaryText =  qbookCode.Roslyn.RoslynSummarys.GetSummary(popup.ListView.SelectedItem.FullyQualifiedName);
 
-            if (!string.IsNullOrWhiteSpace(summaryText))
-            {
-                int pos = Editor.CurrentPosition;
-                int x = Editor.PointXFromPosition(pos);
-                int y = Editor.PointYFromPosition(pos) + 18;
-                Point screenPoint = Editor.PointToScreen(new Point(x + popup.ListView.Width, y));
-                summary.EditorFont = Editor.GetFont();
-                summary.Height = popup.Height;
-                summary.ShowSummary(popup.ListView.SelectedItem.FullyQualifiedName + "\r\n\r\n" + summaryText, screenPoint,600);
-                Editor.Focus();
-                Editor.GotoPosition(pos);
-            }
-            else
-            {
-                summary.Hide();
-            }
-        }
+        //    if (!string.IsNullOrWhiteSpace(summaryText))
+        //    {
+        //        int pos = Editor.CurrentPosition;
+        //        int x = Editor.PointXFromPosition(pos);
+        //        int y = Editor.PointYFromPosition(pos) + 18;
+        //        Point screenPoint = Editor.PointToScreen(new Point(x + popup.ListView.Width, y));
+        //        summary.EditorFont = Editor.GetFont();
+        //        summary.Height = popup.Height;
+        //        summary.ShowSummary(popup.ListView.SelectedItem.FullyQualifiedName + "\r\n\r\n" + summaryText, screenPoint,600);
+        //        Editor.Focus();
+        //        Editor.GotoPosition(pos);
+        //    }
+        //    else
+        //    {
+        //        summary.Hide();
+        //    }
+        //}
 
         public void ShowCompletionList(IEnumerable<CompletionItem> suggestions)
         {
@@ -160,7 +160,7 @@ namespace qbookCode.Controls.InputControls
 
          //   popup.ListView.SelectedItem = 
 
-            ShowSummaryForSelectedItem();
+         //   ShowSummaryForSelectedItem();
         }
 
         public  void Next()
@@ -168,7 +168,7 @@ namespace qbookCode.Controls.InputControls
             if (popup.Visible)
             {
                 popup.ListView.SelectNext();
-                ShowSummaryForSelectedItem();
+              //  ShowSummaryForSelectedItem();
             }
         }
 
@@ -177,7 +177,7 @@ namespace qbookCode.Controls.InputControls
             if (popup.Visible)
             {
                 popup.ListView.SelectPrevious();
-                ShowSummaryForSelectedItem();
+            //    ShowSummaryForSelectedItem();
             }
         }
 

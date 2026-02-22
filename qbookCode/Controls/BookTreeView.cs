@@ -519,6 +519,14 @@ namespace qbookCode.Controls
                     if (View != null)
                     {
                         await SelectedCodeNode.Editor.UpdateRoslyn("TreeView");
+                        await SelectedCodeNode.Editor.UpdateMethodesFromRoslynAsync();
+                        await SelectedCodeNode.Editor.UpdateReferences();
+
+                        SelectedCodeNode.Editor.Output.Rows.Clear();
+                        var newData = await RoslynDiagnostic.ApplyAsync(SelectedCodeNode.Editor);
+                        foreach (System.Data.DataRow row in newData.Rows)
+                            SelectedCodeNode.Editor.Output.ImportRow(row);
+
                         View.SetTarget("Mouse click", SelectedCodeNode.Editor);
                     }
 

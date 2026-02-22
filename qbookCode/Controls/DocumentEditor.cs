@@ -67,6 +67,7 @@ namespace qbookCode.Controls
 
         private readonly System.Windows.Forms.Timer _chordTimer = new() { Interval = 1500 };
         public System.Windows.Forms.Timer DebounceTimer = new System.Windows.Forms.Timer();
+        public System.Windows.Forms.Timer DiagnosticTimer = new System.Windows.Forms.Timer();
 
         public oPage Page { get; set; }
 
@@ -294,8 +295,6 @@ namespace qbookCode.Controls
             ReferencesList.Hide();
         }
 
-
-
         #region AutoComplete
         string completeText = string.Empty;
         private async void RoslynAutoComplete_CharAdded(object sender, CharAddedEventArgs e)
@@ -303,6 +302,18 @@ namespace qbookCode.Controls
             if (!Target.Active) return;
 
             if (SignatureHelper.Visible) return;
+
+
+            int checkPos = Math.Max(0, CurrentPosition - 1);
+            if (IsInXmlDocCommentAt(checkPos) || IsTripleSlashInCurrentLineBeforeCaret())
+            {
+                completeText = string.Empty;
+                AutoComplete.Hide();
+                return;
+            }
+
+
+
 
             char c = (char)e.Char;
 
@@ -320,6 +331,8 @@ namespace qbookCode.Controls
                 completeText = string.Empty; // Reset
                 UpdateDocument();
 
+               
+
                 var suggestions = await Core.Roslyn.GetFullAutoCompleteSuggestionsAsync(
                     Target.Document,
                     Target.Code,
@@ -330,7 +343,7 @@ namespace qbookCode.Controls
                 if (suggestions.Count > 0)
                 {
                     AutoComplete.ShowCompletionList(suggestions);
-                    AutoComplete.ShowSummaryForSelectedItem();
+                //    AutoComplete.ShowSummaryForSelectedItem();
                 }
                 else
                     AutoComplete.Hide();
@@ -342,7 +355,8 @@ namespace qbookCode.Controls
             completeText += c;
 
             UpdateDocument();
-
+       //     Debug.WriteLine("auto" + c);
+            if (completeText.Length <= 0) AutoComplete.Hide();
             var filteredSuggestions = await Core.Roslyn.GetFullAutoCompleteSuggestionsAsync(
                 Target.Document,
                 Target.Code,
@@ -355,10 +369,9 @@ namespace qbookCode.Controls
 
             if (filteredSuggestions.Count > 0)
                 AutoComplete.ShowCompletionList(filteredSuggestions);
-           // else
-             //   Hide();
+            else
+                AutoComplete.Hide();
         }
-
         private async void ReferenceList_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Escape)
@@ -368,16 +381,21 @@ namespace qbookCode.Controls
             }
 
         }
-
-
         private async void RoslynAutoComplete_KeyDown(object sender, KeyEventArgs e)
         {
             if(e.KeyCode == Keys.Back && completeText.Length > 0)
             {
                 completeText = completeText.Substring(0, completeText.Length - 1);
-                UpdateDocument(); // Synchronisiert den Editor-Inhalt mit Roslyn
+                //UpdateDocument(); // Synchronisiert den Editor-Inhalt mit Roslyn
 
-                var suggestions = await Core.Roslyn.GetFullAutoCompleteSuggestionsAsync(
+                if (completeText.Length <= 0)
+                {
+                    AutoComplete.Hide();
+                    await UpdateDiagnosic();
+                    return;
+                }
+
+                    var suggestions = await Core.Roslyn.GetFullAutoCompleteSuggestionsAsync(
                        Target.Document,
                        Target.Code,
                        CurrentPosition,
@@ -415,6 +433,12 @@ namespace qbookCode.Controls
         }
 
         #endregion
+
+
+
+
+
+
 
 
         public void Init()
@@ -507,6 +531,17 @@ namespace qbookCode.Controls
 
             DebounceTimer.Interval = 100;
 
+            DiagnosticTimer.Interval = 1000;
+
+            DiagnosticTimer.Tick += async (s, e) =>
+            {
+                DiagnosticTimer.Stop();
+                await UpdateDiagnosic();
+                DiagnosticTimer.Start();
+
+
+            };
+
             DebounceTimer.Tick += async (s, e) =>
             {
                 DebounceTimer.Stop();
@@ -520,6 +555,7 @@ namespace qbookCode.Controls
               //  Core.ThisBook.Modified = true;
                 char c = (char)e.Char;
                 DebounceTimer.Stop(); DebounceTimer.Start();
+                DiagnosticTimer.Stop(); DiagnosticTimer.Start();
             };
 
             CharAdded += (sender, e) =>
@@ -575,6 +611,14 @@ namespace qbookCode.Controls
                 if (e.Control && e.KeyCode == Keys.V) await UpdateRoslyn("Keys CTRLV");
             };
         }
+
+        public async Task UpdateDiagnosic()
+        {
+            Output.Rows.Clear();
+            var newData = await RoslynDiagnostic.ApplyAsync(this);
+            foreach (DataRow row in newData.Rows)
+                Output.ImportRow(row);
+        }
         private void ProtectedLines_KeyDown(object sender, KeyEventArgs e)
         {
             int currentLine = LineFromPosition(CurrentPosition);
@@ -598,6 +642,7 @@ namespace qbookCode.Controls
                     SelectionEnd = endPos;
                     CurrentPosition = endPos;
                 }
+                Focus();
             }
             else if (e.KeyCode == Keys.Back || e.KeyCode == Keys.Delete)
             {
@@ -608,10 +653,10 @@ namespace qbookCode.Controls
             }
             else if (e.Control && (e.KeyCode == Keys.X || e.KeyCode == Keys.V)) // Cut oder Paste
             {
-                if (LineIsProtected(currentLine))
-                {
-                    e.SuppressKeyPress = true;
-                }
+                //if (LineIsProtected(currentLine))
+                //{
+                //    e.SuppressKeyPress = true;
+                //}
             }
         }
 
@@ -1488,6 +1533,15 @@ namespace qbookCode.Controls
             }
         }
 
+        /// <summary>
+        /// Asynchronously highlights method references in the target document, updating the UI to indicate which
+        /// methods have references.
+        /// </summary>
+        /// <remarks>This method retrieves all method references from the target document and updates the
+        /// UI to visually distinguish methods that have references from those that do not. Non-UI processing is
+        /// performed on a background thread to maintain UI responsiveness. If no references are found for a method, the
+        /// UI will reflect this accordingly.</remarks>
+        /// <returns>A task that represents the asynchronous operation.</returns>
         public async Task ApplyMethodReferenceHighlightsAsync()
         {
             try
@@ -1626,23 +1680,16 @@ namespace qbookCode.Controls
 
                     UpdateDocument();
                     LockNecessary();
-
-                    Output.Rows.Clear();
-                    var newData = await RoslynDiagnostic.ApplyAsync(this);
-                    foreach (DataRow row in newData.Rows)
-                        Output.ImportRow(row);
-
                     await RosylnSemantic.ApplyAsync(this, Target.Document);
-                    await UpdateMethodesFromRoslynAsync();
-
-                    // Update reference cache for highlighting
-                  //  await UpdateReferences();
-                    References = await RosylnSemantic.FindAllMethodReferencesAsync(Target.Document);
-                   
                     await ApplyMethodReferenceHighlightsAsync();
                 }
                 LockNecessary();
             }
+        }
+
+        public async Task UpdateReferences()
+        {
+            References = await RosylnSemantic.FindAllMethodReferencesAsync(Target.Document);
         }
 
 
@@ -1963,6 +2010,7 @@ namespace qbookCode.Controls
             SetProperty("fold.at.else", "1");         // separates Folding für else
             SetProperty("fold.cpp.syntax.based", "1");
             SetProperty("fold.cpp.comment.explicit", "0"); // alle Kommentarblöcke foldbar
+            SetProperty("lexer.cpp.comment.line.doc", "1");
 
 
             // Folding‑Margin (Pfeile wie in Visual Studio)
@@ -1983,6 +2031,51 @@ namespace qbookCode.Controls
             AutomaticFold = AutomaticFold.Show | AutomaticFold.Click | AutomaticFold.Change;
             SetFoldFlags(FoldFlags.LineAfterContracted);
 
+        }
+
+        #endregion
+
+
+        #region Comment Helpers
+        private const int SCE_C_COMMENT = 1;   // /* ... */
+        private const int SCE_C_COMMENTLINE = 2;   // //
+        private const int SCE_C_COMMENTDOC = 3;   // /** ... */
+        private const int SCE_C_COMMENTLINEDOC = 15;  // /// ...
+        private const int SCE_C_COMMENTDOCKEYWORD = 17;  // optional
+        private const int SCE_C_COMMENTDOCKEYWORDERROR = 18;  // optional
+
+        private bool IsInAnyCommentAt(int pos)
+        {
+            if (pos < 0 || pos >= TextLength) return false;
+            int st = GetStyleAt(pos);
+            return st == SCE_C_COMMENT
+                || st == SCE_C_COMMENTLINE
+                || st == SCE_C_COMMENTDOC
+                || st == SCE_C_COMMENTLINEDOC
+                || st == SCE_C_COMMENTDOCKEYWORD
+                || st == SCE_C_COMMENTDOCKEYWORDERROR;
+        }
+
+        private bool IsInXmlDocCommentAt(int pos)
+        {
+            if (pos < 0 || pos >= TextLength) return false;
+            int st = GetStyleAt(pos);
+            return st == SCE_C_COMMENTLINEDOC   // /// ...
+                || st == SCE_C_COMMENTDOC       // /** ... */  (falls bei dir relevant)
+                || st == SCE_C_COMMENTDOCKEYWORD
+                || st == SCE_C_COMMENTDOCKEYWORDERROR;
+        }
+
+        // Fallback (nur wenn kein Lexer-Style verfügbar ist)
+        private bool IsTripleSlashInCurrentLineBeforeCaret()
+        {
+            int caret = CurrentPosition;
+            int line = LineFromPosition(caret);
+            int lineStart = Lines[line].Position;
+            int len = Math.Max(0, caret - lineStart);
+            if (len == 0) return false;
+            string prefix = GetTextRange(lineStart, len);
+            return prefix.Contains("///");
         }
 
         #endregion
@@ -2067,7 +2160,7 @@ namespace qbookCode.Controls
             int y = PointYFromPosition(editorPosition);
 
             // Unterhalb des Carets, etwas nach rechts/unten versetzen
-            var screen = PointToScreen(new Point(x + 8, y + 4));
+            var screen = PointToScreen(new Point(x + 8, y - _popup.Height-FontHeight));
 
             // Bildschirmgrenzen berücksichtigen (rechts/unten clampen)
             var workArea = Screen.FromControl(this).WorkingArea;
@@ -2126,7 +2219,7 @@ namespace qbookCode.Controls
                 {
                     
                     text = BuildTooltipText(doc ?? new MethodDocumentation(), extraFooter: refLine);
-                    Debug.WriteLine(text);
+                  //  Debug.WriteLine(text);
                 }
                 else
                 {
