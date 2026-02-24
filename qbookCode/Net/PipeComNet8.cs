@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.Json.Serialization;
 
 namespace qbookCode.Net
 {
@@ -26,6 +27,18 @@ namespace qbookCode.Net
             Server = $"{server}-{Id}";
             Client = $"{client}-{Id}";
         }
+
+        public static void SavePipesToFile(string path)
+        {
+            var data = new
+            {
+                ServerPipe = Server,
+                ClientPipe = Client
+            };
+            string json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(path, json);
+        }
+
     }
 
     public class PipeCommand

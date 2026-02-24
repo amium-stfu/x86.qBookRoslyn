@@ -31,6 +31,7 @@ namespace qbook
         [XmlIgnore]
         public RoslynDocument Global;
 
+        public string ProjectName { get; set; }
         public string PasswordAdmin { get; set; } = null; //overrides the default Admin-Password
         public string PasswordService { get; set; } = null; //overrides the default Service-Password
         public string PasswordUser { get; set; } = null; //overrides the default User-Password

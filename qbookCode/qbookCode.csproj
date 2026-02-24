@@ -9,11 +9,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <DisableMSBuildAssemblyCopyCheck>true</DisableMSBuildAssemblyCopyCheck>
     <ApplicationIcon>editor.main.ico</ApplicationIcon>
+    <BaseOutputPath>B:\x86.qBookRoslyn\qbookCode\bin\Release</BaseOutputPath>
   </PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)'=='Release'">
-		<OutputPath>..\Setup\bin\qbookCode\</OutputPath>
-		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-	</PropertyGroup>
+
 
 
 	<Target Name="SetVersion" BeforeTargets="BeforeBuild" Condition="'$(Configuration)'=='Release'">
@@ -136,5 +134,9 @@
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
   </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="if /I &quot;$(ConfigurationName)&quot;==&quot;Release&quot; (&#xD;&#xA;    if not exist &quot;$(SolutionDir)Setup\Release\bin\qbookCode&quot; mkdir $(SolutionDir)Setup\Release\bin\qbookCode&quot;&#xD;&#xA;    xcopy &quot;$(TargetDir)*&quot; &quot;$(SolutionDir)Setup\Release\bin\qbookCode\&quot; /E /I /Y&#xD;&#xA;)&#xD;&#xA;&#xD;&#xA;if /I &quot;$(ConfigurationName)&quot;==&quot;Debug&quot; (&#xD;&#xA;    if not exist &quot;$(SolutionDir)Setup\Debug\bin\qbookCode&quot; mkdir &quot;$(SolutionDir)Setup\Debug\bin\qbookCode&quot;&#xD;&#xA;    xcopy &quot;$(TargetDir)*&quot; &quot;$(SolutionDir)Setup\Debug\bin\qbookCode\&quot; /E /I /Y&#xD;&#xA;)" />
+  </Target>
 
 </Project>

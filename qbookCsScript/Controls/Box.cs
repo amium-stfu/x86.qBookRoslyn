@@ -1255,9 +1255,12 @@ namespace QB.Controls
             string text = "";
             if (this.Text is Delegate)
             {
+                Delegate set = this.Text as Delegate;
+
                 try
                 {
-                    text = ((Delegate)_Text).DynamicInvoke().ToString();
+                    var invocationResult = set?.DynamicInvoke();
+                    text = invocationResult?.ToString() ?? string.Empty;
                 }
                 catch (Exception ex)
                 {

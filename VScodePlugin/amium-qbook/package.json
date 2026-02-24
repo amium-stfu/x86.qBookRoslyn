@@ -1,0 +1,75 @@
+{
+  "name": "amium-qbook",
+  "displayName": "amium qBook",
+  "publisher": "amium", 
+  "description": "qbook bridge",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.109.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onView:amium-qbook.panel",
+    "onCommand:amium-qbook.bridge"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "amium-qbook.bridge",
+        "title": "Open qBook Panel"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "amium-qbook.panel",
+          "name": "qBook Bridge",
+          "type": "webview",
+          "icon": "media/qbook-view.svg"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "amium-qbook",
+      "properties": {
+        "amium-qbook.pipe.serverName": {
+          "type": "string",
+          "default": "",
+          "description": "Named pipe used for commands sent from VS Code to the qBook runtime (PipeNames.Server)."
+        },
+        "amium-qbook.pipe.clientName": {
+          "type": "string",
+          "default": "",
+          "description": "Named pipe used for events sent from the qBook runtime back to VS Code (PipeNames.Client)."
+        },
+        "amium-qbook.pipe.reconnectDelay": {
+          "type": "number",
+          "default": 500,
+          "minimum": 100,
+          "description": "Delay in milliseconds before the VS Code client retries connecting to the runtime event pipe."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.109.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "typescript-eslint": "^8.54.0",
+    "eslint": "^9.39.2",
+    "typescript": "^5.9.3",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2"
+  }
+}

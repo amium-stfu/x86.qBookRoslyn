@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "qbookCode": {
-      "commandName": "Project",
-      "commandLineArgs": "\"B:\\QbookProjects\\CalibrationStudio\\AudiNSU\\CalibrationStudioVT.code\\CalibrationStudioVT.csproj\" \"amium.pipe.server\" \"amium.pipe.client\""
-    }
-  }
-}

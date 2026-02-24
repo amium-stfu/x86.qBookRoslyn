@@ -26,6 +26,17 @@ namespace qbook.Net
             Server = $"{server}";
             Client = $"{client}";
         }
+
+        public static void SavePipesToFile(string path)
+        {
+            var data = new
+            {
+                ServerPipe = Server,
+                ClientPipe = Client
+            };
+            string json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(path, json);
+        }
     }
 
     public class PipeCommand

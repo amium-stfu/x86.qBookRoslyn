@@ -113,7 +113,7 @@ namespace qbook.Net
 
         public static async Task HidePage(PipeCommand command)
         {
-
+            Debug.WriteLine(command.Command + ": " + string.Join(",",command.Args));
             await Task.Run(() =>
             {
                 try

@@ -939,8 +939,15 @@ namespace QB.Controls
             OkAction?.Invoke();
         }
 
-
-        public Dictionary<object, BoxParameterStyle> Parameters = new Dictionary<object, BoxParameterStyle>();
+        public Dictionary<object, BoxParameterStyle> _Parameters = new Dictionary<object, BoxParameterStyle>();
+        public Dictionary<object, BoxParameterStyle> Parameters
+        {
+            get { return _Parameters; }
+            set             
+            {
+                _Parameters = new Dictionary<object, BoxParameterStyle>(value);
+            }
+        }
 
 
         double RowHeight = 10;

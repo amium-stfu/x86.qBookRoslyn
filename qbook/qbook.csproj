@@ -61,10 +61,10 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>..\setup\bin\qbook\</OutputPath>
+    <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
+    <WarningLevel>5</WarningLevel>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationIcon>appicon.main2.ico</ApplicationIcon>
@@ -754,6 +754,7 @@
     <Compile Include="License\HardwareInfo.cs" />
     <Compile Include="License\License2.cs" />
     <Compile Include="License\Licensing.cs" />
+    <Compile Include="Studio\BookBuilder.cs" />
     <Compile Include="Studio\BookRuntime.cs" />
     <Compile Include="RoslynServices\RoslynService.cs" />
     <Compile Include="Studio\BookThread.cs" />
@@ -798,6 +799,7 @@
       <DependentUpon>NumBlock.cs</DependentUpon>
     </Compile>
     <Compile Include="UI\UiExtentions.cs" />
+    <Compile Include="VscodeLauncher.cs" />
     <Compile Include="x_Scripting\AutocompleteInfoAttribute.cs" />
     <Compile Include="x_Scripting\FormAutocomplete.cs">
       <SubType>Form</SubType>
@@ -1084,8 +1086,15 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <Deterministic>false</Deterministic>
-    <PostBuildEvent>
-    </PostBuildEvent>
+    <PostBuildEvent>if /I "$(ConfigurationName)"=="Release" (
+    if not exist "$(SolutionDir)Setup\Release\bin\qbook" mkdir "$(SolutionDir)Setup\Release\bin\qbook"
+    xcopy "$(TargetDir)*" "$(SolutionDir)Setup\Release\bin\qbook\" /E /I /Y
+)
+
+if /I "$(ConfigurationName)"=="Debug" (
+    if not exist "$(SolutionDir)Setup\Debug\bin\qbook" mkdir "$(SolutionDir)Setup\Debug\bin\qbook"
+    xcopy "$(TargetDir)*" "$(SolutionDir)Setup\Debug\bin\qbook\" /E /I /Y
+)</PostBuildEvent>
   </PropertyGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>

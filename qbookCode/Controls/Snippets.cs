@@ -55,7 +55,7 @@ internal static class Snippets
     using System.Linq;
     using QB;
 
-    public class {name}()
+    public class {name}
     {{
 
     }}

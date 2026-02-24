@@ -45,6 +45,8 @@ namespace qbookCode
                 Args = args
             });
         }
+
+  
         public class PageDefinition
         {
             public string Name { get; set; }
@@ -402,8 +404,6 @@ namespace qbookCode
 
             sbProgram.AppendLine("\t}");
             sbProgram.AppendLine("}");
-
-
             return sbProgram.ToString();
         }
 

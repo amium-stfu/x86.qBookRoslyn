@@ -79,6 +79,13 @@ namespace qbook
             PipeCommandManager.Start();
         }
 
+        public static string StatusText { get; set; } = "Status:Init";
+
+        public static System.Threading.Timer PipeHeartbeat = new System.Threading.Timer((e) =>
+        {
+            SendToEditor(StatusText, System.DateTime.Now.ToString());
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
+
         public static void SendToEditor(string command, params string[] args)
         {
             ComChannel?.Send(new PipeCommand
@@ -1003,18 +1010,7 @@ using System.Text.Json;
 
 
         }
-        public class PageDefinition
-        {
-            public string Name { get; set; }
-            public string Text { get; set; }
-            public int OrderIndex { get; set; }
-            public bool Hidden { get; set; }
-            public string Format { get; set; }
-            public List<string> Includes { get; set; }
-            public List<string> CodeOrder { get; set; }
-            public string Section { get; set; }
-            public string Url { get; set; }
-        }
+
         internal static oPage oPageFromString(string json)
         {
             var data = JsonConvert.DeserializeObject(json, typeof(PageDefinition)) as PageDefinition;
@@ -1032,29 +1028,6 @@ using System.Text.Json;
             };
         }
 
-        public class qBookDefinition
-        {
-            public string ProjectName { get; set; } = "Unnamed";
-            public string Version { get; set; } = "0.1.0";
-            public string VersionHistory { get; set; } = "";
-            public long VersionEpoch { get; set; } = 0;
-            public bool StartFullScreen { get; set; } = false;
-            public bool HidPageMenuBar { get; set; } = false;
-            public string PasswordAdmin { get; set; } = null; //overrides the default Admin-Password
-            public string PasswordService { get; set; } = null; //overrides the default Service-Password
-            public string PasswordUser { get; set; } = null; //overrides the default User-Password
-            public string Directory { get; set; } = null;
-            public string Filename { get; set; } = null;
-            public string SettingsDirectory { get; set; } = null;
-            public string DataDirectory { get; set; } = null;
-            public string TempDirectory { get; set; } = null;
-            public string BackupDirectory { get; set; } = null;
-            public string Language { get; set; } = null;
-            public List<string> PageOrder { get; set; } = new List<string>();
-
-
-        }
-
         internal static async Task<Book> BookFromFolder(string folderPath, string bookname)
         {
             Debug.WriteLine("BookFromFolder: " + folderPath);
@@ -1066,6 +1039,7 @@ using System.Text.Json;
             var qbook = JsonConvert.DeserializeObject(bookJson, typeof(qBookDefinition)) as qBookDefinition;
 
             newBook.Version = qbook.Version;
+            newBook.ProjectName = qbook.ProjectName;
             newBook.VersionHistory = qbook.VersionHistory;
             newBook.VersionEpoch = qbook.VersionEpoch;
             newBook.StartFullScreen = qbook.StartFullScreen;

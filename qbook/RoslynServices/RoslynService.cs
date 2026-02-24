@@ -725,11 +725,17 @@ namespace qbook
         {
             lock (_docMap)
             {
+              foreach ( var doc in _docMap)
+                {
+                    Debug.WriteLine($"[GetCodeDocument] '{doc.Key}' vs '{fileName}'");  
+                }
+                
                 _docMap.TryGetValue(fileName, out var codeDoc);
                 return codeDoc;
             }
         }
 
+    
         public async Task IncludeDocument(string fileName, string code)
         {
             var projectId = _project.Id;
@@ -742,6 +748,20 @@ namespace qbook
             _adhocWs.AddDocument(projectId, fileName, SourceText.From(code, Encoding.UTF8));
             _project = _adhocWs.CurrentSolution.GetProject(projectId);
             var compilation = await _project.GetCompilationAsync();
+        }
+
+
+        public async Task <string> GetDocumentText(string fileName)
+        {
+            string text = $"Not found {fileName}";
+            var doc = _project.Documents.FirstOrDefault(d => d.Name == fileName);
+            if (doc != null)
+            {
+                var sourceText = await doc.GetTextAsync();
+                text = sourceText.ToString();
+            }
+
+            return text;
         }
 
         public async Task ReactivateDocumentAsync(string fileName, RoslynDocument roslynDoc)

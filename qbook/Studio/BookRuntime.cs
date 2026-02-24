@@ -53,8 +53,8 @@ namespace qbook
         }
         public static void InitializeAll()
         {
+            Core.StatusText = "Status:Rebuild";
             GlobalExceptions.InitRuntimeErrors();
-            Debug.WriteLine("InitializeAll");
             var proj = Core.Roslyn.GetCurrentProject();
             Debug.WriteLine("[Diag] Id  =" + proj?.Id);
             Debug.WriteLine("[Diag] Docs=" + proj?.Documents.Count());
@@ -80,10 +80,13 @@ namespace qbook
                 catch (TargetInvocationException tex)
                 {
                     QB.GlobalExceptions.LogRichException("Program.Initialize (global)", tex.InnerException ?? tex);
+                  
+                    Core.StatusText = "Alert:Rebuild";
                 }
                 catch (Exception ex)
                 {
                     QB.GlobalExceptions.LogRichException("Program.Initialize (global)", ex);
+                    Core.StatusText = "Alert:Rebuild";
                 }
             }
         }
@@ -106,10 +109,13 @@ namespace qbook
                     {
                         runGlobal.Invoke(null, null);
                     }, rethrow: true);
+                
+                    Core.StatusText = "Status:Run";
                 }
                 catch (Exception ex)
                 {
                     GlobalExceptions.Handle(ex, "Program.Run Reflection");
+                    Core.StatusText = "Alert:Run";
                 }
 
             }
@@ -119,8 +125,8 @@ namespace qbook
         {
 
             if (Core.ThisBook == null) return;
-        
 
+            Core.StatusText = "Status:Stop";
             QB.Logger.Debug("=== PageRuntime.DestroyAll() start ===");
 
             // 1️⃣ Altes Script-System stoppen (CSScript)
@@ -133,6 +139,7 @@ namespace qbook
             catch (Exception ex)
             {
                 QB.Logger.Error($"Core.CsScript_Destroy() failed: {ex.Message}");
+                Core.StatusText = "Alert:Stop";
             }
 
             // 2️⃣ Wenn QB.Program existiert, dessen statische Destroy() aufrufen
@@ -145,6 +152,7 @@ namespace qbook
             catch (Exception ex)
             {
                 QB.Logger.Debug($"QB.Program.Destroy() failed: {ex.Message}");
+                Core.StatusText = "Alert:Stop"  ;
             }
 
         

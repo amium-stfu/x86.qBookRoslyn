@@ -6,6 +6,7 @@ using QB.Controls;
 using qbook.CodeEditor;
 using qbook.Controls;
 using qbook.Net;
+using qbook.Studio;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -22,6 +23,7 @@ using System.Threading.Tasks;
 using System.Web;
 using System.Windows.Forms;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
+
 
 namespace qbook
 {
@@ -2407,7 +2409,7 @@ namespace qbook
 
         private static string GetExePath(bool released)
         {
-
+            
 
             string baseDir = AppContext.BaseDirectory; // ...\bin\qbook\
             string binDir = Directory.GetParent(baseDir)!.FullName;           // ...\bin\
@@ -2429,9 +2431,33 @@ namespace qbook
 
         private void newEditorToolStripMenuItem_Click(object sender, EventArgs e)
         {
-
+           // BookBuilder.CreateBook("T:\\qbooksave\\Demo", "TestBook");
+      
             string name = Core.ThisBook.Filename.Replace(".qbook", ".csproj");
             string path = Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename.Replace(".qbook", ".code"), name);
+
+            PipeNames.SavePipesToFile(Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename.Replace(".qbook", ".code"), "pipes.json"));
+
+
+            string codePath = Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename.Replace(".qbook", ".code"));
+
+            //var VSCloader = new ProcessStartInfo
+            //{
+            //    FileName = "code",
+            //    Arguments = $"\"{codePath}\"",
+            //    UseShellExecute = false, // true wenn du z.B. Explorer öffnen willst
+            //    CreateNoWindow = true   // true, wenn kein Fenster angezeigt werden soll
+            //};
+
+
+            //Process.Start(VSCloader);
+
+            VsCodeLauncher.OpenFolder(codePath);
+
+
+
+
+            return;
 
             string exePath = string.Empty;
 

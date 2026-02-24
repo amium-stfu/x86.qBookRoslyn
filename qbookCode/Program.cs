@@ -87,8 +87,8 @@ namespace qbookCode
         static void Main(string[] args)
         {
             RuntimeManager.InitRuntimeErrors();
-
             ApplicationConfiguration.Initialize();
+
             Logger.UiContext = SynchronizationContext.Current!;
             Thread uiThread = new Thread(() =>
             {
@@ -97,8 +97,10 @@ namespace qbookCode
                     PipeNames.Server = args[1];
                     PipeNames.Client = args[2];
                     RunWithSplash(args[0]);
-                    
-   
+                }
+                else
+                {
+                    RunWithSplash(string.Empty);
                 }
             });
 
@@ -140,8 +142,6 @@ namespace qbookCode
             }
 
             Debug.WriteLine(inputPath);
-
-
 
             using (var splash = new FormExplorerSplashScreen())
             {
