@@ -3,16 +3,19 @@
   "displayName": "amium qBook",
   "publisher": "amium",
   "description": "qbook bridge",
-  "version": "0.0.1",
+  "version": "2026.225.1947",
   "engines": {
-    "vscode": "^1.40.0"
+    "vscode": "^1.109.0"
   },
   "categories": [
     "Other"
   ],
   "main": "./out/extension.js",
+  "repository": {
+    "type": "git",
+    "url": "https://example.com/amium-qbook.git"
+  },
   "activationEvents": [
-    "*",
     "onView:amium-qbook.panel",
     "onCommand:amium-qbook.bridge"
   ],
@@ -70,7 +73,8 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "version:bump": "node scripts/bumpVersion.cjs"
   },
   "devDependencies": {
     "@types/vscode": "^1.109.0",

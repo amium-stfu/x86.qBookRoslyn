@@ -19,6 +19,11 @@ call npm run compile
 if errorlevel 1 goto :error
 
 echo.
+echo === Bump extension version ===
+call npm run version:bump
+if errorlevel 1 goto :error
+
+echo.
 echo === Package VS Code extension (VSIX) ===
 rem vsce ueber npx ausfuehren (kein globales Install nötig)
 call npx vsce package
