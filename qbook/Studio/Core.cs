@@ -47,6 +47,9 @@ using static log4net.Appender.ColoredConsoleAppender;
 
 namespace qbook
 {
+   
+    
+    
     public class Core
     {
         public static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
@@ -55,17 +58,25 @@ namespace qbook
         public static AdhocWorkspace Workspace => Roslyn.GetWorkspace;
         public static ProjectId Id => Roslyn.GetProjectId;
 
-        private static ServerSide ComChannel;
+        public static ServerSide ComChannel;
 
         public static void InitPipeCom()
         {
             PipeNames.ResetPipes();  //neue Pipe-Namen generieren
             ComChannel = new ServerSide();
+
+            // Bridge vom QB-Layer in den Editor legen
+            QB.QbookInterop.SendToEditor = (command, args) =>
+            {
+                SendToEditor(command, args);
+            };
+
             ComChannel.OnReceived += (evt) =>
             {
-              PipeCommandManager.EnqueueCommand(evt);   // Event von Runtime -> im UI (user interface) anzeigen
-              Debug.WriteLine($"{System.DateTime.Now.ToString()}: Editor -> : {evt.Command}");
+                PipeCommandManager.EnqueueCommand(evt);   // Event von Runtime -> im UI (user interface) anzeigen
+                Debug.WriteLine($"{System.DateTime.Now.ToString()}: Editor -> : {evt.Command}");
             };
+
             PipeCommandManager.RegisterCommandHandler("Rebuild", async cmd => await PipeCommands.Rebuild());
             PipeCommandManager.RegisterCommandHandler("PageText", async cmd => await PipeCommands.PageText(cmd));
             PipeCommandManager.RegisterCommandHandler("PageFormat", async cmd => await PipeCommands.PageFormat(cmd));

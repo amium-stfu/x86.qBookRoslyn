@@ -3,6 +3,7 @@ using log4net;
 using log4net.Appender;
 using log4net.Core;
 using QB.Controls;
+using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq.Expressions;
@@ -669,18 +670,25 @@ namespace QB
         public static void Error(string text, string style = null)
         {
             addLog('E', text, style);
+            QB.QbookInterop.Send("LogError", text);
         }
         public static void Warn(string text, string style = null)
         {
             addLog('W', text, style);
+            QB.QbookInterop.Send("LogWarn", text);
         }
         public static void Info(string text, string style = null)
         {
             addLog('I', text, style);
+            QB.QbookInterop.Send("LogInfo", text);
+
+
+
         }
         public static void Debug(string text, string style = null)
         {
             addLog('D', text, style);
+            QB.QbookInterop.Send("LogDebug", text);
         }
 
 
@@ -738,7 +746,7 @@ namespace QB
             }
         }
 
-
+        
 
         public static void InvalidateLog()
         {
@@ -775,6 +783,28 @@ namespace QB
         public static double add(double a, double b)
         {
             return a + b;
+        }
+    }
+
+    /// <summary>
+    /// Brücke vom Script-Layer (QB) zum Host (qbook-Editor).
+    /// Der Host setzt die Delegates beim Start.
+    /// </summary>
+    public static class QbookInterop
+    {
+        /// <summary>
+        /// Wird vom Host (qbook) gesetzt, um Kommandos an den Editor zu senden.
+        /// </summary>
+        public static Action<string, string[]> SendToEditor { get; set; }
+
+        public static void Send(string command, params string[] args)
+        {
+            var handler = SendToEditor;
+            if (handler != null)
+            {
+                handler(command, args);
+            }
+            // Optional: else Logging/Fehlerbehandlung
         }
     }
 

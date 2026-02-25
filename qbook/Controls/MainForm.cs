@@ -2453,12 +2453,8 @@ namespace qbook
 
             //Process.Start(VSCloader);
 
-            VsCodeLauncher.OpenFolder(codePath);
-
-
-
-
-            return;
+            if(VsCodeLauncher.OpenFolder(codePath))
+                return;
 
             string exePath = string.Empty;
 

@@ -20,11 +20,13 @@ type ActivePipeConfiguration = {
 let activePipeBridge: PipeBridge | undefined;
 let activePipeSubscription: vscode.Disposable | undefined;
 let pipeOutputChannel: vscode.OutputChannel | undefined;
+let runtimeLogChannel: vscode.LogOutputChannel | undefined;
 let currentPipeConfig: ActivePipeConfiguration | undefined;
 let lastProjectRoot: vscode.Uri | undefined;
 let pipeConnectionState: PipeConnectionState = 'disconnected';
 let activePipeStatusSubscription: vscode.Disposable | undefined;
 let viewProviderRef: QBookViewProvider | undefined;
+let extensionContextRef: vscode.ExtensionContext | undefined;
 
 type BridgeMessage = {
   type?:
@@ -110,8 +112,10 @@ type RuntimeSignal = {
 };
 
 type RuntimeButtonState = Record<RuntimeButtonId, RuntimeSignalKind | null>;
+type RuntimeLogLevel = 'debug' | 'info' | 'error' | 'fatal';
 
 export function activate(context: vscode.ExtensionContext): void {
+  extensionContextRef = context;
   const viewProvider = new QBookViewProvider(context);
   viewProviderRef = viewProvider;
   viewProviderRef.updatePipeStatus(pipeConnectionState);
@@ -320,14 +324,84 @@ function disposeActivePipeBridge(): void {
 function broadcastPipeStatus(status: PipeConnectionState): void {
   pipeConnectionState = status;
   viewProviderRef?.updatePipeStatus(status);
+  if (status === 'connected') {
+    const runtimeChannel = getRuntimeLogChannel();
+    runtimeChannel?.show(true);
+  }
 }
 
 function handleIncomingPipeCommand(command: PipeCommandPayload): void {
+  if (handleRuntimeLogCommand(command)) {
+    return;
+  }
   const signal = parseRuntimeSignal(command);
   if (!signal) {
     return;
   }
   viewProviderRef?.notifyRuntimeSignal(signal, command);
+}
+
+function handleRuntimeLogCommand(command: PipeCommandPayload): boolean {
+  const level = normalizeRuntimeLogCommand(command?.Command);
+  if (!level) {
+    return false;
+  }
+
+  const message = extractRuntimeLogMessage(command.Args);
+  logRuntimeMessage(level, message);
+  return true;
+}
+
+function normalizeRuntimeLogCommand(value?: string): RuntimeLogLevel | undefined {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized) {
+    return undefined;
+  }
+
+  if (normalized === 'loginfo') {
+    return 'info';
+  }
+  if (normalized === 'logerror') {
+    return 'error';
+  }
+  if (normalized === 'logfatal' || normalized === 'logifatal') {
+    return 'fatal';
+  }
+  if (normalized === 'logdebug' || normalized === 'logidebug') {
+    return 'debug';
+  }
+
+  return undefined;
+}
+
+function extractRuntimeLogMessage(args?: string[]): string {
+  if (!Array.isArray(args) || args.length === 0) {
+    return '';
+  }
+  const firstWithContent = args.find((entry) => typeof entry === 'string' && entry.trim().length > 0);
+  return (firstWithContent ?? args[0] ?? '').toString();
+}
+
+function logRuntimeMessage(level: RuntimeLogLevel, rawMessage: string): void {
+  const channel = getRuntimeLogChannel();
+  if (!channel) {
+    return;
+  }
+  const message = rawMessage?.trim().length ? rawMessage : '(keine Nachricht)';
+  switch (level) {
+    case 'debug':
+      channel.debug(message);
+      break;
+    case 'info':
+      channel.info(message);
+      break;
+    case 'error':
+      channel.error(message);
+      break;
+    case 'fatal':
+      channel.error(`[FATAL] ${message}`);
+      break;
+  }
 }
 
 function extractRuntimeTimestamp(args?: string[]): string | undefined {
@@ -544,6 +618,17 @@ function getPipeOutputChannel(context: vscode.ExtensionContext): vscode.OutputCh
   return pipeOutputChannel;
 }
 
+function getRuntimeLogChannel(): vscode.LogOutputChannel | undefined {
+  if (!extensionContextRef) {
+    return undefined;
+  }
+  if (!runtimeLogChannel) {
+    runtimeLogChannel = vscode.window.createOutputChannel('qBook Runtime', { log: true });
+    extensionContextRef.subscriptions.push(runtimeLogChannel);
+  }
+  return runtimeLogChannel;
+}
+
 function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): string {
   const nonce = createNonce();
   const cspSource = webview.cspSource;
@@ -705,23 +790,25 @@ function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): string {
 
     .tree-header-row {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+      width: 100%;
     }
 
     .tree-header {
       font-weight: 600;
       font-size: 13px;
-      letter-spacing: 0.03em;
-      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      text-transform: none;
       color: var(--vscode-foreground);
       opacity: 0.8;
     }
 
     .icon-button {
-      width: 28px;
-      height: 28px;
+      width: 32px;
+      height: 32px;
+      flex: 0 0 auto;
       border-radius: 4px;
       border: 1px solid var(--vscode-input-border, #666);
       background: var(--vscode-input-background);
@@ -730,8 +817,17 @@ function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): string {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 16px;
+      font-size: 18px;
       line-height: 1;
+      padding: 0;
+      aspect-ratio: 1 / 1;
+    }
+
+    .tree-header-row .icon-button {
+      width: 100%;
+      height: 36px;
+      margin-left: 0;
+      aspect-ratio: auto;
     }
 
     .icon-button:hover {
@@ -774,8 +870,22 @@ function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): string {
       font-weight: 600;
       outline: none;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 6px;
+    }
+
+    .tree summary .page-meta {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .tree summary .page-title {
+      min-width: 0;
+      word-break: break-word;
     }
 
     .tree .drag-handle {
@@ -890,6 +1000,15 @@ function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): string {
       flex-direction: column;
     }
 
+    #contextMenu,
+    #subnodeMenu {
+      max-width: none;
+      background: var(--vscode-editor-background, rgba(255, 255, 255, 0.08));
+      border-color: rgba(255, 255, 255, 0.18);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+      padding: 16px;
+    }
+
     .context-menu .menu-header {
       display: flex;
       justify-content: space-between;
@@ -949,13 +1068,17 @@ function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): string {
 
     .context-menu .menu-actions {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       gap: 8px;
       margin-top: 4px;
     }
 
     .context-menu .menu-actions button {
       width: 100%;
+    }
+
+    #newPageMenu .menu-actions {
+      grid-template-columns: 1fr;
     }
 
     .context-menu .menu-actions button.full-width {
@@ -1110,6 +1233,7 @@ function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): string {
     const subnodeDeleteBtn = document.getElementById('subnodeDeleteBtn');
     const subnodeMenuClose = document.getElementById('subnodeMenuClose');
     const visibilityRadios = Array.from(document.querySelectorAll('input[name="visibility"]'));
+    const treeContainer = document.querySelector('.tree');
 
     const treeState = {
       selectedPath: null,
@@ -1454,6 +1578,26 @@ function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): string {
       element.style.top = posY + 'px';
     }
 
+    function positionNodeMenu(element, anchorY) {
+      if (!element) {
+        return;
+      }
+      if (!(treeContainer instanceof HTMLElement)) {
+        positionMenuElement(element, 12, anchorY);
+        return;
+      }
+      const rect = treeContainer.getBoundingClientRect();
+      const menuHeight = element.offsetHeight || 260;
+      const top = Math.max(8, Math.min(anchorY, window.innerHeight - menuHeight - 8));
+      element.style.left = rect.left + 'px';
+      element.style.top = top + 'px';
+      const targetWidth = Math.max(rect.width, 0);
+      element.style.width = targetWidth + 'px';
+      element.style.minWidth = targetWidth + 'px';
+      element.style.maxWidth = targetWidth + 'px';
+      element.style.boxSizing = 'border-box';
+    }
+
     function updateBackdropVisibility() {
       const pageMenuVisible = Boolean(contextMenu && contextMenu.classList.contains('visible'));
       const subnodeMenuVisible = Boolean(subnodeMenu && subnodeMenu.classList.contains('visible'));
@@ -1467,6 +1611,13 @@ function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): string {
 
     function closeContextMenu() {
       contextMenu?.classList.remove('visible');
+      if (contextMenu) {
+        contextMenu.style.width = '';
+        contextMenu.style.left = '';
+        contextMenu.style.top = '';
+        contextMenu.style.minWidth = '';
+        contextMenu.style.maxWidth = '';
+      }
       menuState.folder = null;
       menuState.page = null;
       updateBackdropVisibility();
@@ -1479,11 +1630,25 @@ function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): string {
       }
       subnodeState.page = null;
       subnodeState.fileName = null;
+      if (subnodeMenu) {
+        subnodeMenu.style.width = '';
+        subnodeMenu.style.left = '';
+        subnodeMenu.style.top = '';
+        subnodeMenu.style.minWidth = '';
+        subnodeMenu.style.maxWidth = '';
+      }
       updateBackdropVisibility();
     }
 
     function closeNewMenu() {
       newPageMenu?.classList.remove('visible');
+      if (newPageMenu) {
+        newPageMenu.style.width = '';
+        newPageMenu.style.minWidth = '';
+        newPageMenu.style.maxWidth = '';
+        newPageMenu.style.left = '';
+        newPageMenu.style.top = '';
+      }
       updateBackdropVisibility();
     }
 
@@ -1531,7 +1696,7 @@ function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): string {
       updateBackdropVisibility();
 
       requestAnimationFrame(() => {
-        positionMenuElement(contextMenu, event.clientX, event.clientY);
+        positionNodeMenu(contextMenu, event.clientY);
         if (contextMenu) {
           contextMenu.style.visibility = 'visible';
         }
@@ -1588,7 +1753,7 @@ function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): string {
       updateBackdropVisibility();
 
       requestAnimationFrame(() => {
-        positionMenuElement(subnodeMenu, event.clientX, event.clientY);
+        positionNodeMenu(subnodeMenu, event.clientY);
         if (subnodeMenu) {
           subnodeMenu.style.visibility = 'visible';
         }
@@ -1626,11 +1791,8 @@ function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): string {
       newPageMenu.classList.add('visible');
       updateBackdropVisibility();
       requestAnimationFrame(() => {
+        positionNodeMenu(newPageMenu, btnAddPage.getBoundingClientRect().bottom + 4);
         if (newPageMenu) {
-          const anchorRect = btnAddPage.getBoundingClientRect();
-          const anchorX = anchorRect.left + anchorRect.width / 2;
-          const anchorY = anchorRect.bottom + 4;
-          positionMenuElement(newPageMenu, anchorX, anchorY);
           newPageMenu.style.visibility = 'visible';
         }
       });
@@ -1759,9 +1921,11 @@ function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): string {
                 .join('')
             : '';
           const pageLabel = encodeHtml(node.page ?? '');
-          const hiddenIcon = node.metadata?.hidden
+          const hiddenBadge = node.metadata?.hidden
             ? '<span class="badge hidden" title="Hidden">Hidden</span>'
             : '';
+          const pageMeta =
+            '<div class="page-meta"><span class="page-title">' + pageLabel + '</span>' + hiddenBadge + '</div>';
           const normalizedPage = encodeAttr(node.page ?? '');
           const dragHandle =
             '<span class="drag-handle" draggable="true" data-page="' +
@@ -1786,10 +1950,7 @@ function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): string {
             summaryAttributes +
             '>' +
             dragHandle +
-            '<span>' +
-            pageLabel +
-            '</span>' +
-            hiddenIcon +
+            pageMeta +
             '</summary><ul>' +
             children +
             '</ul></details>'
