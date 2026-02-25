@@ -1,17 +1,18 @@
 {
   "name": "amium-qbook",
   "displayName": "amium qBook",
-  "publisher": "amium", 
+  "publisher": "amium",
   "description": "qbook bridge",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.109.0"
+    "vscode": "^1.40.0"
   },
   "categories": [
     "Other"
   ],
   "main": "./out/extension.js",
   "activationEvents": [
+    "*",
     "onView:amium-qbook.panel",
     "onCommand:amium-qbook.bridge"
   ],
@@ -22,13 +23,22 @@
         "title": "Open qBook Panel"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "amium-qbook",
+          "title": "qBook",
+          "icon": "media/icon.qbook.Gray.png"
+        }
+      ]
+    },
     "views": {
-      "explorer": [
+      "amium-qbook": [
         {
           "id": "amium-qbook.panel",
           "name": "qBook Bridge",
-          "type": "webview",
-          "icon": "media/qbook-view.svg"
+          "icon": "media/icon.qbook.Gray.png",
+          "type": "webview"
         }
       ]
     },

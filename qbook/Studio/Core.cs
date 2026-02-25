@@ -57,7 +57,6 @@ namespace qbook
 
         private static ServerSide ComChannel;
 
-
         public static void InitPipeCom()
         {
             PipeNames.ResetPipes();  //neue Pipe-Namen generieren
@@ -110,6 +109,7 @@ namespace qbook
             ////WidgetPlugin
             //"wButton", "wGauge",
         }).ToList();
+
 
         //2025-09_23 STFU: new location for ProgramMainCode
         public static string ProgramWorkingDir = null;
@@ -379,143 +379,144 @@ using System.Text.Json.Serialization;
 using System.Text.Json;
 ";
 
-        internal static string GetUsingsCode(Book book = null)
-        {
-            if (book == null)
-                book = qbook.Core.ThisBook;
+        //internal static string GetUsingsCode(Book book = null)
+        //{
+        //    if (book == null)
+        //        book = qbook.Core.ThisBook;
 
-            List<string> usingList = new List<string>();
-            foreach (var page in book.Main.Objects)
-            {
-                string pageCode = page.CsCode;
-                pageCode = pageCode.Replace("using @__default_usings__;", DefaultUsings);
-                usingList.AddRange(ScriptHelpers.GetUsingsFromCode(pageCode)); //.CsCodeHeader));
-            }
-            usingList = usingList.Distinct().ToList();
-            string usingsCode = string.Join("\r\n", usingList.Select(i => "using " + i + ";"));
+        //    List<string> usingList = new List<string>();
+        //    foreach (var page in book.Main.Objects)
+        //    {
+        //        string pageCode = page.CsCode;
+        //        pageCode = pageCode.Replace("using @__default_usings__;", DefaultUsings);
+        //        usingList.AddRange(ScriptHelpers.GetUsingsFromCode(pageCode)); //.CsCodeHeader));
+        //    }
+        //    usingList = usingList.Distinct().ToList();
+        //    string usingsCode = string.Join("\r\n", usingList.Select(i => "using " + i + ";"));
 
-            return usingsCode;
-        }
-        internal static string CsScriptCombineCode(Book book = null)
-        {
-            if (book == null)
-                book = qbook.Core.ThisBook;
+        //    return usingsCode;
+        //}
 
-            string programMain = qbook.Core.ProgramMainCode;
+        //internal static string CsScriptCombineCode(Book book = null)
+        //{
+        //    if (book == null)
+        //        book = qbook.Core.ThisBook;
 
-            Regex includeMatchRegex = new Regex(@"\n\s*//\+include (?<include>.*)");
+        //    string programMain = qbook.Core.ProgramMainCode;
 
-            //2) join all pages' code
-            string code = "";
-            foreach (var page in book.Main.Objects)
-            {
-                //code += "\r\n\r\n//=== class '" + page.FullName + $"' === ////cs:{page.FullName}@ln:0\r\n";
-                if (false) //CsCode + add all CsCodeExtras before footer
-                {
-                    code += "\r\n\r\n//=== class '" + page.FullName + $"' === ////cs:{page.FullName}@ln:0\r\n";
-                    code += "public class @class_" + page.FullName + " {";
-                    code += "\r\nprivate static string _classpath_ = \"" + page.FullName + "\";";
-                    code += "\r\n" + ScriptHelpers.StripUsingsFromCode(page.CsCode, out int offset);
-                    foreach (var subCode in page.CsCodeExtra)
-                    {
-                        //--- Page.sub 'p2' ---
-                        code += "\r\n\r\n//=== Page.sub '" + page.FullName + "." + subCode.Key + "' ===";
-                        code += "\r\n" + subCode.Value;
-                        code += "\r\n//=== \\Page.sub '" + page.FullName + "." + subCode.Key + "' ===";
-                    }
-                    code += "\r\n}";
-                }
+        //    Regex includeMatchRegex = new Regex(@"\n\s*//\+include (?<include>.*)");
 
-                if (true) //CsCode + CsCodeExtras added using //+include nameOfPage -> relative: name or ./name or absolute: /root/page2/name
-                {
-                    //string pageCode = page.CsCode;
-                    string pageCode = page.CsCode;
+        //    //2) join all pages' code
+        //    string code = "";
+        //    foreach (var page in book.Main.Objects)
+        //    {
+        //        //code += "\r\n\r\n//=== class '" + page.FullName + $"' === ////cs:{page.FullName}@ln:0\r\n";
+        //        if (false) //CsCode + add all CsCodeExtras before footer
+        //        {
+        //            code += "\r\n\r\n//=== class '" + page.FullName + $"' === ////cs:{page.FullName}@ln:0\r\n";
+        //            code += "public class @class_" + page.FullName + " {";
+        //            code += "\r\nprivate static string _classpath_ = \"" + page.FullName + "\";";
+        //            code += "\r\n" + ScriptHelpers.StripUsingsFromCode(page.CsCode, out int offset);
+        //            foreach (var subCode in page.CsCodeExtra)
+        //            {
+        //                //--- Page.sub 'p2' ---
+        //                code += "\r\n\r\n//=== Page.sub '" + page.FullName + "." + subCode.Key + "' ===";
+        //                code += "\r\n" + subCode.Value;
+        //                code += "\r\n//=== \\Page.sub '" + page.FullName + "." + subCode.Key + "' ===";
+        //            }
+        //            code += "\r\n}";
+        //        }
 
-                    //perform important auto-upgrad-code changes here:
-                    pageCode = pageCode.Replace("Main.QB.Logger.", "QB.Logger.");
-                    page.CsCode = pageCode;
-                    //-end- perform important auto-upgrad-code changes here
+        //        if (true) //CsCode + CsCodeExtras added using //+include nameOfPage -> relative: name or ./name or absolute: /root/page2/name
+        //        {
+        //            //string pageCode = page.CsCode;
+        //            string pageCode = page.CsCode;
 
-                    /*HALE:temp?*/
-                    pageCode = pageCode.Replace("using @__default_usings__;", DefaultUsings);
-                    /*HALE:temp?*/
-                    pageCode = pageCode.Replace("@__page__", $"_page_{(page.FullName.Replace('.', '_'))}");
-                    pageCode = ScriptHelpers.StripUsingsFromCode(pageCode, out int offset);
-                    code += "\r\n\r\n//=== class '" + page.FullName + $"' === ////cs:{page.FullName}@ln:{offset}\r\n";
-                    //MatchEvaluator ReplaceCodeIncludeEvaluator = new MatchEvaluator(ReplaceCodeInclude);
-                    //var pageCode2 = includeMatchRegex.Replace(pageCode, ReplaceCodeIncludeEvaluator);
-                    var pageCode2 = includeMatchRegex.Replace(pageCode, match => ReplaceCodeInclude(match, page.FullName));
-                    code += pageCode2;
-                }
-                code += "\r\n//=== \\Class '" + page.FullName + "' ===\r\n";
-            }
+        //            //perform important auto-upgrad-code changes here:
+        //            pageCode = pageCode.Replace("Main.QB.Logger.", "QB.Logger.");
+        //            page.CsCode = pageCode;
+        //            //-end- perform important auto-upgrad-code changes here
 
-            return code;
-        }
+        //            /*HALE:temp?*/
+        //            pageCode = pageCode.Replace("using @__default_usings__;", DefaultUsings);
+        //            /*HALE:temp?*/
+        //            pageCode = pageCode.Replace("@__page__", $"_page_{(page.FullName.Replace('.', '_'))}");
+        //            pageCode = ScriptHelpers.StripUsingsFromCode(pageCode, out int offset);
+        //            code += "\r\n\r\n//=== class '" + page.FullName + $"' === ////cs:{page.FullName}@ln:{offset}\r\n";
+        //            //MatchEvaluator ReplaceCodeIncludeEvaluator = new MatchEvaluator(ReplaceCodeInclude);
+        //            //var pageCode2 = includeMatchRegex.Replace(pageCode, ReplaceCodeIncludeEvaluator);
+        //            var pageCode2 = includeMatchRegex.Replace(pageCode, match => ReplaceCodeInclude(match, page.FullName));
+        //            code += pageCode2;
+        //        }
+        //        code += "\r\n//=== \\Class '" + page.FullName + "' ===\r\n";
+        //    }
+
+        //    return code;
+        //}
 
         static AppDomain scriptDomain = null;
-        static string ReplaceCodeInclude(Match m, string pathToPage = "")
-        {
-            if (!m.Groups[1].Success)
-                return m.ToString();
-            else
-            {
-                string key = m.Groups["include"].Value.Trim();
-                string fullName = null;
-                //string fullName = key.Substring(1).Replace('/', '.');
-                if (key.StartsWith("/")) // || key.StartsWith("."))
-                {
-                    //absolute
-                    fullName = key.Substring(1).Replace('/', '.');
-                }
-                else
-                {
-                    //relative
-                    if (key.StartsWith("./"))
-                        key = key.Substring(2);
-                    fullName = pathToPage + "/" + key;
-                    fullName = fullName.TrimStart(new char[] { '/', '.' });
-                }
-                fullName = fullName.Replace('/', '.');
+        //static string ReplaceCodeInclude(Match m, string pathToPage = "")
+        //{
+        //    if (!m.Groups[1].Success)
+        //        return m.ToString();
+        //    else
+        //    {
+        //        string key = m.Groups["include"].Value.Trim();
+        //        string fullName = null;
+        //        //string fullName = key.Substring(1).Replace('/', '.');
+        //        if (key.StartsWith("/")) // || key.StartsWith("."))
+        //        {
+        //            //absolute
+        //            fullName = key.Substring(1).Replace('/', '.');
+        //        }
+        //        else
+        //        {
+        //            //relative
+        //            if (key.StartsWith("./"))
+        //                key = key.Substring(2);
+        //            fullName = pathToPage + "/" + key;
+        //            fullName = fullName.TrimStart(new char[] { '/', '.' });
+        //        }
+        //        fullName = fullName.Replace('/', '.');
 
-                foreach (var page in qbook.Core.ThisBook.Main.Objects.OfType<oPage>())
-                {
-                    if (page.FullName == fullName)
-                    {
-                        //found as page-code
-                        return ""
-                            //+ "\r\n" 
-                            + m.Groups[0].Value.Trim() + $" --- start --- ////cs:{fullName}@ln:1"
-                            + "\r\n"
-                            + page.CsCode
-                            + "\r\n"
-                            + m.Groups[0].Value.Trim() + " --- end ---"
-                            + "\r\n";
-                    }
-                    foreach (var subCode in page.CsCodeExtra)
-                    {
-                        if (page.FullName + "." + subCode.Key == fullName)
-                        {
-                            //found in subCode
-                            return ""
-                                //+ "\r\n"  
-                                + m.Groups[0].Value.Trim() + $" --- start --- ////cs:{fullName}@ln:1"
-                                + "\r\n"
-                                + subCode.Value
-                                + "\r\n"
-                                + m.Groups[0].Value.Trim() + " --- end ---"
-                                + "\r\n";
-                        }
-                    }
-                }
-                //not found
-                return m.Groups[0].Value
-                   //+ "\r\n"
-                   + $"//###ERR: code for '{key}' ('{fullName}') not found"
-                   + "\r\n"
-                   + "\r\n";
-            }
-        }
+        //        foreach (var page in qbook.Core.ThisBook.Main.Objects.OfType<oPage>())
+        //        {
+        //            if (page.FullName == fullName)
+        //            {
+        //                //found as page-code
+        //                return ""
+        //                    //+ "\r\n" 
+        //                    + m.Groups[0].Value.Trim() + $" --- start --- ////cs:{fullName}@ln:1"
+        //                    + "\r\n"
+        //                    + page.CsCode
+        //                    + "\r\n"
+        //                    + m.Groups[0].Value.Trim() + " --- end ---"
+        //                    + "\r\n";
+        //            }
+        //            foreach (var subCode in page.CsCodeExtra)
+        //            {
+        //                if (page.FullName + "." + subCode.Key == fullName)
+        //                {
+        //                    //found in subCode
+        //                    return ""
+        //                        //+ "\r\n"  
+        //                        + m.Groups[0].Value.Trim() + $" --- start --- ////cs:{fullName}@ln:1"
+        //                        + "\r\n"
+        //                        + subCode.Value
+        //                        + "\r\n"
+        //                        + m.Groups[0].Value.Trim() + " --- end ---"
+        //                        + "\r\n";
+        //                }
+        //            }
+        //        }
+        //        //not found
+        //        return m.Groups[0].Value
+        //           //+ "\r\n"
+        //           + $"//###ERR: code for '{key}' ('{fullName}') not found"
+        //           + "\r\n"
+        //           + "\r\n";
+        //    }
+        //}
 
         internal static void CsScript_Destroy()
         {
@@ -762,7 +763,7 @@ using System.Text.Json;
                 {
                     Debug.WriteLine("XML detected");
                     ThisBook = Book.Deserialize(fullPath);
-                    await XmlToFolder(fullPath);
+                    await BookBuilder.XmlToFolder(fullPath);
                     QB.Logger.Info($"Opening qbook: {fullPath} from XML-File");
                     File.Copy(fullPath, Path.Combine(backupDir, filename), true); 
                 }
@@ -770,7 +771,7 @@ using System.Text.Json;
                 {
                     Debug.WriteLine("Folder detected");
                     QB.Logger.Info($"Opening qbook: {fullPath} from Folder");
-                    ThisBook = await BookFromFolder(fullPath.Replace(".qbook", ".code"),"");
+                    ThisBook = await BookBuilder.FromFolder(fullPath.Replace(".qbook", ".code"),"");
 
                 }
                 Core.ThisBook.DataDirectory = null;
@@ -843,292 +844,175 @@ using System.Text.Json;
 
         }
 
-        internal static async Task XmlToFolder(string fullPath)
-        {
+        //internal static async Task XmlToFolder(string fullPath)
+        //{
  
-            string root = fullPath.Replace(".qbook", ".code");
-            if (!Directory.Exists(root)) Directory.CreateDirectory(root);
+        //    string root = fullPath.Replace(".qbook", ".code");
+        //    if (!Directory.Exists(root)) Directory.CreateDirectory(root);
 
-            string pageFolder = Path.Combine(root, "Pages");
-            if (!Directory.Exists(pageFolder)) Directory.CreateDirectory(pageFolder);
+        //    string pageFolder = Path.Combine(root, "Pages");
+        //    if (!Directory.Exists(pageFolder)) Directory.CreateDirectory(pageFolder);
 
-            var roslynFiles = new List<(string fileName, string code)>();
-            int pageCount = -1;
-            string firstFile = null;
+        //    var roslynFiles = new List<(string fileName, string code)>();
+        //    int pageCount = -1;
+        //    string firstFile = null;
    
 
-            List<string> Pages = new List<string>();
+        //    List<string> Pages = new List<string>();
 
-            int CodeIndex = 0;
-            int PageIndex = 0;
-            foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
-            {
-                page.CodeOrder.Clear();
-                page.Includes.Clear();
+        //    int CodeIndex = 0;
+        //    int PageIndex = 0;
+        //    foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
+        //    {
+        //        page.CodeOrder.Clear();
+        //        page.Includes.Clear();
 
-                string pageDir = Path.Combine(root, "Pages",page.Name);
-                if (!Directory.Exists(pageDir)) Directory.CreateDirectory(pageDir);
+        //        string pageDir = Path.Combine(root, "Pages",page.Name);
+        //        if (!Directory.Exists(pageDir)) Directory.CreateDirectory(pageDir);
 
-                string className = "Definition" + page.Name + ".qPage";
-                pageCount++;
-                string code = page.CsCode;
+        //        string className = "Definition" + page.Name + ".qPage";
+        //        pageCount++;
+        //        string code = page.CsCode;
 
-                List<string> includes = CutInludesBlock(ref code);
-                string pageCode = "namespace Definition" + page.Name + "{\r\n//<CodeStart>\r\n";
-                pageCode += Regex.Replace(code, @"public class\s+@class_\w+", "public class qPage");
-                pageCode += "\r\n//<CodeEnd>\r\n}";
-                pageCode = ReplaceClassToDefinition(pageCode);
-                string PageFileName = $"{page.Name}.qPage.cs";
-                page.Filename = $"{page.Name}.qPage.cs";
-                File.WriteAllText(Path.Combine(pageDir, PageFileName), pageCode);
-                page.RoslynCodeDoc = Roslyn.AddCodeDocument(PageFileName, pageCode, true);
+        //        List<string> includes = CutInludesBlock(ref code);
+        //        string pageCode = "namespace Definition" + page.Name + "{\r\n//<CodeStart>\r\n";
+        //        pageCode += Regex.Replace(code, @"public class\s+@class_\w+", "public class qPage");
+        //        pageCode += "\r\n//<CodeEnd>\r\n}";
+        //        pageCode = ReplaceClassToDefinition(pageCode);
+        //        string PageFileName = $"{page.Name}.qPage.cs";
+        //        page.Filename = $"{page.Name}.qPage.cs";
+        //        File.WriteAllText(Path.Combine(pageDir, PageFileName), pageCode);
+        //        page.RoslynCodeDoc = Roslyn.AddCodeDocument(PageFileName, pageCode, true);
 
-                Core.ThisBook.PageOrder.Add(page.Name);
-                page.CodeOrder.Add(PageFileName);
+        //        Core.ThisBook.PageOrder.Add(page.Name);
+        //        page.CodeOrder.Add(PageFileName);
 
-                page.OrderIndex = PageIndex;
-                if (firstFile == null)
-                    firstFile = PageFileName;
+        //        page.OrderIndex = PageIndex;
+        //        if (firstFile == null)
+        //            firstFile = PageFileName;
 
-                var lines = code.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-                var usings = lines
-                    .TakeWhile(l => !l.TrimStart().StartsWith("public class"))
-                    .Where(l => l.TrimStart().StartsWith("using"))
-                    .ToList();
+        //        var lines = code.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+        //        var usings = lines
+        //            .TakeWhile(l => !l.TrimStart().StartsWith("public class"))
+        //            .Where(l => l.TrimStart().StartsWith("using"))
+        //            .ToList();
 
-                foreach (var subClass in page.CsCodeExtra)
-                {
-                    string subCode = "\r\n\r\nnamespace Definition" + page.Name
-                        + "\r\n{\r\n//<CodeStart>\r\n"
-                        + string.Join("\r\n", usings)
-                        + subClass.Value
-                        + "\r\n//<CodeEnd>\r\n"
-                        + "\r\n}";
+        //        foreach (var subClass in page.CsCodeExtra)
+        //        {
+        //            string subCode = "\r\n\r\nnamespace Definition" + page.Name
+        //                + "\r\n{\r\n//<CodeStart>\r\n"
+        //                + string.Join("\r\n", usings)
+        //                + subClass.Value
+        //                + "\r\n//<CodeEnd>\r\n"
+        //                + "\r\n}";
 
-                    subCode = ReplaceClassToDefinition(subCode);
-                    string subFileName = $"{page.Name}.{subClass.Key}.cs";
-                    page.CodeOrder.Add(subFileName);
-                    page.SubCodeDocuments[subFileName] = new CodeDocument(subFileName, subCode, false, Roslyn);
+        //            subCode = ReplaceClassToDefinition(subCode);
+        //            string subFileName = $"{page.Name}.{subClass.Key}.cs";
+        //            page.CodeOrder.Add(subFileName);
+        //            page.SubCodeDocuments[subFileName] = new CodeDocument(subFileName, subCode, false, Roslyn);
 
-                    File.WriteAllText(Path.Combine(pageDir, subFileName), subCode);
-                    Debug.WriteLine("   wrote subcode file: " + subFileName);
+        //            File.WriteAllText(Path.Combine(pageDir, subFileName), subCode);
+        //            Debug.WriteLine("   wrote subcode file: " + subFileName);
 
-                    if (includes.Contains(subClass.Key))
-                    {
-                        string file = page.Name + "." + subClass.Key + ".cs";
-                        await page.SubCodeDocuments[file].Include();
-                        page.SubCodeDocuments[file].UpdateCode();
-                        page.Includes.Add(file);
-                    }
-                }
+        //            if (includes.Contains(subClass.Key))
+        //            {
+        //                string file = page.Name + "." + subClass.Key + ".cs";
+        //                await page.SubCodeDocuments[file].Include();
+        //                page.SubCodeDocuments[file].UpdateCode();
+        //                page.Includes.Add(file);
+        //            }
+        //        }
 
-                var dto = new PageDefinition
-                {
-                    Name = page.Name,
-                    Text = page.Text,
+        //        var dto = new PageDefinition
+        //        {
+        //            Name = page.Name,
+        //            Text = page.Text,
 
-                    OrderIndex = page.OrderIndex,
-                    Hidden = page.Hidden,
-                    Format = page.Format,
-                    Includes = page.Includes,
-                    Section = page.Section,
-                    Url = page.Url,
-                    CodeOrder = page.CodeOrder,
+        //            OrderIndex = page.OrderIndex,
+        //            Hidden = page.Hidden,
+        //            Format = page.Format,
+        //            Includes = page.Includes,
+        //            Section = page.Section,
+        //            Url = page.Url,
+        //            CodeOrder = page.CodeOrder,
 
-                };
+        //        };
 
-                string oPageJson = JsonConvert.SerializeObject(dto, Newtonsoft.Json.Formatting.Indented);
-                File.WriteAllText(Path.Combine(pageDir, "oPage.json"), oPageJson);
+        //        string oPageJson = JsonConvert.SerializeObject(dto, Newtonsoft.Json.Formatting.Indented);
+        //        File.WriteAllText(Path.Combine(pageDir, "oPage.json"), oPageJson);
 
-            }
+        //    }
 
-            var sbProgram = new StringBuilder();
-            sbProgram.AppendLine("namespace QB");
-            sbProgram.AppendLine("{");
-            sbProgram.AppendLine("\tpublic static class Program");
-            sbProgram.AppendLine("\t{");
-            foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
-                sbProgram.AppendLine($"\t\tpublic static Definition{page.Name}.qPage {page.Name} {{ get; }} = new Definition{page.Name}.qPage();");
+        //    var sbProgram = new StringBuilder();
+        //    sbProgram.AppendLine("namespace QB");
+        //    sbProgram.AppendLine("{");
+        //    sbProgram.AppendLine("\tpublic static class Program");
+        //    sbProgram.AppendLine("\t{");
+        //    foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
+        //        sbProgram.AppendLine($"\t\tpublic static Definition{page.Name}.qPage {page.Name} {{ get; }} = new Definition{page.Name}.qPage();");
 
-            sbProgram.AppendLine("\t\tpublic static void Initialize()");
-            sbProgram.AppendLine("\t\t{");
+        //    sbProgram.AppendLine("\t\tpublic static void Initialize()");
+        //    sbProgram.AppendLine("\t\t{");
 
-            foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
-                sbProgram.AppendLine($"\t\t\t{page.Name}.Initialize();");
+        //    foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
+        //        sbProgram.AppendLine($"\t\t\t{page.Name}.Initialize();");
 
-            sbProgram.AppendLine("\t\t}");
+        //    sbProgram.AppendLine("\t\t}");
 
-            sbProgram.AppendLine("\t\tpublic static void Run()");
-            sbProgram.AppendLine("\t\t{");
-            foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
-                sbProgram.AppendLine($"\t\t\t{page.Name}.Run();");
-            sbProgram.AppendLine("\t\t}");
+        //    sbProgram.AppendLine("\t\tpublic static void Run()");
+        //    sbProgram.AppendLine("\t\t{");
+        //    foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
+        //        sbProgram.AppendLine($"\t\t\t{page.Name}.Run();");
+        //    sbProgram.AppendLine("\t\t}");
 
-            sbProgram.AppendLine("\t\tpublic static void Destroy()");
-            sbProgram.AppendLine("\t\t{");
-            foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
-                sbProgram.AppendLine($"\t\t\t{page.Name}.Destroy();");
-            sbProgram.AppendLine("\t\t}");
+        //    sbProgram.AppendLine("\t\tpublic static void Destroy()");
+        //    sbProgram.AppendLine("\t\t{");
+        //    foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
+        //        sbProgram.AppendLine($"\t\t\t{page.Name}.Destroy();");
+        //    sbProgram.AppendLine("\t\t}");
 
-            sbProgram.AppendLine("\t}");
-            sbProgram.AppendLine("}");
+        //    sbProgram.AppendLine("\t}");
+        //    sbProgram.AppendLine("}");
 
-            Roslyn.AddCodeDocument("Program.cs", sbProgram.ToString(), true);
-            Roslyn.AddCodeDocument("GlobalUsing.cs", "global using static QB.Program;\r\n", true);
+        //    Roslyn.AddCodeDocument("Program.cs", sbProgram.ToString(), true);
+        //    Roslyn.AddCodeDocument("GlobalUsing.cs", "global using static QB.Program;\r\n", true);
 
-            File.WriteAllText(Path.Combine(root, "Program.cs"), sbProgram.ToString());
-            File.WriteAllText(Path.Combine(root, "GlobalUsing.cs"), "global using static QB.Program;\r\n");
+        //    File.WriteAllText(Path.Combine(root, "Program.cs"), sbProgram.ToString());
+        //    File.WriteAllText(Path.Combine(root, "GlobalUsing.cs"), "global using static QB.Program;\r\n");
 
-            string name = Path.GetFileNameWithoutExtension(fullPath).Replace(".qbook","");
+        //    string name = Path.GetFileNameWithoutExtension(fullPath).Replace(".qbook","");
 
-            File.WriteAllText(Path.Combine(root, name + ".csproj"), Roslyn.GenerateCsprojString(name));
+        //    File.WriteAllText(Path.Combine(root, name + ".csproj"), Roslyn.GenerateCsprojString(name));
 
-            var project = new qBookDefinition
-            {
-                ProjectName = Core.ThisBook.Filename.Replace(".qbook", ""),
-                Version = Core.ThisBook.Version,
-                VersionHistory = Core.ThisBook.VersionHistory,
-                VersionEpoch = Core.ThisBook.VersionEpoch,
-                StartFullScreen = Core.ThisBook.StartFullScreen,
-                HidPageMenuBar = Core.ThisBook.HidPageMenuBar,
-                PasswordAdmin = Core.ThisBook.PasswordAdmin,
-                PasswordService = Core.ThisBook.PasswordService,
-                PasswordUser = Core.ThisBook.PasswordUser,
-                Directory = Core.ThisBook.Directory,
-                Filename = Core.ThisBook.Filename,
-                SettingsDirectory = Core.ThisBook.SettingsDirectory,
-                DataDirectory = Core.ThisBook.DataDirectory,
-                BackupDirectory = Core.ThisBook.BackupDirectory,
-                TempDirectory = Core.ThisBook.TempDirectory,
-                Language = Core.ThisBook.Language,
-                PageOrder = Core.ThisBook.PageOrder
-            };
+        //    var project = new qBookDefinition
+        //    {
+        //        ProjectName = Core.ThisBook.Filename.Replace(".qbook", ""),
+        //        Version = Core.ThisBook.Version,
+        //        VersionHistory = Core.ThisBook.VersionHistory,
+        //        VersionEpoch = Core.ThisBook.VersionEpoch,
+        //        StartFullScreen = Core.ThisBook.StartFullScreen,
+        //        HidPageMenuBar = Core.ThisBook.HidPageMenuBar,
+        //        PasswordAdmin = Core.ThisBook.PasswordAdmin,
+        //        PasswordService = Core.ThisBook.PasswordService,
+        //        PasswordUser = Core.ThisBook.PasswordUser,
+        //        Directory = Core.ThisBook.Directory,
+        //        Filename = Core.ThisBook.Filename,
+        //        SettingsDirectory = Core.ThisBook.SettingsDirectory,
+        //        DataDirectory = Core.ThisBook.DataDirectory,
+        //        BackupDirectory = Core.ThisBook.BackupDirectory,
+        //        TempDirectory = Core.ThisBook.TempDirectory,
+        //        Language = Core.ThisBook.Language,
+        //        PageOrder = Core.ThisBook.PageOrder
+        //    };
 
-            string bookJson = JsonConvert.SerializeObject(project, Newtonsoft.Json.Formatting.Indented);
-            File.WriteAllText(Path.Combine(root, "Book.json"), bookJson);
-
-
-
-        }
-
-        internal static oPage oPageFromString(string json)
-        {
-            var data = JsonConvert.DeserializeObject(json, typeof(PageDefinition)) as PageDefinition;
-            return new oPage
-            {
-                Name = data.Name,
-                Text = data.Text,
-                OrderIndex = data.OrderIndex,
-                Hidden = data.Hidden,
-                Format = data.Format,
-                Includes = data.Includes ?? new List<string>(),
-                CodeOrder = data.CodeOrder,
-                Section = data.Section,
-                Url = data.Url
-            };
-        }
-
-        internal static async Task<Book> BookFromFolder(string folderPath, string bookname)
-        {
-            Debug.WriteLine("BookFromFolder: " + folderPath);
-            Book newBook = new Book();
-            newBook.Main = new oControl();
-
-            Debug.WriteLine("Read Book.json");
-            string bookJson = File.ReadAllText(Path.Combine(folderPath, "Book.json"));
-            var qbook = JsonConvert.DeserializeObject(bookJson, typeof(qBookDefinition)) as qBookDefinition;
-
-            newBook.Version = qbook.Version;
-            newBook.ProjectName = qbook.ProjectName;
-            newBook.VersionHistory = qbook.VersionHistory;
-            newBook.VersionEpoch = qbook.VersionEpoch;
-            newBook.StartFullScreen = qbook.StartFullScreen;
-            newBook.HidPageMenuBar = qbook.HidPageMenuBar;
-            newBook.PasswordAdmin = qbook.PasswordAdmin;
-            newBook.PasswordService = qbook.PasswordService;
-            newBook.PasswordUser = qbook.PasswordUser;
-            newBook.Directory = qbook.Directory;
-            newBook.Filename = qbook.Filename;
-
-            newBook.Language = qbook.Language;
-            newBook.PageOrder = qbook.PageOrder;
-            newBook.SetDataDirectory(qbook.DataDirectory);
-            newBook.SetSettingsDirectory(qbook.SettingsDirectory);
-            newBook.SetTempDirectory(qbook.TempDirectory);
+        //    string bookJson = JsonConvert.SerializeObject(project, Newtonsoft.Json.Formatting.Indented);
+        //    File.WriteAllText(Path.Combine(root, "Book.json"), bookJson);
 
 
-            List<string> reversePageOrder = newBook.PageOrder.AsEnumerable().Reverse().ToList();
 
-            Debug.WriteLine("Processing Pages...");
-            foreach (string page in reversePageOrder)
-            {
-                Debug.WriteLine(" - " + page);
-            }
+        //}
 
-            List<oPage> pages = new List<oPage>();
-
-            foreach (string page in reversePageOrder)
-            {
-                oPage opage = null;
-                Debug.WriteLine(" -- " + page);
-
-                Debug.WriteLine(" --- read page data");
-                string pageFolder = Path.Combine(folderPath, "Pages", page);
-                Debug.WriteLine(" --- page folder: " + pageFolder);
-                string oPageJson = File.ReadAllText(Path.Combine(pageFolder, "oPage.json"));
-                Debug.WriteLine(" --- deserialize page");
-                opage = oPageFromString(oPageJson);
-                Debug.WriteLine(" --- read page code");
-                string filename = page + ".qPage.cs";
-                Debug.WriteLine(" --- page code file: " + filename);
-                opage.Filename = filename;
-                Debug.WriteLine(" --- read code text");
-                opage.Code = File.ReadAllText(Path.Combine(pageFolder, filename));
-                Debug.WriteLine(" --- add page code to Roslyn");
-                Roslyn.AddCodeDocument(filename, opage.Code, true);
-                Debug.WriteLine(" --- get page code document");
-                opage.RoslynCodeDoc = Roslyn.GetCodeDocument(filename);
- 
-
-                List<string> reverseCodeOrder = opage.CodeOrder.AsEnumerable().Reverse().ToList();
-
-                foreach (string codeFile in reverseCodeOrder)
-                {
-                    if (codeFile.EndsWith("qPage.cs")) continue;
-
-                    Debug.WriteLine(" --- " + codeFile);
-                    string subCode = File.ReadAllText(Path.Combine(pageFolder, codeFile));
-
-                    CodeDocument doc = new CodeDocument(codeFile, subCode, false, Roslyn);
-                  
-                    opage.SubCodeDocuments[codeFile] = doc;
-                    if(opage.Includes.Contains(codeFile))
-                    {
-                        await opage.SubCodeDocuments[codeFile].Include();
-                       
-                    }
-                }
-                Debug.WriteLine(" ---- add page to book: " + opage.Name);
-                pages.Add(opage);
-            }
-            pages.Reverse();
-
-            foreach (oPage p in pages)
-            {
-                newBook.Main.Objects.Add(p);
-            }
-
-            Roslyn.AddCodeDocument("Program.cs", File.ReadAllText(Path.Combine(folderPath, "Program.cs")), true);
-            Roslyn.AddCodeDocument("GlobalUsing.cs", "global using static QB.Program;", true);
-
-            string name = newBook.Filename.Replace(".qbook", "");
-
-            File.WriteAllText(Path.Combine(folderPath, name + ".csproj"), Roslyn.GenerateCsprojString(name));
-
-            QB.Root.ActiveQbook = newBook;
-            return newBook;
-
-        }
+      
         public static async Task SaveInFolder()
         {
             try
@@ -1146,7 +1030,7 @@ using System.Text.Json;
                 string link = "SaveDate: " + System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                 File.WriteAllText(Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename), link);
 
-                await SaveProjectAsync(uri);
+                BookBuilder.SaveBook();
             }
             catch (Exception ex) 
             { 
@@ -1154,193 +1038,9 @@ using System.Text.Json;
                 MessageBox.Show("Save Failed");
             }
         }
-        public static async Task SaveProjectAsync(string newFile = @"T:\qSave")
-        {
-           
-
-            if (!Directory.Exists(newFile))
-                Directory.CreateDirectory(newFile);
-
-            string codeDir = Path.Combine(newFile, "Pages");
-            Directory.CreateDirectory(codeDir);
 
 
-            // 🧩 Projektbeschreibung vorbereiten
-            var project = new qBookDefinition
-            {
-                ProjectName = Core.ThisBook.Filename.Replace(".qbook", ""),
-                Version = Core.ThisBook.Version,
-                VersionHistory = Core.ThisBook.VersionHistory,
-                VersionEpoch = Core.ThisBook.VersionEpoch,
-                StartFullScreen = Core.ThisBook.StartFullScreen,
-                HidPageMenuBar = Core.ThisBook.HidPageMenuBar,
-                PasswordAdmin = Core.ThisBook.PasswordAdmin,
-                PasswordService = Core.ThisBook.PasswordService,
-                PasswordUser = Core.ThisBook.PasswordUser,
-                Directory = Core.ThisBook.Directory,
-                Filename = Core.ThisBook.Filename,
-                SettingsDirectory = Core.ThisBook.SettingsDirectory,
-                DataDirectory = Core.ThisBook.DataDirectory,
-                BackupDirectory = Core.ThisBook.BackupDirectory,
-                TempDirectory = Core.ThisBook.TempDirectory,
-                Language = Core.ThisBook.Language,
-                PageOrder = Core.ThisBook.PageOrder
-            };
 
-            foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
-            {
-                string pageDir = Path.Combine(codeDir, $"{page.Name}");
-                Directory.CreateDirectory(pageDir);
-
-                var temp = await Core.Roslyn.GetDocumentTextAsync(page.Filename);
-                string csCode = temp.ToString();
-                System.IO.File.WriteAllText(Path.Combine(pageDir, page.Filename), csCode);
-
-                foreach(CodeDocument sub in page.SubCodeDocuments.Values)
-                {
-                    temp = await Core.Roslyn.GetDocumentTextAsync(sub.Filename);
-                    if(temp == null)
-                        temp = sub.Code;
-                    csCode = temp.ToString();
-                    System.IO.File.WriteAllText(Path.Combine(pageDir, sub.Filename), csCode);
-                }
-
-                var dto = new PageDefinition
-                {
-                    Name = page.Name,
-                    Text = page.Text,
-
-                    OrderIndex = page.OrderIndex,
-                    Hidden = page.Hidden,
-                    Format = page.Format,
-                    Includes = page.Includes,
-                    Section = page.Section,
-                    Url = page.Url,
-                    CodeOrder = page.CodeOrder,
-
-                };
-
-                string oPageJson = JsonConvert.SerializeObject(dto, Newtonsoft.Json.Formatting.Indented);
-                File.WriteAllText(Path.Combine(pageDir, "oPage.json"), oPageJson);
-            }
-
-            var code = await Core.Roslyn.GetDocumentTextAsync("Program.cs");
-            string path = Path.Combine(newFile, "Program.cs");
-            File.WriteAllText(path, code);
-
-            code = await Core.Roslyn.GetDocumentTextAsync("GlobalUsing.cs");
-            path = Path.Combine(newFile, "GlobalUsing.cs");
-            File.WriteAllText(path, code);
-
-            string bookJson = JsonConvert.SerializeObject(project, Newtonsoft.Json.Formatting.Indented);
-            File.WriteAllText(Path.Combine(newFile, "Book.json"), bookJson);
-
-        }
-        private static List<string> CutInludesBlock(ref string source)
-        {
-            List<string> includes = new List<string>();
-            if (string.IsNullOrWhiteSpace(source)) return includes;
-
-            var regex = new Regex(@"//\+include\s+(\w+)", RegexOptions.Compiled);
-            var lines = source.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-            var newLines = new List<string>();
-            var includeLines = new List<string>();
-            int lineNumber = 0;
-            int includeLineNumber = 0;
-
-            bool inIncludeBlock = false;
-            bool includeStartExists = false;
-            bool includeEndExists = false;
-
-            foreach (var line in lines)
-            {
-                var match = regex.Match(line);
-                if (match.Success)
-                {
-                    includes.Add(match.Groups[1].Value);
-                    includeLines.Add(line);
-                }
-                else
-                {
-                    if (!line.Contains("//<IncludeStart>") && !line.Contains("//<IncludeEnd>"))
-                    {
-                        newLines.Add(line);
-                    }
-
-                }
-
-                if (line.Contains("public class @"))
-                {
-                    includeLineNumber = lineNumber;
-                }
-                //{
-                //    // Stoppe das Sammeln, wenn ein Include-Block bereits existiert
-                //    includeLines.Clear();
-                //}
-                lineNumber++;
-
-            }
-            //Debug.WriteLine("Insert Startline = " + includeLineNumber);
-            //Debug.WriteLine("===== Includes ======");
-
-            List<string> includeBlock = new List<string>();
-
-            foreach (string l in includes) Debug.WriteLine(l);
-
-            if (includeLines.Count > 0)
-            {
-                includeBlock.Add("//<IncludeStart>");
-                includeBlock.AddRange(includeLines);
-                includeBlock.Add("//<IncludeEnd>");
-
-                // Optional: Du kannst entscheiden, wo der Block eingefügt wird.
-                // Hier wird er am Anfang eingefügt.
-
-            }
-            else
-            {
-                includeBlock.Add("\t//<IncludeStart>");
-                includeBlock.Add("");
-                includeBlock.Add("\t//<IncludeEnd>");
-            }
-
-            //  newLines.InsertRange(includeLineNumber + 2, includeBlock);
-
-            source = string.Join("\n", newLines);
-            //Debug.WriteLine("===== Updated Source ======");
-            //Debug.WriteLine(source);
-            return includes;
-        }
-        private static string ReplaceClassToDefinition(string code)
-        {
-            string result = code;
-
-
-            foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
-            {
-                string find = $"class_{page.Name}";
-                string replace = $"Definition{page.Name}";
-                Debug.WriteLine("find '" + find + "'");
-                Debug.WriteLine("repl '" + replace + "'");
-
-                string pattern = $@"\b{find}\b";
-
-                result = Regex.Replace(result, pattern, replace);
-            }
-
-            return result;
-        }
-        internal static async Task SaveThisBook()
-        {
-            if (qbook.Core.ThisBook != null)
-            {
-                MainForm.SetStatusText("saving qbook: " + qbook.Core.ThisBook.Filename);
-                await SaveInFolder();
-                qbook.Core.ThisBook.Modified = false;
-                qbook.Properties.Settings.Default.Save();
-                MainForm.SetStatusText("qbook saved successfully!", 3000);
-            }
-        }
         internal static async Task ShowOpenQbookFileDialog(object sender)
         {
             if (qbook.Core.ThisBook != null && qbook.Core.ThisBook.Modified)
@@ -1370,152 +1070,5 @@ using System.Text.Json;
             }
         }
 
-        public static async Task NewBook()
-        {
-            string uri = "";
-            SaveFileDialog saveFileDialog1 = new SaveFileDialog();
-            saveFileDialog1.Title = "Create new qbook file";
-            saveFileDialog1.InitialDirectory = qbook.Core.ThisBook.Directory;
-            saveFileDialog1.Filter = "qbook (*.qbook)|*.qbook|All Files (*.*)|*.*";
-            saveFileDialog1.FilterIndex = 0;
-
-            if (saveFileDialog1.ShowDialog() == DialogResult.OK)
-            {
-                string oldDirectory = qbook.Core.ThisBook.Directory;
-                string oldFilename = qbook.Core.ThisBook.Filename;
-
-                uri = saveFileDialog1.FileName;
-
-            }
-            else
-            {
-                return;
-            }
-
-            string name = Path.GetFileNameWithoutExtension(uri).Replace(".qbook", "");
-            string directory = Path.GetDirectoryName(uri);
-            string codeDir = uri.Replace(".qbook", ".code");
-            if (!Directory.Exists(codeDir))
-                Directory.CreateDirectory(codeDir);
-
-            string link = "Created: " + System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            File.WriteAllText(Path.Combine(uri), link);
-
-            string pageDir = Path.Combine(codeDir, "Pages");
-            if (!Directory.Exists(pageDir))
-                Directory.CreateDirectory(pageDir);
-
-            string page1Dir = Path.Combine(pageDir, "Page1");
-            if (!Directory.Exists(page1Dir))
-                Directory.CreateDirectory(page1Dir);
-
-            string opage = @"{
-  ""Name"": ""Page1"",
-  ""Text"": ""Page 1"",
-  ""OrderIndex"": 0,
-  ""Hidden"": false,
-  ""Format"": ""A4"",
-  ""Includes"": [],
-  ""CodeOrder"": [
-    ""Page1.qPage.cs""
-  ],
-  ""Section"": """",
-  ""Url"": null
-}";
-            File.WriteAllText(Path.Combine(page1Dir, "oPage.json"), opage);
-
-            string page1Code = @"namespace DefinitionPage1
-{ //<CodeStart>
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using System.Linq;
-    using QB;
-
-    public class qPage
-    {
-        //common fields/properties/methods/classes/types go here
-
-        public void Initialize()
-        {
-            //initialization code goes here
-
-        }
-
-        public void Run()
-        {
-            //run/work code goes here
-
-        }
-
-        public void Destroy()
-        {
-            //destroy/cleanup code goes here
-        }
-    }
-    //<CodeEnd>
-}";
-
-            File.WriteAllText(Path.Combine(page1Dir, "Page1.qPage.cs"), page1Code);
-
-
-            string bookJson = @$"{{
-  ""ProjectName"": ""{name}"",
-  ""Version"": ""0.1.0"",
-  ""VersionHistory"": """",
-  ""VersionEpoch"": 0,
-  ""StartFullScreen"": false,
-  ""HidPageMenuBar"": false,
-  ""PasswordAdmin"": null,
-  ""PasswordService"": null,
-  ""PasswordUser"": null,
-  ""Directory"": ""{directory.Replace("\\", "\\\\")}"",
-  ""Filename"": ""{name}.qbook"",
-  ""SettingsDirectory"": null,
-  ""DataDirectory"": null,
-  ""TempDirectory"":null,
-  ""BackupDirectory"": null,
-  ""Language"": ""en"",
-  ""PageOrder"": [
-    ""Page1""
-  ]
-}}";
-            
-
-            File.WriteAllText(Path.Combine(codeDir, "Book.json"), bookJson);
-
-            File.WriteAllText(Path.Combine(codeDir,"GlobalUsing.cs"), "global using static QB.Program;");
-
-            string programCode = @"namespace QB
-{
-	public static class Program
-	{
-		public static DefinitionPage1.qPage Page1 { get; } = new DefinitionPage1.qPage();
-		public static void Initialize()
-		{
-			Page1.Initialize();
-		}
-		public static void Run()
-		{
-			Page1.Run();
-		}
-		public static void Destroy()
-		{
-			Page1.Destroy();
-		}
-	}
-}";
-
-            File.WriteAllText(Path.Combine(codeDir, "Program.cs"), programCode);
-
-          
-
-            string csproj = Roslyn.GenerateCsprojString(name);
-            File.WriteAllText(Path.Combine(codeDir, name + ".csproj"), csproj);
-
-            await OpenQbookAsync(uri);
-
-        }
-  
     }
 }

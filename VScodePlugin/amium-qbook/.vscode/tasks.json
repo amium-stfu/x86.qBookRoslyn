@@ -4,8 +4,14 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"type": "npm",
-			"script": "watch",
+			"label": "npm: watch (cmd)",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"npm.cmd run watch"
+			],
 			"problemMatcher": "$tsc-watch",
 			"isBackground": true,
 			"presentation": {

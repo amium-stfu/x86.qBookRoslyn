@@ -858,11 +858,11 @@ namespace qbook
             {
                 DialogResult result = MessageBox.Show("save " + qbook.Core.ThisBook.Filename + "?", "qBook NOT SAVED", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (result == DialogResult.Yes) 
-                    await Core.SaveThisBook();
+                    BookBuilder.SaveBook();
 
             }
 
-            await Core.NewBook();
+            await BookBuilder.NewBook();
         }
 
         async void ShowOpenQbookFileDialog(object sender)
@@ -1517,7 +1517,8 @@ namespace qbook
 
         private async void saveToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            await Save(this);
+            _ = SaveThisBook();
+          
         }
 
         private void pDFcurrentPageToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1663,7 +1664,7 @@ namespace qbook
                     qbook.Core.MruFilesManager.Add(Path.Combine(qbook.Core.ThisBook.Directory, qbook.Core.ThisBook.Filename));
                     Properties.Settings.Default.MruFileList = qbook.Core.MruFilesManager.GetMruCsvString();
                     Properties.Settings.Default.Save();
-                    await Core.SaveThisBook();
+                    SaveThisBook();
                 }
             }
         }
@@ -2517,6 +2518,26 @@ namespace qbook
         private void fileToolStripMenuItem_Click(object sender, EventArgs e)
         {
 
+        }
+
+
+        internal static async Task SaveThisBook()
+        {
+            if (qbook.Core.ThisBook != null)
+            {
+                MainForm.SetStatusText("saving qbook: " + qbook.Core.ThisBook.Filename);
+
+                //Backup old version
+
+                string backupFile = System.DateTime.Now.ToString("yyyyMMdd_HHmms") + Core.ThisBook.Filename.Replace(".qbook", "") + "_" +  ".code";
+                string backupUri = Path.Combine(Core.ThisBook.BackupDirectory, System.DateTime.Now.ToString("yyyyMMdd_HHmms") + "_" + Core.ThisBook.ProjectName);
+                BookBuilder.SaveBook(backupUri, Core.ThisBook.ProjectName);
+                BookBuilder.SaveBook();
+
+                qbook.Core.ThisBook.Modified = false;
+                qbook.Properties.Settings.Default.Save();
+                SetStatusText("qbook saved successfully!", 3000);
+            }
         }
     }
 

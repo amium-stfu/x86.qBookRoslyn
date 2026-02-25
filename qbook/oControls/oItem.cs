@@ -96,31 +96,10 @@ namespace qbook
                 {
                     //var errors = new List<ObjectSettings.ErrorInfo>();
                     //ObjectSettings.Parse(value, out errors, this);
-                    ReparseSettings();
+                 //   ReparseSettings();
                 }
             }
         }
-
-        public void ReparseSettings()
-        {
-            //SCAN - TODO
-            //var errors = new List<ObjectSettings.ErrorInfo>();
-            //ObjectSettings.Parse(Settings, out errors, this);
-        }
-
-
-        //[XmlElement(ElementName = "Settings")]
-        //public string SettingsAsXml
-        //{
-        //    get
-        //    {
-        //        return this.Settings.Replace(">", "&gt;").Replace("<", "&lt;");
-        //    }
-        //    set
-        //    {
-        //        this.Settings = value.Replace("&gt;", ">").Replace("&lt;", "<");
-        //    }
-        //}
 
         [XmlIgnore]
       

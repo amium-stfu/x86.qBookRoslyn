@@ -123,7 +123,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.window.onDidChangeActiveTextEditor((editor) => {
+    vscode.window.onDidChangeActiveTextEditor((editor: vscode.TextEditor | undefined) => {
       viewProvider.handleActiveEditorChange(editor);
     })
   );
@@ -146,7 +146,7 @@ export function activate(context: vscode.ExtensionContext): void {
   applySettingsPipeBridge(context);
 
   context.subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration((event) => {
+    vscode.workspace.onDidChangeConfiguration((event: vscode.ConfigurationChangeEvent) => {
       if (
         event.affectsConfiguration('amium-qbook.pipe.serverName') ||
         event.affectsConfiguration('amium-qbook.pipe.clientName') ||
@@ -327,7 +327,15 @@ function handleIncomingPipeCommand(command: PipeCommandPayload): void {
   if (!signal) {
     return;
   }
-  viewProviderRef?.notifyRuntimeSignal(signal);
+  viewProviderRef?.notifyRuntimeSignal(signal, command);
+}
+
+function extractRuntimeTimestamp(args?: string[]): string | undefined {
+  if (!Array.isArray(args) || args.length === 0) {
+    return undefined;
+  }
+  const first = args[0];
+  return typeof first === 'string' && first.trim() ? first.trim() : undefined;
 }
 
 function parseRuntimeSignal(command: PipeCommandPayload): RuntimeSignal | undefined {
@@ -420,11 +428,111 @@ async function sendRuntimeCommand(command: string, args?: string[]): Promise<voi
 
   try {
     await activePipeBridge.send(payload);
-  } catch (error) {
+  } catch (error: unknown) {
     const details = error instanceof Error ? error.message : String(error);
     vscode.window.showErrorMessage(`PipeCommand '${command}' fehlgeschlagen: ${details}`);
     broadcastPipeStatus('disconnected');
   }
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
+function collectWorkspaceCSharpErrors(): Array<{ uri: vscode.Uri; errors: vscode.Diagnostic[] }> {
+  const entries: Array<{ uri: vscode.Uri; errors: vscode.Diagnostic[] }> = [];
+
+  const openCSharpDocs = vscode.workspace.textDocuments.filter((doc: vscode.TextDocument) => doc.languageId === 'csharp');
+  const openCSharpDocUris = new Set(openCSharpDocs.map((doc: vscode.TextDocument) => doc.uri.toString()));
+
+  const considered = new Map<string, vscode.Uri>();
+  const diagnostics = vscode.languages.getDiagnostics();
+
+  for (const [uri] of diagnostics) {
+    const uriKey = uri.toString();
+
+    if (uri.scheme === 'file') {
+      const filePath = uri.fsPath.toLowerCase();
+      if (!filePath.endsWith('.cs')) {
+        continue;
+      }
+
+      // Limit to workspace folders to avoid pulling in random external files.
+      if (!vscode.workspace.getWorkspaceFolder(uri)) {
+        continue;
+      }
+
+      considered.set(uriKey, uri);
+      continue;
+    }
+
+    // Unsaved/virtual docs: only consider if the document is actually a C# doc.
+    if (openCSharpDocUris.has(uriKey)) {
+      considered.set(uriKey, uri);
+    }
+  }
+
+  // Also consider any open C# docs even if they currently don't show up in the global diagnostics list.
+  for (const doc of openCSharpDocs) {
+    considered.set(doc.uri.toString(), doc.uri);
+  }
+
+  for (const uri of considered.values()) {
+    const diagList = vscode.languages.getDiagnostics(uri);
+    const errors = diagList.filter((diag: vscode.Diagnostic) => diag.severity === vscode.DiagnosticSeverity.Error);
+    if (errors.length > 0) {
+      entries.push({ uri, errors });
+    }
+  }
+
+  return entries;
+}
+
+async function waitForNextDiagnosticsUpdate(timeoutMs: number): Promise<void> {
+  await new Promise<void>((resolve) => {
+    let settled = false;
+
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+    const sub = vscode.languages.onDidChangeDiagnostics(() => finish());
+
+    const finish = (): void => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      sub.dispose();
+      if (timeoutHandle !== undefined) {
+        clearTimeout(timeoutHandle);
+      }
+      resolve();
+    };
+
+    timeoutHandle = setTimeout(() => finish(), timeoutMs);
+  });
+}
+
+async function ensureNoCSharpErrorsBeforeRebuild(): Promise<boolean> {
+  // Make sure edits are persisted so language server diagnostics are up-to-date.
+  await vscode.workspace.saveAll(false);
+  await waitForNextDiagnosticsUpdate(800);
+
+  const entries = collectWorkspaceCSharpErrors();
+  if (entries.length === 0) {
+    return true;
+  }
+  return false;
 }
 
 function getPipeOutputChannel(context: vscode.ExtensionContext): vscode.OutputChannel {
@@ -436,15 +544,17 @@ function getPipeOutputChannel(context: vscode.ExtensionContext): vscode.OutputCh
   return pipeOutputChannel;
 }
 
-function getWebviewHtml(): string {
+function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): string {
   const nonce = createNonce();
+  const cspSource = webview.cspSource;
+  const logoSrc = logoUri.toString();
 
   return `<!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${cspSource} https: data:; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';" />
   <title>qBook Calibration</title>
   <style>
     body {
@@ -453,6 +563,19 @@ function getWebviewHtml(): string {
       background: var(--vscode-editor-background);
       margin: 0;
       padding: 12px;
+    }
+
+    .brand {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    .brand img {
+      max-width: 140px;
+      height: auto;
+      opacity: 0.95;
+      image-rendering: -webkit-optimize-contrast;
     }
 
     .toolbar {
@@ -861,6 +984,9 @@ function getWebviewHtml(): string {
   </style>
 </head>
 <body>
+  <div class="brand">
+    <img src="${logoSrc}" alt="amium qBook" />
+  </div>
   <div id="pipeStatus" class="pipe-status pipe-status--broken">
     <span class="dot" aria-hidden="true"></span>
     <span id="pipeStatusText">Pipe broken</span>
@@ -1829,7 +1955,7 @@ function getWebviewHtml(): string {
     });
 
     window.addEventListener('message', (event) => {
-      const { type, payload, message, status: incomingPipeStatus } = event.data ?? {};
+      const { type, payload, message, status: incomingPipeStatus, text } = event.data ?? {};
       if (type === 'bookData') {
         renderTree(payload);
       } else if (type === 'bookError') {
@@ -1850,6 +1976,8 @@ function getWebviewHtml(): string {
         applyPipeStatus(typeof incomingPipeStatus === 'string' ? incomingPipeStatus : 'disconnected');
       } else if (type === 'runtimeState') {
         updateRuntimeButtonsState(payload);
+      } else if (type === 'statusText' && typeof text === 'string') {
+        setStatus(text);
       }
     });
     function applyFormValues(formPayload) {
@@ -1907,7 +2035,7 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
     stop: null,
     rebuild: null,
   };
-  private runtimeHighlightTimers = new Map<RuntimeButtonId, NodeJS.Timeout>();
+  private runtimeHighlightTimers = new Map<RuntimeButtonId, ReturnType<typeof setTimeout>>();
   private isRenamingPage = false;
 
   public constructor(private readonly context: vscode.ExtensionContext) {}
@@ -1922,14 +2050,8 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.options = {
       enableScripts: true,
+      localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'media')],
     };
-
-    webviewView.webview.html = getWebviewHtml();
-
-    this.loadAndSendTreeData(webviewView).catch((error: unknown) => {
-      const details = error instanceof Error ? error.message : String(error);
-      webviewView.webview.postMessage({ type: 'bookError', message: details });
-    });
 
     webviewView.webview.onDidReceiveMessage(async (message: BridgeMessage) => {
       switch (message.type) {
@@ -1946,6 +2068,14 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
           await sendRuntimeCommand('Destroy');
           break;
         case 'rebuild':
+          await this.verifyAllTreeCsFiles();
+          const canRebuild = await ensureNoCSharpErrorsBeforeRebuild();
+          if (!canRebuild) {
+            this.postStatusText('Rebuild abgebrochen: C#-Fehler gefunden');
+            this.applyRuntimeHighlight('rebuild', 'alert');
+            break;
+          }
+          this.postStatusText('Rebuild läuft');
           await sendRuntimeCommand('Rebuild');
           break;
         case 'toggleHidden':
@@ -1993,6 +2123,15 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
           console.log('[Webview->Extension] unknown message', message);
           break;
       }
+    });
+
+    const logoFile = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'amiumlogo2gray.png');
+    const logoWebviewUri = webviewView.webview.asWebviewUri(logoFile);
+    webviewView.webview.html = getWebviewHtml(webviewView.webview, logoWebviewUri);
+
+    this.loadAndSendTreeData(webviewView).catch((error: unknown) => {
+      const details = error instanceof Error ? error.message : String(error);
+      webviewView.webview.postMessage({ type: 'bookError', message: details });
     });
 
     this.postPipeStatus();
@@ -2066,7 +2205,7 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
     };
   }
 
-  private async openRelativeFile(relativePath?: string): Promise<void> {
+  private async openRelativeFile(relativePath?: string, options?: { preview?: boolean; preserveFocus?: boolean }): Promise<void> {
     if (!relativePath) {
       vscode.window.showWarningMessage('Keine Datei ausgewählt.');
       return;
@@ -2091,12 +2230,143 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
 
     try {
       const document = await vscode.workspace.openTextDocument(targetUri);
-      await vscode.window.showTextDocument(document, { preview: false });
+      await vscode.window.showTextDocument(document, {
+        preview: options?.preview ?? false,
+        preserveFocus: options?.preserveFocus ?? false,
+      });
       this.selectedPath = normalizedRelative;
       this.postBookStatus();
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       vscode.window.showErrorMessage(`Datei konnte nicht geöffnet werden: ${relativePath}\n${details}`);
+    }
+  }
+
+  private async verifyAllTreeCsFiles(): Promise<void> {
+    if (!this.lastPayload) {
+      return;
+    }
+
+    const initiallyVisible = this.collectOpenTextTabUris();
+    const visited = new Map<string, { relativePath: string; relativeKey: string }>();
+
+    const csFiles = this.lastPayload.nodes
+      .flatMap((node) => node.files)
+      .filter((file) => typeof file.relativePath === 'string' && file.relativePath.toLowerCase().endsWith('.cs'));
+
+    for (const file of csFiles) {
+      const targetUri = this.resolveRelativeFileUri(file.relativePath);
+      if (!targetUri) {
+        continue;
+      }
+
+      const uriKey = this.uriKey(targetUri);
+      const normalizedRelativePath = this.normalizeRelative(file.relativePath);
+      const relativeKey = normalizedRelativePath.toLowerCase();
+      visited.set(uriKey, { relativePath: normalizedRelativePath, relativeKey });
+
+      const label = file.displayName?.trim() || file.name?.trim() || file.relativePath;
+      this.postStatusText(`Verifying code in ${label}`);
+      await this.openRelativeFile(file.relativePath, { preview: false, preserveFocus: true });
+      await waitForNextDiagnosticsUpdate(350);
+      await new Promise<void>((resolve) => setTimeout(resolve, 120));
+    }
+
+    this.postStatusText('Prüfe C# Diagnostics ...');
+    await waitForNextDiagnosticsUpdate(800);
+    await new Promise<void>((resolve) => setTimeout(resolve, 120));
+    this.refreshDiagnostics();
+
+    const errorRelativeSet = new Set(Array.from(this.errorPaths, (entry) => entry.toLowerCase()));
+
+    for (const [uriKey, info] of visited) {
+      if (errorRelativeSet.has(info.relativeKey) && !this.isTextTabVisible(uriKey)) {
+        await this.openRelativeFile(info.relativePath, { preview: false, preserveFocus: true });
+      }
+    }
+
+    const closable = Array.from(visited.entries())
+      .filter(([uriKey, info]) => !initiallyVisible.has(uriKey) && !errorRelativeSet.has(info.relativeKey))
+      .map(([uriKey]) => uriKey);
+
+    await this.closeVerificationOnlyTabs(closable);
+  }
+
+  private collectOpenTextTabUris(): Set<string> {
+    const result = new Set<string>();
+    for (const group of vscode.window.tabGroups.all) {
+      for (const tab of group.tabs) {
+        if (tab.input instanceof vscode.TabInputText) {
+          result.add(this.uriKey(tab.input.uri));
+        }
+      }
+    }
+    return result;
+  }
+
+  private isTextTabVisible(uriKey: string): boolean {
+    for (const group of vscode.window.tabGroups.all) {
+      for (const tab of group.tabs) {
+        if (tab.input instanceof vscode.TabInputText && this.uriKey(tab.input.uri) === uriKey) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private uriKey(uri: vscode.Uri): string {
+    return path.resolve(uri.fsPath).toLowerCase();
+  }
+
+  private resolveRelativeFileUri(relativePath: string): vscode.Uri | undefined {
+    const baseUri = this.lastBookRoot ?? vscode.workspace.workspaceFolders?.[0]?.uri;
+    if (!baseUri) {
+      return undefined;
+    }
+
+    const normalizedRelative = this.normalizeRelative(relativePath);
+    const absolutePath = path.resolve(baseUri.fsPath, normalizedRelative);
+    const basePath = path.resolve(baseUri.fsPath);
+
+    if (!absolutePath.toLowerCase().startsWith(basePath.toLowerCase())) {
+      return undefined;
+    }
+
+    return vscode.Uri.file(absolutePath);
+  }
+
+  private async closeVerificationOnlyTabs(uriKeys: string[]): Promise<void> {
+    if (!uriKeys.length) {
+      return;
+    }
+
+    const uriSet = new Set(uriKeys);
+    const tabsToClose: vscode.Tab[] = [];
+
+    for (const group of vscode.window.tabGroups.all) {
+      for (const tab of group.tabs) {
+        if (!(tab.input instanceof vscode.TabInputText)) {
+          continue;
+        }
+
+        const tabUriKey = this.uriKey(tab.input.uri);
+        if (!uriSet.has(tabUriKey)) {
+          continue;
+        }
+
+        tabsToClose.push(tab);
+      }
+    }
+
+    if (tabsToClose.length === 0) {
+      return;
+    }
+
+    try {
+      await vscode.window.tabGroups.close(tabsToClose, true);
+    } catch {
+      // ignore close issues to avoid blocking rebuild
     }
   }
 
@@ -2118,7 +2388,7 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
         doc.Hidden = message.hidden;
       });
       this.applyMetadataPatch(targetPage, { hidden: message.hidden });
-    } catch (error) {
+    } catch (error: unknown) {
       this.reportMetadataError('Hidden', error);
     }
   }
@@ -2137,7 +2407,7 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
         doc.Text = nextTitle;
       });
       this.applyMetadataPatch(targetPage, { title: nextTitle });
-    } catch (error) {
+    } catch (error: unknown) {
       this.reportMetadataError('Titel', error);
     }
   }
@@ -2161,7 +2431,7 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
         doc.Format = nextFormat;
       });
       this.applyMetadataPatch(targetPage, { format: nextFormat });
-    } catch (error) {
+    } catch (error: unknown) {
       this.reportMetadataError('Format', error);
     }
   }
@@ -2228,7 +2498,7 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
 
       await this.reloadTreeView();
       vscode.window.showInformationMessage(`Page '${oldPage}' wurde in '${newPage}' umbenannt.`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.reportMetadataError('Rename', error);
     } finally {
       this.isRenamingPage = false;
@@ -2267,7 +2537,7 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
       await this.updateProgramClass();
       await this.reloadTreeView();
       vscode.window.showInformationMessage(`Page '${targetPage}' wurde gelöscht.`);
-    } catch (error) {
+    } catch (error: unknown) {
       const details = error instanceof Error ? error.message : String(error);
       vscode.window.showErrorMessage(`Page '${targetPage}' konnte nicht gelöscht werden: ${details}`);
     }
@@ -2319,7 +2589,7 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
         this.currentView.webview.postMessage({ type: 'bookData', payload: this.lastPayload });
         this.postBookStatus();
       }
-    } catch (error) {
+    } catch (error: unknown) {
       const details = error instanceof Error ? error.message : String(error);
       vscode.window.showErrorMessage(`Neue Page-Reihenfolge konnte nicht gespeichert werden: ${details}`);
     }
@@ -2335,7 +2605,7 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
       prompt: 'Enter Page Name',
       placeHolder: 'MyPage',
       ignoreFocusOut: true,
-      validateInput: (value) => {
+      validateInput: (value: string) => {
         if (!value || !value.trim()) {
           return 'Page-Name ist erforderlich.';
         }
@@ -2447,7 +2717,7 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
       prompt: `Neuer Subcode-Name für ${targetPage}`,
       placeHolder: 'MySubcode',
       ignoreFocusOut: true,
-      validateInput: (value) => {
+      validateInput: (value: string) => {
         if (!value || !value.trim()) {
           return 'Name ist erforderlich.';
         }
@@ -2794,9 +3064,14 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
           document = JSON.parse(text) as Record<string, unknown> & { PageOrder?: string[] };
         }
       }
-    } catch (error) {
-      if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
-        document = {};
+    } catch (error: unknown) {
+      if (error instanceof vscode.FileSystemError) {
+        const fsError = error as vscode.FileSystemError;
+        if (fsError.code === 'FileNotFound') {
+          document = {};
+        } else {
+          throw fsError;
+        }
       } else {
         throw error;
       }
@@ -2824,9 +3099,14 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
           document = JSON.parse(text) as Record<string, unknown> & { PageOrder?: string[] };
         }
       }
-    } catch (error) {
-      if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
-        document = {};
+    } catch (error: unknown) {
+      if (error instanceof vscode.FileSystemError) {
+        const fsError = error as vscode.FileSystemError;
+        if (fsError.code === 'FileNotFound') {
+          document = {};
+        } else {
+          throw fsError;
+        }
       } else {
         throw error;
       }
@@ -2865,9 +3145,14 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
           document = JSON.parse(text) as Record<string, unknown> & { PageOrder?: string[] };
         }
       }
-    } catch (error) {
-      if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
-        document = {};
+    } catch (error: unknown) {
+      if (error instanceof vscode.FileSystemError) {
+        const fsError = error as vscode.FileSystemError;
+        if (fsError.code === 'FileNotFound') {
+          document = {};
+        } else {
+          throw fsError;
+        }
       } else {
         throw error;
       }
@@ -2902,18 +3187,23 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
     }
 
     const bookUri = this.getBookFileUri();
-    let document: Record<string, unknown> & { PageOrder?: string[] } = {};
+    let document: { PageOrder?: unknown } = {};
 
     try {
       const raw = await vscode.workspace.fs.readFile(bookUri);
       if (raw?.length) {
         const text = textDecoder.decode(raw);
         if (text.trim().length > 0) {
-          document = JSON.parse(text) as Record<string, unknown> & { PageOrder?: string[] };
+          document = JSON.parse(text) as { PageOrder?: unknown };
         }
       }
-    } catch (error) {
-      if (!(error instanceof vscode.FileSystemError && error.code === 'FileNotFound')) {
+    } catch (error: unknown) {
+      if (error instanceof vscode.FileSystemError) {
+        const fsError = error as vscode.FileSystemError;
+        if (fsError.code !== 'FileNotFound') {
+          throw fsError;
+        }
+      } else {
         throw error;
       }
     }
@@ -2921,7 +3211,8 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
     const normalized: string[] = [];
     if (Array.isArray(document.PageOrder)) {
       for (const entry of document.PageOrder) {
-        const page = this.normalizePageName(entry);
+        const value = typeof entry === 'string' ? entry : '';
+        const page = this.normalizePageName(value);
         if (page && !normalized.includes(page)) {
           normalized.push(page);
         }
@@ -3028,9 +3319,14 @@ ${methodBody('Destroy')}
           document = JSON.parse(text) as OPageDocument;
         }
       }
-    } catch (error) {
-      if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
-        document = {};
+    } catch (error: unknown) {
+      if (error instanceof vscode.FileSystemError) {
+        const fsError = error as vscode.FileSystemError;
+        if (fsError.code === 'FileNotFound') {
+          document = {};
+        } else {
+          throw fsError;
+        }
       } else {
         throw error;
       }
@@ -3212,9 +3508,13 @@ ${methodBody('Destroy')}
     try {
       await vscode.workspace.fs.stat(uri);
       return true;
-    } catch (error) {
-      if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
-        return false;
+    } catch (error: unknown) {
+      if (error instanceof vscode.FileSystemError) {
+        const fsError = error as vscode.FileSystemError;
+        if (fsError.code === 'FileNotFound') {
+          return false;
+        }
+        throw fsError;
       }
       throw error;
     }
@@ -3308,7 +3608,7 @@ ${methodBody('Destroy')}
     const next = new Set<string>();
 
     for (const [uri, diagList] of diagnostics) {
-      if (!diagList.some((diag) => diag.severity === vscode.DiagnosticSeverity.Error)) {
+      if (!diagList.some((diag: vscode.Diagnostic) => diag.severity === vscode.DiagnosticSeverity.Error)) {
         continue;
       }
 
@@ -3431,8 +3731,34 @@ ${methodBody('Destroy')}
     this.postPipeStatus();
   }
 
-  public notifyRuntimeSignal(signal: RuntimeSignal): void {
+  public notifyRuntimeSignal(signal: RuntimeSignal, command?: PipeCommandPayload): void {
     this.applyRuntimeHighlight(signal.button, signal.kind);
+    const timestamp = extractRuntimeTimestamp(command?.Args);
+    const label = signal.button === 'run' ? 'Run' : signal.button === 'rebuild' ? 'Rebuild' : 'Stop';
+    const nextStatus = timestamp
+      ? `Runtime ${signal.kind}: ${label} @ ${timestamp}`
+      : `Runtime ${signal.kind}: ${label}`;
+
+    if (signal.kind === 'status') {
+      if (signal.button === 'rebuild') {
+        this.postStatusText('Rebuild done');
+      } else if (signal.button === 'run') {
+        this.postStatusText('Running...');
+      } else if (signal.button === 'stop') {
+        this.postStatusText('Stopped');
+      }
+    }
+
+    if (this.currentView) {
+      this.currentView.webview.postMessage({ type: 'runtimeInfo', text: nextStatus });
+    }
+  }
+
+  private postStatusText(text: string): void {
+    if (!this.currentView || !text) {
+      return;
+    }
+    this.currentView.webview.postMessage({ type: 'statusText', text });
   }
 
   private postPipeStatus(): void {
@@ -3465,7 +3791,6 @@ ${methodBody('Destroy')}
         this.postRuntimeState();
       }
     }, 4000);
-    timer.unref?.();
     this.runtimeHighlightTimers.set(button, timer);
   }
 

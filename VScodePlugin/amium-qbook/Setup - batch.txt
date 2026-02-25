@@ -1,8 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
 
-
-
 rem Ins Verzeichnis der Batch wechseln (Projektroot)
 cd /d "%~dp0"
 
