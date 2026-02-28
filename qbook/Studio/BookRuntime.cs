@@ -21,11 +21,31 @@ namespace qbook
     public static class BookRuntime
     {
        
+        private static readonly HashSet<string> _loggedInitPages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private static readonly HashSet<string> _loggedRenderPages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        private static MethodInfo? ResolveInitMethod(Type pageType)
+        {
+            return pageType.GetMethod("Init") ?? pageType.GetMethod("Initialize");
+        }
+
+        private static MethodInfo? ResolveRenderMethod(Type pageType)
+        {
+            return pageType.GetMethod("Render") ?? pageType.GetMethod("Run");
+        }
 
         private static Type? _programType;
         public static bool IsRuntimeReady => _programType != null && qbook.Core.ActiveCsAssembly != null;
         public static void BindAllPagesToAssembly(Assembly asm)
         {
+            Core.SendToEditor("LogInfo", "[HOST] <<<<<< Starting Assembly >>>>>>");
+            Core.SendToEditor("LogInfo", "[HOST] Project ID             " + Core.Roslyn.GetProjectId);
+            Core.SendToEditor("LogInfo", "[HOST] Assembly Name          " + asm.FullName);
+            Core.SendToEditor("LogInfo", "[HOST] LoadedAssemblyMvid     " + asm.ManifestModule.ModuleVersionId);
+            Core.SendToEditor("LogInfo", "[HOST] LoadedAssemblyLocation " + (string.IsNullOrEmpty(asm.Location) ? "<In-Memory>" : asm.Location));
+            Core.SendToEditor("LogInfo", "[HOST] LoadedTimestamp        " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+
+    
             _programType = asm.GetType("QB.Program");
             if (_programType == null)
             {
@@ -38,18 +58,49 @@ namespace qbook
                 var prop = _programType.GetProperty(page.Name);
                 page.DynInstance = prop?.GetValue(null); // static property → null target ok
                 page.DynInitialized = false;
+
+                var dynType = page.DynInstance?.GetType();
+                var initMethod = dynType == null ? null : ResolveInitMethod(dynType);
+                var renderMethod = dynType == null ? null : ResolveRenderMethod(dynType);
+                Core.SendToEditor(
+                    "LogInfo",
+                    "[HOST] PageBind page=" + page.Name +
+                    " hasDyn=" + (page.DynInstance != null) +
+                    " type=" + (dynType?.FullName ?? "<null>") +
+                    " initMethod=" + (initMethod?.Name ?? "<none>") +
+                    " renderMethod=" + (renderMethod?.Name ?? "<none>"));
             }
         }
         public static void EnsureInit(oPage page)
         {
             if (page?.DynInstance == null || page.DynInitialized) return;
-            page.DynInstance.GetType().GetMethod("Init")?.Invoke(page.DynInstance, null);
+            var initMethod = ResolveInitMethod(page.DynInstance.GetType());
+            if (_loggedInitPages.Add(page.Name))
+            {
+                Core.SendToEditor("LogInfo", "[HOST] EnsureInit page=" + page.Name + " type=" + page.DynInstance.GetType().FullName + " method=" + (initMethod?.Name ?? "<none>"));
+            }
+            if (initMethod == null)
+            {
+                Core.SendToEditor("LogInfo", "[HOST] EnsureInit SKIP page=" + page.Name + " reason=no-init-method");
+                return;
+            }
+            initMethod.Invoke(page.DynInstance, null);
             page.DynInitialized = true;
         }
         public static void ExecuteRender(oPage page)
         {
             if (page?.DynInstance == null) return;
-            page.DynInstance.GetType().GetMethod("Render")?.Invoke(page.DynInstance, null);
+            var renderMethod = ResolveRenderMethod(page.DynInstance.GetType());
+            if (_loggedRenderPages.Add(page.Name))
+            {
+                Core.SendToEditor("LogInfo", "[HOST] ExecuteRender page=" + page.Name + " type=" + page.DynInstance.GetType().FullName + " method=" + (renderMethod?.Name ?? "<none>"));
+            }
+            if (renderMethod == null)
+            {
+                Core.SendToEditor("LogInfo", "[HOST] ExecuteRender SKIP page=" + page.Name + " reason=no-render-method");
+                return;
+            }
+            renderMethod.Invoke(page.DynInstance, null);
         }
         public static void InitializeAll()
         {
@@ -105,10 +156,12 @@ namespace qbook
 
                 try
                 {
+                    Core.SendToEditor("LogInfo", "[HOST] Program.Run START");
                     ExceptionBridge.Safe("Program.Run", () =>
                     {
                         runGlobal.Invoke(null, null);
                     }, rethrow: true);
+                    Core.SendToEditor("LogInfo", "[HOST] Program.Run END");
                 
                     Core.StatusText = "Status:Run";
                 }
@@ -124,6 +177,9 @@ namespace qbook
         public static void DestroyAll()
         {
 
+            _loggedInitPages.Clear();
+            _loggedRenderPages.Clear();
+
             if (Core.ThisBook == null) return;
 
             Core.StatusText = "Status:Stop";
@@ -135,6 +191,7 @@ namespace qbook
                 Core.CsScript_Destroy();
                 QB.Logger.Debug("Core.CsScript_Destroy() executed successfully.");
                 RuntimeWatchdog.Stop();
+                Core.Roslyn?.ClearBuildArtifacts();
             }
             catch (Exception ex)
             {
@@ -319,6 +376,37 @@ namespace qbook
             // Füge hier ggf. weitere Dateien wie Program.cs hinzu
             return roslynFiles;
         }
+//        public static void EnsureVsCodeLaunchJson(string projectFolder)
+//        {
+//            var vscodeDir = Path.Combine(projectFolder, ".vscode");
+//            Directory.CreateDirectory(vscodeDir);
 
+//            var launchPath = Path.Combine(vscodeDir, "launch.json");
+//            if (File.Exists(launchPath))
+//                return; // nicht überschreiben, falls der User es angepasst hat
+
+//            var symbolPath = Path.Combine(Path.GetTempPath(), "qbookRoslyn");
+//            var jsonSymbolPath = symbolPath.Replace("\\", "\\\\");
+
+//            var json = $@"{{
+//  ""version"": ""0.2.0"",
+//  ""configurations"": [
+//    {{
+//      ""name"": ""Attach to qBook Host (auto)"",
+//      ""type"": ""coreclr"",
+//      ""request"": ""attach"",
+//      ""processId"": ""{command:qbook.getHostProcessId}"",
+//      ""justMyCode"": false,
+//      ""symbolOptions"": {{
+//        ""searchPaths"": [
+//          ""{jsonSymbolPath}""
+//        ]
+//      }}
+//    }}
+//  ]
+//}}";
+
+//            File.WriteAllText(launchPath, json, Encoding.UTF8);
+//        }
     }
 }

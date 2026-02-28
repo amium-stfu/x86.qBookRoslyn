@@ -192,8 +192,18 @@ namespace qbook
                 // Image i = Draw.ResizeImage(o as Bitmap, 100, 100 * (o as Bitmap).Height / (o as Bitmap).Width);
                 Draw.Image(o as Bitmap, Draw.Width - 46, 5.0f, Draw.Width - 7, 20);
             }
+            oItem parent = null;
 
-            oItem parent = (qbook.Core.ThisBook.Main.GetParent(qbook.Core.SelectedPage));
+            try
+            {
+                parent = (qbook.Core.ThisBook.Main.GetParent(qbook.Core.SelectedPage));
+            } catch(Exception ex) 
+            { 
+              QB.Logger.Error("Error getting parent page: " + ex.Message);
+                return;
+
+            }
+
 
             string headerText = qbook.Core.SelectedPage.TextL;
             if ((headerText == null) || (headerText == "") || (headerText == "#"))

@@ -971,6 +971,8 @@ function getWebviewHtml(webview, logoUri) {
     <button id="btnStop" class="secondary">Stop</button>
     <button id="btnRun" class="secondary">Run</button>
     <button id="btnRebuild" class="secondary">Rebuild</button>
+    <button id="btnDebugStart" class="secondary">Start Debugging</button>
+    <button id="btnDebugStop" class="secondary" disabled>Stop Debugging</button>
   </div>
 
   <div class="status" id="status">Ready</div>
@@ -1061,6 +1063,8 @@ function getWebviewHtml(webview, logoUri) {
     const btnRun = document.getElementById('btnRun');
     const btnStop = document.getElementById('btnStop');
     const btnRebuild = document.getElementById('btnRebuild');
+    const btnDebugStart = document.getElementById('btnDebugStart');
+    const btnDebugStop = document.getElementById('btnDebugStop');
     const treeHeaderTitle = document.getElementById('treeHeaderTitle');
     const pageInput = document.getElementById('pageInput');
     const titleInput = document.getElementById('titleInput');
@@ -1137,6 +1141,16 @@ function getWebviewHtml(webview, logoUri) {
           target.classList.toggle('runtime-alert', normalized === 'alert');
         }
       });
+    }
+
+    function applyDebugButtonsState(nextState) {
+      const active = Boolean(nextState && typeof nextState === 'object' && nextState.active);
+      if (btnDebugStart) {
+        btnDebugStart.disabled = active;
+      }
+      if (btnDebugStop) {
+        btnDebugStop.disabled = !active;
+      }
     }
 
     function encodeHtml(value) {
@@ -1354,6 +1368,16 @@ function getWebviewHtml(webview, logoUri) {
     btnRebuild?.addEventListener('click', () => {
       setStatus('Rebuild läuft');
       vscode.postMessage(payload('rebuild'));
+    });
+
+    btnDebugStart?.addEventListener('click', () => {
+      setStatus('Debugger wird verbunden ...');
+      vscode.postMessage({ type: 'debugStart' });
+    });
+
+    btnDebugStop?.addEventListener('click', () => {
+      setStatus('Debugger wird getrennt ...');
+      vscode.postMessage({ type: 'debugStop' });
     });
 
     formatButtons.forEach((btn) => {
@@ -1990,6 +2014,8 @@ function getWebviewHtml(webview, logoUri) {
         applyPipeStatus(typeof incomingPipeStatus === 'string' ? incomingPipeStatus : 'disconnected');
       } else if (type === 'runtimeState') {
         updateRuntimeButtonsState(payload);
+      } else if (type === 'debugState') {
+        applyDebugButtonsState(payload);
       } else if (type === 'statusText' && typeof text === 'string') {
         setStatus(text);
       }
@@ -2019,6 +2045,7 @@ function getWebviewHtml(webview, logoUri) {
     updateHiddenRadios();
     applyPipeStatus('disconnected');
     updateRuntimeButtonsState(runtimeState);
+    applyDebugButtonsState({ active: false });
 
     vscode.postMessage({ type: 'requestTree' });
   </script>
@@ -2047,9 +2074,32 @@ class QBookViewProvider {
         rebuild: null,
     };
     runtimeHighlightTimers = new Map();
+    managedDebugSession;
     isRenamingPage = false;
+    debugAttachRunCounter = 0;
+    knownDebugSessions = new Map();
     constructor(context) {
         this.context = context;
+        this.context.subscriptions.push(vscode.debug.onDidStartDebugSession((session) => {
+            this.knownDebugSessions.set(session.id, session);
+            this.logDebugSessionEvent('start', session);
+            if (this.isManagedDebugSession(session)) {
+                this.managedDebugSession = session;
+                this.postDebugState();
+                this.postStatusText('Debugger verbunden');
+            }
+        }), vscode.debug.onDidTerminateDebugSession((session) => {
+            this.knownDebugSessions.delete(session.id);
+            this.logDebugSessionEvent('terminate', session);
+            if (this.managedDebugSession && this.managedDebugSession.id === session.id) {
+                this.managedDebugSession = undefined;
+                this.postDebugState();
+                this.postStatusText('Debugger getrennt');
+            }
+        }), vscode.debug.onDidChangeActiveDebugSession((session) => {
+            const runtimeChannel = getRuntimeLogChannel();
+            runtimeChannel?.info(`Debug active-session changed: ${session ? `${session.name}#${session.id} type=${session.type}` : 'none'}`);
+        }));
     }
     resolveWebviewView(webviewView) {
         this.currentView = webviewView;
@@ -2086,6 +2136,12 @@ class QBookViewProvider {
                     }
                     this.postStatusText('Rebuild läuft');
                     await sendRuntimeCommand('Rebuild');
+                    break;
+                case 'debugStart':
+                    await this.handleStartDebugging();
+                    break;
+                case 'debugStop':
+                    await this.handleStopDebugging();
                     break;
                 case 'toggleHidden':
                     await this.handleToggleHidden(message);
@@ -2142,6 +2198,7 @@ class QBookViewProvider {
         });
         this.postPipeStatus();
         this.postRuntimeState();
+        this.postDebugState();
     }
     async loadAndSendTreeData(webviewView) {
         try {
@@ -2791,6 +2848,460 @@ class QBookViewProvider {
             const details = error instanceof Error ? error.message : String(error);
             vscode.window.showErrorMessage(`Code-Datei konnte nicht gelöscht werden: ${details}`);
         }
+    }
+    async handleStartDebugging() {
+        if (this.managedDebugSession) {
+            vscode.window.showInformationMessage('Debugger ist bereits verbunden.');
+            return;
+        }
+        const runId = ++this.debugAttachRunCounter;
+        const startedAt = Date.now();
+        const runtimeChannel = getRuntimeLogChannel();
+        runtimeChannel?.info(`==== qBook Attach Run #${runId} START ====`);
+        runtimeChannel?.info(`Attach run #${runId} context: lastBookRoot=${this.lastBookRoot?.fsPath ?? 'n/a'} workspaceFolders=${(vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath).join(' | ') || 'none'}`);
+        this.logDebugProviderState(runtimeChannel);
+        this.logDebugLandscape(`run=${runId} before-start`);
+        const adoptedSession = this.tryAdoptExistingQbookDebugSession();
+        if (adoptedSession) {
+            this.managedDebugSession = adoptedSession;
+            this.postDebugState();
+            this.postStatusText('Debugger bereits verbunden');
+            runtimeChannel?.info(`Attach run #${runId} reused existing session id=${adoptedSession.id} name=${adoptedSession.name}`);
+            runtimeChannel?.info(`==== qBook Attach Run #${runId} ATTACHED-EXISTING ====`);
+            return;
+        }
+        const debugWorkspace = this.resolveDebugWorkspaceFolder();
+        const launchConfigSelection = await this.resolveProjectAttachConfiguration(debugWorkspace?.uri);
+        runtimeChannel?.info(`Attach run #${runId} workspace=${debugWorkspace?.uri.fsPath ?? 'undefined'} mode=launch-config-only`);
+        if (launchConfigSelection) {
+            const selectedConfig = launchConfigSelection.configuration;
+            runtimeChannel?.info(`Attach run #${runId} launch-config-selected=${launchConfigSelection.configurationName} file=${launchConfigSelection.sourcePath}`);
+            runtimeChannel?.info(`Attach run #${runId} launch-defaults=${JSON.stringify({
+                justMyCode: selectedConfig.justMyCode ?? null,
+                requireExactSource: selectedConfig.requireExactSource ?? null,
+                hasSourceFileMap: Boolean(selectedConfig.sourceFileMap),
+                hasSymbolOptions: Boolean(selectedConfig.symbolOptions),
+                hasLogging: Boolean(selectedConfig.logging),
+            })}`);
+        }
+        else {
+            runtimeChannel?.error(`Attach run #${runId} launch-config-selected=none (searched only .vscode/launch.json)`);
+        }
+        runtimeChannel?.info('Using only resolved project attach configuration (no dynamic attach payloads).');
+        this.postStatusText('Debugger wird verbunden ...');
+        const startedFromLaunch = await this.startDebuggingFromProjectLaunchConfig(debugWorkspace, launchConfigSelection, runId, startedAt);
+        this.logDebugLandscape(`run=${runId} after-start`);
+        if (!startedFromLaunch) {
+            vscode.window.showErrorMessage('Debugger konnte nicht gestartet werden.');
+            this.postStatusText('Debugger-Start fehlgeschlagen');
+            runtimeChannel?.error(`==== qBook Attach Run #${runId} FAILED totalElapsed=${Date.now() - startedAt}ms ====`);
+        }
+    }
+    tryAdoptExistingQbookDebugSession() {
+        const active = vscode.debug.activeDebugSession;
+        if (active && this.isDotnetAttachSession(active)) {
+            return active;
+        }
+        for (const session of this.knownDebugSessions.values()) {
+            if (this.isManagedDebugSession(session)) {
+                return session;
+            }
+        }
+        return undefined;
+    }
+    isDotnetAttachSession(session) {
+        const configuration = session.configuration;
+        const type = typeof configuration?.type === 'string' ? configuration.type.toLowerCase() : '';
+        const request = typeof configuration?.request === 'string' ? configuration.request.toLowerCase() : '';
+        return request === 'attach' && (type === 'coreclr' || type === 'clr');
+    }
+    logDebugLandscape(scope) {
+        const runtimeChannel = getRuntimeLogChannel();
+        if (!runtimeChannel) {
+            return;
+        }
+        const active = vscode.debug.activeDebugSession;
+        const sessions = Array.from(this.knownDebugSessions.values());
+        runtimeChannel.info(`Debug landscape (${scope}): active=${active ? `${active.name}#${active.id} type=${active.type}` : 'none'} totalSessions=${sessions.length}`);
+        if (sessions.length > 0) {
+            runtimeChannel.info(`Debug sessions (${scope}): ${sessions
+                .map((session) => `${session.name}#${session.id} type=${session.type} managed=${this.isManagedDebugSession(session)}`)
+                .join(' | ')}`);
+        }
+        const breakpoints = vscode.debug.breakpoints;
+        const sourceBreakpoints = breakpoints.filter((breakpoint) => breakpoint instanceof vscode.SourceBreakpoint);
+        const functionBreakpoints = breakpoints.filter((breakpoint) => breakpoint instanceof vscode.FunctionBreakpoint);
+        const otherBreakpoints = breakpoints.length - sourceBreakpoints.length - functionBreakpoints.length;
+        runtimeChannel.info(`Breakpoints (${scope}): total=${breakpoints.length} source=${sourceBreakpoints.length} function=${functionBreakpoints.length} other=${otherBreakpoints}`);
+        const perFile = new Map();
+        for (const bp of sourceBreakpoints) {
+            const key = bp.location.uri.fsPath;
+            perFile.set(key, (perFile.get(key) ?? 0) + 1);
+        }
+        if (perFile.size > 0) {
+            const summary = Array.from(perFile.entries())
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .map(([file, count]) => `${file}:${count}`)
+                .join(' | ');
+            runtimeChannel.info(`Breakpoints by file (${scope}): ${summary}`);
+        }
+    }
+    async startDebuggingFromProjectLaunchConfig(workspaceFolder, launchSelection, runId, startedAt) {
+        const runtimeChannel = getRuntimeLogChannel();
+        if (!workspaceFolder) {
+            runtimeChannel?.error(`Launch-config attach aborted (run=${runId}): no workspace folder resolved`);
+            return false;
+        }
+        if (!launchSelection) {
+            runtimeChannel?.error(`Launch-config attach aborted (run=${runId}): no attach configuration resolved`);
+            return false;
+        }
+        const launchConfiguration = launchSelection.configuration;
+        const hasProcessId = typeof launchConfiguration.processId === 'number' ||
+            (typeof launchConfiguration.processId === 'string' && launchConfiguration.processId.trim().length > 0);
+        const hasProcessName = typeof launchConfiguration.processName === 'string' && launchConfiguration.processName.trim().length > 0;
+        runtimeChannel?.info(`Resolved launch config payload (run=${runId}): ${JSON.stringify({
+            name: launchSelection.configurationName,
+            file: launchSelection.sourcePath,
+            type: launchConfiguration.type ?? null,
+            request: launchConfiguration.request ?? null,
+            processId: launchConfiguration.processId ?? null,
+            processName: launchConfiguration.processName ?? null,
+        })}`);
+        if (!hasProcessId && !hasProcessName) {
+            runtimeChannel?.error(`Launch-config attach aborted (run=${runId}): configuration '${launchSelection.configurationName}' has neither processId nor processName`);
+            return false;
+        }
+        runtimeChannel?.info(`Starting resolved launch configuration '${launchSelection.configurationName}' (run=${runId}) from ${workspaceFolder.uri.fsPath}`);
+        try {
+            const started = await vscode.debug.startDebugging(workspaceFolder, launchSelection.configurationName);
+            runtimeChannel?.info(`Project launch startDebugging returned ${started} (run=${runId})`);
+            if (started) {
+                runtimeChannel?.info(`==== qBook Attach Run #${runId} ATTACHED totalElapsed=${Date.now() - startedAt}ms sessionId=${vscode.debug.activeDebugSession?.id ?? 'n/a'} ====`);
+            }
+            return started;
+        }
+        catch (error) {
+            const details = error instanceof Error ? error.message : String(error);
+            runtimeChannel?.error(`Project launch attach failed (run=${runId}): ${details}`);
+            return false;
+        }
+    }
+    async resolveProjectAttachConfiguration(rootUri) {
+        const launchSources = await this.readLaunchConfigurationSources(rootUri);
+        const preferredNames = [
+            'qbook: Attach to host process',
+            'qbook: Attach (pick process)',
+            'qBook Attach',
+        ];
+        for (const source of launchSources) {
+            const selected = this.pickAttachConfiguration(source.configurations, preferredNames);
+            if (!selected) {
+                continue;
+            }
+            const normalized = {
+                ...this.cloneJsonValue(selected),
+                name: selected.name ?? 'qBook Attach',
+                request: 'attach',
+                type: selected.type ?? 'coreclr',
+                __amiumQbookDebug: true,
+            };
+            if (!Object.prototype.hasOwnProperty.call(normalized, 'justMyCode')) {
+                normalized.justMyCode = false;
+            }
+            if (!Object.prototype.hasOwnProperty.call(normalized, 'requireExactSource')) {
+                normalized.requireExactSource = false;
+            }
+            if (!Object.prototype.hasOwnProperty.call(normalized, 'logging')) {
+                normalized.logging = {
+                    moduleLoad: true,
+                    exceptions: true,
+                    programOutput: true,
+                };
+            }
+            return {
+                configuration: normalized,
+                configurationName: String(normalized.name ?? 'qBook Attach'),
+                sourcePath: source.path,
+            };
+        }
+        return undefined;
+    }
+    async readLaunchConfigurationSources(rootUri) {
+        if (!rootUri) {
+            return [];
+        }
+        const candidates = [vscode.Uri.joinPath(rootUri, '.vscode', 'launch.json')];
+        const result = [];
+        for (const candidate of candidates) {
+            try {
+                const raw = await vscode.workspace.fs.readFile(candidate);
+                const text = textDecoder.decode(raw);
+                if (!text.trim()) {
+                    continue;
+                }
+                const parsed = this.parseJsonLoose(text);
+                const configurations = Array.isArray(parsed?.configurations) ? parsed.configurations : [];
+                if (configurations.length > 0) {
+                    result.push({ path: candidate.fsPath, configurations });
+                }
+            }
+            catch {
+                // optional file
+            }
+        }
+        return result;
+    }
+    pickAttachConfiguration(configurations, preferredNames) {
+        const attachConfigs = configurations.filter((entry) => {
+            const request = typeof entry.request === 'string' ? entry.request.toLowerCase() : '';
+            const type = typeof entry.type === 'string' ? entry.type.toLowerCase() : '';
+            return request === 'attach' && (type === 'coreclr' || type === 'clr');
+        });
+        if (attachConfigs.length === 0) {
+            return undefined;
+        }
+        for (const preferredName of preferredNames) {
+            const match = attachConfigs.find((entry) => typeof entry.name === 'string' && entry.name.toLowerCase() === preferredName.toLowerCase());
+            if (match) {
+                return match;
+            }
+        }
+        return attachConfigs[0];
+    }
+    parseJsonLoose(text) {
+        const withoutBlockComments = text.replace(/\/\*[\s\S]*?\*\//g, '');
+        const withoutLineComments = withoutBlockComments.replace(/^\s*\/\/.*$/gm, '');
+        return JSON.parse(withoutLineComments);
+    }
+    buildAttachAttemptConfigs(processId, processName, preferredArchitecture, launchDefaults = {}) {
+        const result = [];
+        const adapterTypes = ['coreclr', 'clr'];
+        for (const adapterType of adapterTypes) {
+            const byId = {
+                ...launchDefaults,
+                name: 'qBook Attach',
+                type: adapterType,
+                request: 'attach',
+                processId,
+                justMyCode: false,
+                requireExactSource: false,
+                logging: {
+                    moduleLoad: true,
+                    exceptions: true,
+                    programOutput: true,
+                },
+                __amiumQbookDebug: true,
+            };
+            result.push(byId);
+            if (processName) {
+                const byName = {
+                    ...launchDefaults,
+                    name: 'qBook Attach',
+                    type: adapterType,
+                    request: 'attach',
+                    processName,
+                    justMyCode: false,
+                    requireExactSource: false,
+                    logging: {
+                        moduleLoad: true,
+                        exceptions: true,
+                        programOutput: true,
+                    },
+                    __amiumQbookDebug: true,
+                };
+                result.push(byName);
+            }
+        }
+        return result;
+    }
+    async tryStartDebuggingViaLaunchConfig(config, runId) {
+        const workspaceFolder = this.resolveDebugWorkspaceFolder();
+        if (!workspaceFolder) {
+            const runtimeChannelNoWorkspace = getRuntimeLogChannel();
+            runtimeChannelNoWorkspace?.error(`Fallback attach aborted${runId ? ` (run=${runId})` : ''}: no workspace folder resolved`);
+            return false;
+        }
+        const runtimeChannel = getRuntimeLogChannel();
+        runtimeChannel?.info(`Direct attach failed${runId ? ` (run=${runId})` : ''}, fallback to .vscode/launch.json in ${workspaceFolder.uri.fsPath}`);
+        try {
+            await this.writeAttachLaunchConfig(workspaceFolder.uri, config);
+            const started = await vscode.debug.startDebugging(workspaceFolder, 'qBook Attach');
+            runtimeChannel?.info(`Fallback launch.json startDebugging returned ${started}${runId ? ` (run=${runId})` : ''}`);
+            return started;
+        }
+        catch (error) {
+            const details = error instanceof Error ? error.message : String(error);
+            runtimeChannel?.error(`Fallback launch.json attach failed${runId ? ` (run=${runId})` : ''}: ${details}`);
+            return false;
+        }
+    }
+    async writeAttachLaunchConfig(rootUri, config) {
+        const launchUri = vscode.Uri.joinPath(rootUri, '.vscode', 'launch.json');
+        const launchDir = vscode.Uri.joinPath(rootUri, '.vscode');
+        await vscode.workspace.fs.createDirectory(launchDir);
+        let document = {
+            version: '0.2.0',
+            configurations: [],
+        };
+        try {
+            const raw = await vscode.workspace.fs.readFile(launchUri);
+            const text = textDecoder.decode(raw);
+            if (text.trim()) {
+                document = JSON.parse(text);
+            }
+        }
+        catch {
+            // file optional
+        }
+        const current = Array.isArray(document.configurations) ? document.configurations : [];
+        const existingAttach = current.find((entry) => entry?.name === 'qBook Attach') ?? {};
+        const filtered = current.filter((entry) => entry?.name !== 'qBook Attach');
+        const processIdRaw = typeof config.processId === 'string' ? Number.parseInt(config.processId, 10) : config.processId;
+        const processId = typeof processIdRaw === 'number' && Number.isFinite(processIdRaw) ? Math.trunc(processIdRaw) : undefined;
+        const processName = typeof config.processName === 'string' && config.processName.trim() ? config.processName.trim() : undefined;
+        const attachEntry = {
+            ...this.cloneJsonValue(existingAttach),
+            name: 'qBook Attach',
+            type: config.type,
+            request: 'attach',
+            justMyCode: false,
+            requireExactSource: false,
+            logging: {
+                moduleLoad: true,
+                exceptions: true,
+                programOutput: true,
+            },
+        };
+        if (typeof processId === 'number') {
+            attachEntry.processId = processId;
+        }
+        if (processName) {
+            attachEntry.processName = processName;
+        }
+        filtered.push(attachEntry);
+        document.version = '0.2.0';
+        document.configurations = filtered;
+        const serialized = JSON.stringify(document, null, 2) + '\n';
+        await vscode.workspace.fs.writeFile(launchUri, textEncoder.encode(serialized));
+    }
+    async readLaunchAttachDefaults(rootUri) {
+        if (!rootUri) {
+            return {};
+        }
+        const launchUri = vscode.Uri.joinPath(rootUri, '.vscode', 'launch.json');
+        try {
+            const raw = await vscode.workspace.fs.readFile(launchUri);
+            const text = textDecoder.decode(raw);
+            if (!text.trim()) {
+                return {};
+            }
+            const document = JSON.parse(text);
+            const configurations = Array.isArray(document.configurations) ? document.configurations : [];
+            const qbookAttach = configurations.find((entry) => entry?.name === 'qBook Attach');
+            if (!qbookAttach) {
+                return {};
+            }
+            return this.extractAttachOptionDefaults(qbookAttach);
+        }
+        catch {
+            return {};
+        }
+    }
+    extractAttachOptionDefaults(configuration) {
+        const result = {};
+        const keys = [
+            'justMyCode',
+            'requireExactSource',
+            'sourceFileMap',
+            'symbolOptions',
+            'suppressJITOptimizations',
+            'logging',
+        ];
+        for (const key of keys) {
+            if (!Object.prototype.hasOwnProperty.call(configuration, key)) {
+                continue;
+            }
+            const value = configuration[key];
+            if (value === undefined) {
+                continue;
+            }
+            result[key] = this.cloneJsonValue(value);
+        }
+        return result;
+    }
+    cloneJsonValue(value) {
+        if (value === null || typeof value !== 'object') {
+            return value;
+        }
+        try {
+            return JSON.parse(JSON.stringify(value));
+        }
+        catch {
+            return value;
+        }
+    }
+    resolveDebugWorkspaceFolder() {
+        if (this.lastBookRoot) {
+            const fromBookRoot = vscode.workspace.getWorkspaceFolder(this.lastBookRoot);
+            if (fromBookRoot) {
+                return fromBookRoot;
+            }
+        }
+        return vscode.workspace.workspaceFolders?.[0];
+    }
+    logDebugProviderState(channel) {
+        if (!channel) {
+            return;
+        }
+        const csharp = vscode.extensions.getExtension('ms-dotnettools.csharp');
+        const devkit = vscode.extensions.getExtension('ms-dotnettools.csdevkit');
+        channel.info(`Debug provider state: csharp(installed=${Boolean(csharp)}, active=${Boolean(csharp?.isActive)}) csdevkit(installed=${Boolean(devkit)}, active=${Boolean(devkit?.isActive)})`);
+    }
+    logDebugSessionEvent(eventType, session) {
+        const runtimeChannel = getRuntimeLogChannel();
+        if (!runtimeChannel) {
+            return;
+        }
+        const configuration = session.configuration;
+        runtimeChannel.info(`Debug session ${eventType}: name=${session.name} id=${session.id} type=${session.type} managed=${this.isManagedDebugSession(session)} config=${JSON.stringify({
+            type: configuration?.type ?? null,
+            request: configuration?.request ?? null,
+            processId: configuration?.processId ?? null,
+            processName: configuration?.processName ?? null,
+            __amiumQbookDebug: configuration?.__amiumQbookDebug ?? null,
+        })}`);
+    }
+    async handleStopDebugging() {
+        if (!this.managedDebugSession) {
+            vscode.window.showInformationMessage('Kein qBook-Debugger aktiv.');
+            return;
+        }
+        this.postStatusText('Debugger wird getrennt ...');
+        try {
+            await vscode.debug.stopDebugging(this.managedDebugSession);
+        }
+        catch (error) {
+            const details = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Debugger konnte nicht beendet werden: ${details}`);
+        }
+    }
+    isManagedDebugSession(session) {
+        const configuration = session.configuration;
+        const marker = configuration?.__amiumQbookDebug;
+        if (marker === true) {
+            return true;
+        }
+        const sessionName = (session.name ?? '').toLowerCase();
+        const isDotnetAttach = this.isDotnetAttachSession(session);
+        const looksLikeQbook = sessionName.includes('qbook');
+        return isDotnetAttach && looksLikeQbook;
+    }
+    postDebugState() {
+        if (!this.currentView) {
+            return;
+        }
+        this.currentView.webview.postMessage({ type: 'debugState', payload: { active: Boolean(this.managedDebugSession) } });
     }
     normalizeFormatValue(value) {
         const normalized = value?.trim();

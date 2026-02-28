@@ -155,6 +155,9 @@ namespace qbook
         public static Book ThisBook = null;
 
 
+        
+
+
 
         private static oControl _actualMain = null;
         //  public static string PagesRootText = "";

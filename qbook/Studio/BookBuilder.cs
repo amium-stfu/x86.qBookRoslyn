@@ -417,8 +417,9 @@ namespace qbook.Studio
 
 
 
-            string csproj = Core.Roslyn.GenerateCsprojString(name);
-            File.WriteAllText(Path.Combine(codeDir, name + ".csproj"), csproj);
+           
+            BookBuilder.CreateCsproj(projectName: name, Path.Combine(codeDir, name + ".csproj"));
+          
 
             await Core.OpenQbookAsync(uri);
 
@@ -519,14 +520,15 @@ namespace qbook.Studio
                     Debug.WriteLine(" --- " + codeFile);
                     string subCode = File.ReadAllText(Path.Combine(pageFolder, codeFile));
 
-                    CodeDocument doc = new CodeDocument(codeFile, subCode, false, Core.Roslyn);
+                    CodeDocument doc = new CodeDocument(codeFile, subCode, true, Core.Roslyn);
+                    Core.Roslyn.AddCodeDocument(codeFile, subCode, true);
 
                     opage.SubCodeDocuments[codeFile] = doc;
-                    if (opage.Includes.Contains(codeFile))
-                    {
-                        await opage.SubCodeDocuments[codeFile].Include();
+                    //if (opage.Includes.Contains(codeFile))
+                    //{
+                    //    await opage.SubCodeDocuments[codeFile].Include();
 
-                    }
+                    //}
                 }
                 Debug.WriteLine(" ---- add page to book: " + opage.Name);
                 pages.Add(opage);
@@ -619,18 +621,20 @@ namespace qbook.Studio
                     subCode = ReplaceClassToDefinition(subCode);
                     string subFileName = $"{page.Name}.{subClass.Key}.cs";
                     page.CodeOrder.Add(subFileName);
-                    page.SubCodeDocuments[subFileName] = new CodeDocument(subFileName, subCode, false, Core.Roslyn);
+                    page.SubCodeDocuments[subFileName] = new CodeDocument(subFileName, subCode, true, Core.Roslyn);
+
+                    Core.Roslyn.AddCodeDocument(subFileName,subCode,true);
 
                     File.WriteAllText(Path.Combine(pageDir, subFileName), subCode);
                     Debug.WriteLine("   wrote subcode file: " + subFileName);
 
-                    if (includes.Contains(subClass.Key))
-                    {
-                        string file = page.Name + "." + subClass.Key + ".cs";
-                        await page.SubCodeDocuments[file].Include();
-                        page.SubCodeDocuments[file].UpdateCode();
-                        page.Includes.Add(file);
-                    }
+                    //if (includes.Contains(subClass.Key))
+                    //{
+                    //    string file = page.Name + "." + subClass.Key + ".cs";
+                    //    await page.SubCodeDocuments[file].Include();
+                    //    page.SubCodeDocuments[file].UpdateCode();
+                    //    page.Includes.Add(file);
+                    //}
                 }
 
                 var dto = new PageDefinition
@@ -692,7 +696,7 @@ namespace qbook.Studio
 
             string name = Path.GetFileNameWithoutExtension(fullPath).Replace(".qbook", "");
 
-            File.WriteAllText(Path.Combine(root, name + ".csproj"), Core.Roslyn.GenerateCsprojString(name));
+            BookBuilder.CreateCsproj(projectName: name, file: Path.Combine(root, name + ".csproj"));
 
             var project = new qBookDefinition
             {

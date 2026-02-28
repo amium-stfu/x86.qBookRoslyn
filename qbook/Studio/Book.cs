@@ -97,6 +97,8 @@ namespace qbook
             }
         }
 
+        public string CodeDirectory => Path.Combine(Directory, ProjectName + ".code");
+
         public void SetDataDirectory(string dir) { _DataDirectory = dir; }
         public void SetSettingsDirectory(string dir) { _SettingsDirectory = dir; }
         public void SetTempDirectory(string dir) { _TempDirectory = dir; }

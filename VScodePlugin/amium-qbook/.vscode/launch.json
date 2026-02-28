@@ -16,6 +16,22 @@
 				"${workspaceFolder}/out/**/*.js"
 			],
 			"preLaunchTask": "${defaultBuildTask}"
+		},
+		{
+			"name": "qBook Attach",
+			"type": "coreclr",
+			"request": "attach",
+			"processId": "${command:pickProcess}",
+			"justMyCode": false,
+			"requireExactSource": false,
+			"logging": {
+				"moduleLoad": true,
+				"exceptions": true,
+				"programOutput": true
+			},
+			"sourceFileMap": {
+				"/generated": "${workspaceFolder}/generated"
+			}
 		}
 	]
 }
