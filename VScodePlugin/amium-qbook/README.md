@@ -19,3 +19,19 @@ Dieses VS Code-Plugin zeigt ein qBook-Baumview im Explorer an und verbindet den 
 ### Aktivierung
 
 Die Erweiterung wird aktiviert, wenn der qBook-View im Explorer geöffnet oder der Befehl „Open qBook Panel“ ausgeführt wird.
+
+### Dokumentation
+
+- Architekturüberblick: [docs/architecture.md](docs/architecture.md)
+- Book Services: [src/services/book/README.md](src/services/book/README.md)
+- Debug Services: [src/services/debug/README.md](src/services/debug/README.md)
+- UI Services: [src/services/ui/README.md](src/services/ui/README.md)
+- Pipe Layer: [src/pipes/README.md](src/pipes/README.md)
+
+### Contributing (Doku-Regeln)
+
+- Architekturänderung (neue Schicht, neuer Hauptfluss, neue zentrale Zustände): `docs/architecture.md` aktualisieren.
+- Änderungen innerhalb einer Domäne (`book`, `debug`, `ui`, `pipes`): passendes Bereichs-README aktualisieren.
+- Neue zentrale Typen/Nachrichten: betroffene Abschnittsbeschreibung in Architektur- oder Bereichs-Doku ergänzen.
+- Kleine Refactorings ohne Verhaltensänderung: nur Doku anpassen, wenn sich Verantwortlichkeiten/Dateigrenzen geändert haben.
+- Ziel: Doku kurz halten, aber immer den aktuellen Einstieg und die Zuständigkeiten korrekt abbilden.

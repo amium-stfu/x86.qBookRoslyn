@@ -26,7 +26,7 @@ if errorlevel 1 goto :error
 echo.
 echo === Package VS Code extension (VSIX) ===
 rem vsce ueber npx ausfuehren (kein globales Install nötig)
-call npx vsce package
+call npx vsce package --baseContentUrl https://example.com/amium-qbook/blob/main/
 if errorlevel 1 goto :error
 
 rem Setup-Ordner neben der Batch anlegen
@@ -51,8 +51,8 @@ goto :done
 
 :have_vsix
 echo.
-echo === Copy VSIX to Setup ===
-copy /y "%VSIX_FILE%" "%SETUP_DIR%\%VSIX_FILE%" >nul
+echo === Move VSIX to Setup ===
+move /y "%VSIX_FILE%" "%SETUP_DIR%\%VSIX_FILE%" >nul
 if errorlevel 1 goto :error
 
 echo.

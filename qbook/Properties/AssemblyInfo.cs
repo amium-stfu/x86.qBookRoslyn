@@ -33,7 +33,7 @@ using System.Runtime.InteropServices;
 // [assembly: AssemblyVersion("1.0.*")]
 
 //HALE: the following line will be replaced automatically by the pre-build "updateAssemblyInfo.cs.ps1"
-[assembly: AssemblyVersion("2026.02.25.*")]
+[assembly: AssemblyVersion("2026.03.05.*")]
 [assembly: AssemblyFileVersion("0.3.0.2")]
 
 //[assembly: log4net.Config.XmlConfigurator(Watch = true)]
