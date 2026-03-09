@@ -542,6 +542,7 @@ using System.Text.Json;
                     //Main.Qb.Root.ResetWidgetDict();
                     //Main.Qb.Automation.SignalGen.SignalGenList.Clear();
                     csScript._DestroyClasses(null);
+           
                 }
                 catch (Exception ex)
                 {

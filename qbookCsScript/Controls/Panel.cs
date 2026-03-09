@@ -4,16 +4,19 @@ using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
+using AForge.Video;
+using AForge.Video.DirectShow;
 
 namespace QB.Controls
 {
     public class Panel : Control
     {
+
+   
+
         public Panel(string name, double x = 0, double y = 0, double w = 90, double h = 30) : base(name, x: x, y: y, w: w, h: h)
         {
             Clickable = false;
-
-    
         }
 
         public string Header = null;

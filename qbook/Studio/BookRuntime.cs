@@ -4,6 +4,7 @@ using log4net.Layout;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using QB;
+using QB.Controls;
 using qbook.Studio;
 using System;
 using System.Collections.Generic;
@@ -186,20 +187,20 @@ namespace qbook
             QB.Logger.Debug("=== PageRuntime.DestroyAll() start ===");
 
             // 1️⃣ Altes Script-System stoppen (CSScript)
-            try
-            {
-                Core.CsScript_Destroy();
-                QB.Logger.Debug("Core.CsScript_Destroy() executed successfully.");
-                RuntimeWatchdog.Stop();
-                Core.Roslyn?.ClearBuildArtifacts();
-            }
-            catch (Exception ex)
-            {
-                QB.Logger.Error($"Core.CsScript_Destroy() failed: {ex.Message}");
-                Core.StatusText = "Alert:Stop";
-            }
+            //try
+            //{
+            //    Core.CsScript_Destroy();
+            //    QB.Logger.Debug("Core.CsScript_Destroy() executed successfully.");
+            //    RuntimeWatchdog.Stop();
+            //    Core.Roslyn?.ClearBuildArtifacts();
+            //}
+            //catch (Exception ex)
+            //{
+            //    QB.Logger.Error($"Core.CsScript_Destroy() failed: {ex.Message}");
+            //    Core.StatusText = "Alert:Stop";
+            //}
 
-            // 2️⃣ Wenn QB.Program existiert, dessen statische Destroy() aufrufen
+            //// 2️⃣ Wenn QB.Program existiert, dessen statische Destroy() aufrufen
             try
             {
                 _programType?.GetMethod("Destroy", BindingFlags.Public | BindingFlags.Static)
@@ -209,15 +210,17 @@ namespace qbook
             catch (Exception ex)
             {
                 QB.Logger.Debug($"QB.Program.Destroy() failed: {ex.Message}");
-                Core.StatusText = "Alert:Stop"  ;
+                Core.StatusText = "Alert:Stop";
             }
 
-        
+
 
             // 3️⃣ Fallback: Alle Klassen im Script-Assembly nach Destroy() durchsuchen
             try
             {
                 var asm = qbook.Core.ActiveCsAssembly;
+
+                ItemDestroyHandler.DestroyAll(); // Alle registrierten Destroyer aufrufen (z.B. von Controls)
                 if (asm != null)
                 {
                     foreach (var type in asm.GetTypes())

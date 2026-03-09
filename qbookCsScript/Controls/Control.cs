@@ -248,7 +248,24 @@ namespace QB.Controls
         public string Color = null;
         public bool Enabled = true;
         public bool Hover = false;
-        public bool Visible = true;
+
+        bool visible = true;
+
+        public delegate void VisibilityChangedEventHandler(Control sender, bool visible);
+        public event VisibilityChangedEventHandler OnVisibilityChanged;
+
+        public bool Visible
+        {
+            get => visible;
+            set
+            {
+                if (visible != value)
+                {
+                    visible = value;
+                    OnVisibilityChanged?.Invoke(this, visible);
+                }
+            }
+        }
         public bool Clickable = true;
         public bool Transparent = false;
         private int _ZOrder = 0;

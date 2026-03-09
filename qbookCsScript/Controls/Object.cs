@@ -1,4 +1,5 @@
-﻿using QB.UI;
+﻿using QB.Controls;
+using QB.UI;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -204,6 +205,11 @@ namespace QB
             tbl.Add("A1,B1,C1");
             tbl["A1"].Value = () => DateTime.Now.Second;
             */
+            ItemDestroyHandler.AddDestroyer(() =>
+            {
+                //System.Windows.Forms.MessageBox.Show("Destroying " + this.Name);
+                Destroy();
+            });
 
 
             Directory = GetDirectoryFromCaller();

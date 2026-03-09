@@ -88,6 +88,11 @@ namespace QB.Controls
             }
         }
 
+        public static double PxToMm(double px)
+        {
+            return px / mmToPx;
+        }
+
         public class MmToPxChangedEventArgs : EventArgs
         {
             public double MmToPx;
@@ -1084,6 +1089,9 @@ namespace QB.Controls
             if (image == null)
                 return;
 
+            if (g == null)
+                return;
+
             if (false && noFrame)
             {
                 mmX1 -= 10;
@@ -1102,6 +1110,16 @@ namespace QB.Controls
 
             try
             {
+                double targetW = mmX2 - mmX1;
+                double targetH = mmY2 - mmY1;
+
+                if (targetW <= 0 || targetH <= 0)
+                    return;
+
+               // Debug.WriteLine("Image: " + image.PhysicalDimension.Width + "x" + image.PhysicalDimension.Height + "mm -> " + targetW + "x" + targetH + "mm");
+
+
+
                 double ratioX = image.PhysicalDimension.Width / (mmX2 - mmX1);
                 double ratioY = image.PhysicalDimension.Height / (mmY2 - mmY1);
                 double ratio = Math.Max(ratioX, ratioY);
@@ -1109,8 +1127,6 @@ namespace QB.Controls
                 double mmH = image.PhysicalDimension.Height / ratio;
                 double mmHReduction = (mmY2 - mmY1) - mmH;
                 double mmWReduction = (mmX2 - mmX1) - mmW;
-
-                Bitmap bitmap3 = new Bitmap(image);
 
                 //ImageFlags.
 

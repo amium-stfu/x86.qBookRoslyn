@@ -14,7 +14,7 @@
     <ProjectGuid>{37D2784C-B920-4FDD-A3E5-EDC81B68550A}</ProjectGuid>
     <OutputType>Library</OutputType>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-     <DocumentationFile>bin\Debug\qbookCsScript.xml</DocumentationFile>
+    <DocumentationFile>bin\Debug\qbookCsScript.xml</DocumentationFile>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>QB</RootNamespace>
     <AssemblyName>qbookCsScript</AssemblyName>
@@ -404,10 +404,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Controls\BoxView.cs" />
+    <Compile Include="Controls\CameraControl.cs" />
     <Compile Include="Controls\ChartExtended.cs" />
     <Compile Include="Controls\Input.cs" />
     <Compile Include="Controls\Icon.cs" />
     <Compile Include="Controls\Box.cs" />
+    <Compile Include="Controls\ItemDestroyHandler.cs" />
     <Compile Include="Controls\Log.cs" />
     <Compile Include="Controls\ChartXY.cs" />
     <Compile Include="Controls\PageControl.cs" />
@@ -418,6 +420,7 @@
     <Compile Include="Controls\Amium.Controls.cs" />
     <Compile Include="Controls\Panel.cs" />
     <Compile Include="Controls\ShowView.cs" />
+    <Compile Include="Controls\TLiteHCameraControl.cs" />
     <Compile Include="Controls\Widget.cs" />
     <Compile Include="ExceptionHandler.cs" />
     <Compile Include="Helpers\ByteDecoder.cs" />
@@ -443,6 +446,7 @@
     <Compile Include="Net\Stream.Client.cs" />
     <Compile Include="Net\Mqtt.Server.cs" />
     <Compile Include="Net\Mqtt.Client.cs" />
+    <Compile Include="Net\TLiteHCameraComClient.cs" />
     <Compile Include="Net\UdpBinaryClient.cs" />
     <Compile Include="Objects\Access.cs" />
     <Compile Include="Objects\Global.cs" />
