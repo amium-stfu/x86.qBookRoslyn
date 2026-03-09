@@ -66,8 +66,43 @@ namespace QB.Net
 
         public async void StartReceivingAsync()
         {
-            if (!_serialPort.IsOpen)
-                _serialPort.Open();
+            if (_serialPort == null)
+            {
+                QB.Logger.Error($"[TLiteHCameraComClient] Serialport instance is null for {_portName}");
+                return;
+            }
+
+            // Check available ports to ensure the configured port exists
+            string[] availablePorts;
+            try
+            {
+                availablePorts = System.IO.Ports.SerialPort.GetPortNames();
+            }
+            catch (Exception ex)
+            {
+                QB.Logger.Error($"[TLiteHCameraComClient] Failed to enumerate serial ports: {ex.Message}");
+                return;
+            }
+
+            bool portExists = Array.Exists(availablePorts, p => string.Equals(p, _portName, StringComparison.OrdinalIgnoreCase));
+            if (!portExists)
+            {
+                string avail = availablePorts.Length > 0 ? string.Join(", ", availablePorts) : "<none>";
+                QB.Logger.Error($"[TLiteHCameraComClient] Port '{_portName}' not found. Available ports: {avail}");
+                return;
+            }
+
+            // Try to open the port and handle exceptions (e.g. access denied, IO errors)
+            try
+            {
+                if (!_serialPort.IsOpen)
+                    _serialPort.Open();
+            }
+            catch (Exception ex)
+            {
+                QB.Logger.Error($"[TLiteHCameraComClient] Failed to open serial port '{_portName}': {ex.Message}");
+                return;
+            }
 
             if (_receiving) return;
             _receiving = true;
@@ -85,7 +120,11 @@ namespace QB.Net
                             FrameReceived?.Invoke(frame, LastBitmap);
                         }
                     }
-                    catch { }
+                    catch
+                    {
+                        // swallow exceptions to keep loop running; optionally add a small delay
+                        System.Threading.Thread.Sleep(10);
+                    }
                 }
             }, token);
         }
