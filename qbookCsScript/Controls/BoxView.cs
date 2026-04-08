@@ -650,18 +650,18 @@ namespace QB.Controls
         {
             Frame = new QB.Controls.Box(Name, x: X, y: Y, w: W, h: H, style: $"font::{H * 0.3}:b,align:tl", boxes: new[] {
 
-                new QB.Controls.Box("Header", textFunction:() => headerText,x:"1%", y:"2%", w:"98%", h:"14%", style:$"font::{H*0.3}:b,align:tl,bg:transparent"),
-                new QB.Controls.Box("Text", textFunction:() => dialogText,x:2, y:"20%", w:W-4, h:"60%", style:$"font::{H*0.2}:b,align:tl,bg:White"),
+                new QB.Controls.Box("Header", textFunction:() => headerText,x:"1%", y:"2%", w:"98%", h:"14%", style:$"font::{H*0.3}:b,align:tl,bg:transparent") { Directory = Page },
+                new QB.Controls.Box("Text", textFunction:() => dialogText,x:2, y:"20%", w:W-4, h:"60%", style:$"font::{H*0.2}:b,align:tl,bg:White") { Directory = Page },
 
 
             new QB.Controls.Box("ok", x:2, y:"82%", w:W/2-4, h:12, style:$"font::{H*0.3}:b,align:mc,bg:#9bcd9b",onClick: (b) => clickOk(), boxes: new[] {
-                 new QB.Controls.Box("icon", icon: "fa:check", x:"3%", y:"5%", w:"20%", h:"90%", onClick: (b)=> clickOk()),
-                 new QB.Controls.Box("description",  textFunction: () => OkText, x:"25%", y:"12%", w:"70%", h:"80%", onClick: (b)=> clickOk(), style:$"font::{H*0.3},align:ml,bg:Transparent"),
-                }),
+                 new QB.Controls.Box("icon", icon: "fa:check", x:"3%", y:"5%", w:"20%", h:"90%", onClick: (b)=> clickOk()) { Directory = Page },
+                 new QB.Controls.Box("description",  textFunction: () => OkText, x:"25%", y:"12%", w:"70%", h:"80%", onClick: (b)=> clickOk(), style:$"font::{H*0.3},align:ml,bg:Transparent") {Directory = Page },
+                }) { Directory = Page },
             new QB.Controls.Box("cancel", x: W/2+2, y:"82%", h:12,w:W/2-4, style:$"font::{H*0.3}:b,align:mc,bg:tomato",onClick: (b) => clickCancel(), boxes: new[] {
-                 new QB.Controls.Box("icon", icon: "fa:xmark", x:"3%", y:"5%", w:"20%", h:"90%",onClick: (b) => clickCancel()),
-                 new QB.Controls.Box("description",  textFunction: () => CancelText, x:"25%", y:"12%", w:"70%", h:"80%", onClick: (b)=> clickCancel(), style:$"font::{H*0.3},align:ml,bg:Transparent"),
-                }),
+                 new QB.Controls.Box("icon", icon: "fa:xmark", x:"3%", y:"5%", w:"20%", h:"90%",onClick: (b) => clickCancel()) { Directory = Page },
+                 new QB.Controls.Box("description",  textFunction: () => CancelText, x:"25%", y:"12%", w:"70%", h:"80%", onClick: (b)=> clickCancel(), style:$"font::{H*0.3},align:ml,bg:Transparent") { Directory = Page },
+                }) { Directory = Page },
                     }
                 );
      //   okButton.Description.TextAlignment = ContentAlignment.MiddleCenter,
@@ -711,13 +711,15 @@ namespace QB.Controls
             int textLineBreaks = Math.Max(1, Regex.Matches(text, @"\r\n|\n|\r").Count + 1);
             int headerLineBreaks = Math.Max(1, Regex.Matches(headerText, @"\r\n|\n|\r").Count + 1);
 
+
+
            
 
             double headerH = (double)headerLineBreaks * (fontSize * 0.55);
             double textH = (double)textLineBreaks * (fontSize * 0.55);
 
-            //QB.Logger.Info("header " + headerLineBreaks + " -> " + headerH);
-            //QB.Logger.Info("text " + textLineBreaks + " -> " + textH);
+            QB.Logger.Info("header " + headerLineBreaks + " -> " + headerH);
+            QB.Logger.Info("text " + textLineBreaks + " -> " + textH);
 
             OkText = okText;
             CancelText = cancelText;
@@ -734,19 +736,31 @@ namespace QB.Controls
             Frame.Boxes[0].Width = w -4;
             Frame.Boxes[0].Font = new Font("Tahoma", (float)(fontSize *1.2), FontStyle.Bold);
             Frame.Boxes[0].Height = headerH;
+
+            Debug.WriteLine($"Box0 {Frame.Boxes[0].ZOrder} {Frame.Boxes[0].Directory}");
+
+
             Frame.Boxes[1].Top = headerH + 4;
             Frame.Boxes[1].Left = 2;
             Frame.Boxes[1].Width = w - 4;
             Frame.Boxes[1].Font = new Font("Tahoma", (float)fontSize, FontStyle.Regular);
             Frame.Boxes[1].Height = textH;
+            Frame.Boxes[1].Clickable = true;
+            Debug.WriteLine($"Box1 {Frame.Boxes[1].ZOrder} {Frame.Boxes[1].Directory}");
 
             Frame.Boxes[2].Top = 2 + headerH + 4 + textH + 1;
             Frame.Boxes[2].Left = 2;
             Frame.Boxes[2].Width = w / 2 - 4;
+            Frame.Boxes[2].Clickable = true;
+
+            Debug.WriteLine($"Box2 {Frame.Boxes[2].ZOrder} {Frame.Boxes[2].Directory}");
 
             Frame.Boxes[3].Top = 2 + headerH + 4 + textH + 1;
             Frame.Boxes[3].Left = 2 + w / 2;
             Frame.Boxes[3].Width = w / 2 - 4;
+            Frame.Boxes[3].Clickable = true;
+
+            Debug.WriteLine($"Box3 {Frame.Boxes[3].ZOrder} {Frame.Boxes[3].Directory}");
 
             h = 2 + headerH + 4 + textH + 1 + 15;
             Frame.Height = h;
@@ -797,6 +811,23 @@ namespace QB.Controls
 
         public override void SetVisible()
         {
+
+            if (Visible)
+            {
+                Frame.ZOrder = 10;
+                Frame.Boxes[2].ZOrder = 10;
+                Frame.Boxes[1].ZOrder = 10;
+           
+            }
+            else
+            {
+                Frame.ZOrder = -1;
+                Frame.Boxes[2].ZOrder = -1;
+                Frame.Boxes[1].ZOrder = -1;
+            }
+
+
+
             Frame.Visible = Visible;
             Frame.Boxes[2].Visible = Visible;
             Frame.Boxes[2].Clickable = Visible;

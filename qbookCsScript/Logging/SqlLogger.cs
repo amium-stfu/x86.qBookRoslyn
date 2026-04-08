@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Data.Entity;
 using System.Data.SQLite;
 using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -80,6 +82,11 @@ namespace QB.Logging
                 type = "REAL";
             else if (result is DateTime)
                 type = "TEXT";
+            else if (result is Image)
+                type = "BLOB";
+
+            else if (result is Bitmap)
+                type = "BLOB";
 
             string tbl = "p" + period;
 
@@ -394,8 +401,23 @@ namespace QB.Logging
                     {
                         DateTime dt = (DateTime)item.Value.CurrentValue;
                         stringBuilder.Append("'"+dt.ToString(item.Value.Format)+ "'").Append(",");
+                    }
+
+                    if (item.Value.Object is Image)
+                    {
+                        var imageValue = item.Value.CurrentValue as Image;
+                        stringBuilder.Append(ToSqlBlobLiteral(imageValue)).Append(",");
+                    }
+
+                    if (item.Value.Object is Bitmap)
+                    {
 
                     }
+
+
+
+
+
 
                     if (item.Value.Object is Int16 || item.Value.Object is Int32 || item.Value.Object is Int64)
                         stringBuilder.Append("'"+item.Value.CurrentValue+ "'").Append(",");
@@ -413,6 +435,39 @@ namespace QB.Logging
             {
                 return "Error";
             }
+        }
+
+        private static string ToSqlBlobLiteral(Image image)
+        {
+            if (image == null)
+                return "NULL";
+
+            try
+            {
+                using (var ms = new MemoryStream())
+                {
+                    image.Save(ms, ImageFormat.Jpeg);
+                    return ToSqlBlobLiteral(ms.ToArray());
+                }
+            }
+            catch
+            {
+                return "NULL";
+            }
+        }
+
+        private static string ToSqlBlobLiteral(byte[] data)
+        {
+            if (data == null || data.Length == 0)
+                return "NULL";
+
+            var hex = new StringBuilder(data.Length * 2);
+            for (int i = 0; i < data.Length; i++)
+            {
+                hex.Append(data[i].ToString("X2"));
+            }
+
+            return "X'" + hex + "'";
         }
     }
 }

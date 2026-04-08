@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Text;
 using System.Text.Json;
@@ -6,7 +7,7 @@ using System.Text.Json.Serialization;
 
 namespace QB.Net
 {
-    internal class TLiteHCameraComClient
+    public class TLiteHCameraComClient : Item
     {
         private readonly string _portName;
         private readonly int _baudRate;
@@ -20,7 +21,7 @@ namespace QB.Net
         public Bitmap LastFrameBitmap = null;
 
 
-        public TLiteHCameraComClient(string portName = "COM1", int baudRate = 115200)
+        public TLiteHCameraComClient(string name, string portName = "COM1", int baudRate = 115200) : base(name)
         {
             _portName = portName;
             _baudRate = baudRate;
@@ -138,7 +139,7 @@ namespace QB.Net
                 _serialPort.Close();
         }
 
-        public void Destroy()
+        public override void Destroy()
         {
             StopReceiving();
             _serialPort.Dispose();
@@ -173,6 +174,7 @@ namespace QB.Net
                     }
                 }
                 string json = sb.ToString();
+              //  Debug.WriteLine(json);
                 LastReceived = JsonSerializer.Deserialize<TLiteJsonFrame>(json);
                 LastBitmap = CreateHeatingMap(LastReceived);
 

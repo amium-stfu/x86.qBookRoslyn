@@ -197,10 +197,17 @@ namespace QB.Controls
         {
             public Bitmap Bitmap { get; set; }
         }
+
+
+        public Bitmap LastFrame;
+
+
+
         private void VideoSource_NewFrame(object sender, NewFrameEventArgs eventArgs)
         {
- 
-           
+
+          
+            LastFrame?.Dispose();
 
             _frameCounter++;
 
@@ -214,7 +221,9 @@ namespace QB.Controls
             if (_frameCounter < FrameRate) return;
 
             Bitmap frame = (Bitmap)eventArgs.Frame.Clone();
-            
+
+            LastFrame = (Bitmap)eventArgs.Frame.Clone();
+
             Bitmap smallFrame = ResizeBitmap(frame, frame.Width / 4, frame.Height / 4); // Zielgröße
 
             OnUpdate?.Invoke(this, new UpdateEventArgs { Bitmap = smallFrame });
