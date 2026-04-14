@@ -458,23 +458,31 @@ namespace QB.Helpers
 
         private void Idle(QB.Timer t, TimerEventArgs ea)
         {
-            raw.Set.Value = (Set.Value + Adjust.offset.Value * -1) / Adjust.gain.Value;
-
-            Out.Value = raw.Out.Value;
-            timer.Interval = Filter.interval.Value.ToInt32();
-            if (Filter.filterTime.Value == 0)
+            try
             {
-                Value = Adjust.raw.Value;
-                return;
-            }
-            recordValues();
+                raw.Set.Value = (Set.Value + Adjust.offset.Value * -1) / Adjust.gain.Value;
 
-            if (Filter.mode.Value == 0) Value = Adjust.raw.Value;
-            if (Filter.mode.Value == 1) Value = avg();
-            if (Filter.mode.Value == 2) Value = wma();
-            if (Filter.mode.Value == 3) Value = ema();
-            if (Filter.mode.Value == 4) Value = emawma();
-            stats();
+                Out.Value = raw.Out.Value;
+                timer.Interval = Filter.interval.Value.ToInt32();
+                if (Filter.filterTime.Value == 0)
+                {
+                    Value = Adjust.raw.Value;
+                    return;
+                }
+                recordValues();
+
+                if (Filter.mode.Value == 0) Value = Adjust.raw.Value;
+                if (Filter.mode.Value == 1) Value = avg();
+                if (Filter.mode.Value == 2) Value = wma();
+                if (Filter.mode.Value == 3) Value = ema();
+                if (Filter.mode.Value == 4) Value = emawma();
+                stats();
+            }
+            catch 
+            {
+                QB.Logger.Warn($"{this.Name} -> Value not valid");
+            }
+
         }
 
 
