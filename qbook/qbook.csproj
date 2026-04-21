@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\packages\CefSharp.Common.141.0.110\build\CefSharp.Common.props" Condition="Exists('..\packages\CefSharp.Common.141.0.110\build\CefSharp.Common.props')" />
   <Import Project="..\packages\chromiumembeddedframework.runtime.win-x86.141.0.11\build\chromiumembeddedframework.runtime.win-x86.props" Condition="Exists('..\packages\chromiumembeddedframework.runtime.win-x86.141.0.11\build\chromiumembeddedframework.runtime.win-x86.props')" />
@@ -787,6 +787,7 @@
     <None Include="CsSnippets\while.snippet">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="generateNuGetPackageReport.ps1" />
     <None Include="log4net.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -991,6 +992,7 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+    <None Include="updateAssemblyInfo.cs.ps1" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -1124,13 +1126,15 @@ if /I "$(ConfigurationName)"=="Debug" (
     <Error Condition="!Exists('..\packages\CefSharp.Common.141.0.110\build\CefSharp.Common.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\CefSharp.Common.141.0.110\build\CefSharp.Common.targets'))" />
     <Error Condition="!Exists('..\packages\Scintilla.NET.5.3.2.7\build\scintilla.net.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Scintilla.NET.5.3.2.7\build\scintilla.net.targets'))" />
   </Target>
-  <PropertyGroup>
-    <PreBuildEvent>
-if "$(ConfigurationName)"=="Release" (
-powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File $(ProjectDir)updateAssemblyInfo.cs.ps1
-)
-</PreBuildEvent>
-  </PropertyGroup>
+  <Target Name="GenerateAssemblyVersionInfo" BeforeTargets="CoreCompile">
+    <Exec Command="powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File &quot;$(ProjectDir)updateAssemblyInfo.cs.ps1&quot; -Configuration &quot;$(Configuration)&quot;" />
+    <ItemGroup>
+      <Compile Include="obj\GeneratedAssemblyVersionInfo.cs" Visible="false" />
+    </ItemGroup>
+  </Target>
+  <Target Name="GenerateNuGetPackageReport" BeforeTargets="PostBuildEvent">
+    <Exec Command="powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File &quot;$(ProjectDir)generateNuGetPackageReport.ps1&quot; -Configuration &quot;$(Configuration)&quot; -OutputPath &quot;$(TargetDir)NuGetPackages.csv&quot;" />
+  </Target>
   <Import Project="..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.119.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets" Condition="Exists('..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.119.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets')" />
   <Import Project="..\packages\EntityFramework.6.5.1\build\EntityFramework.targets" Condition="Exists('..\packages\EntityFramework.6.5.1\build\EntityFramework.targets')" />
   <Import Project="..\packages\Microsoft.Build.Locator.1.9.1\build\Microsoft.Build.Locator.targets" Condition="Exists('..\packages\Microsoft.Build.Locator.1.9.1\build\Microsoft.Build.Locator.targets')" />

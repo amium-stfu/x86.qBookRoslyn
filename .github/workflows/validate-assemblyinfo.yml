@@ -1,0 +1,36 @@
+name: Validate qbook AssemblyInfo
+
+on:
+  pull_request:
+    paths:
+      - 'qbook/Properties/AssemblyInfo.cs'
+      - 'qbook/qbook.csproj'
+      - 'qbook/updateAssemblyInfo.cs.ps1'
+      - '.gitattributes'
+      - '.github/scripts/Validate-AssemblyInfo.ps1'
+      - '.github/workflows/validate-assemblyinfo.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'qbook/Properties/AssemblyInfo.cs'
+      - 'qbook/qbook.csproj'
+      - 'qbook/updateAssemblyInfo.cs.ps1'
+      - '.gitattributes'
+      - '.github/scripts/Validate-AssemblyInfo.ps1'
+      - '.github/workflows/validate-assemblyinfo.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-assemblyinfo:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate qbook AssemblyInfo
+        shell: pwsh
+        run: .\.github\scripts\Validate-AssemblyInfo.ps1

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -10,23 +10,11 @@
     <DisableMSBuildAssemblyCopyCheck>true</DisableMSBuildAssemblyCopyCheck>
     <ApplicationIcon>editor.main.ico</ApplicationIcon>
     <BaseOutputPath>B:\x86.qBookRoslyn\qbookCode\bin\Release</BaseOutputPath>
+    <GenerateAssemblyVersionAttribute>false</GenerateAssemblyVersionAttribute>
+    <GenerateAssemblyFileVersionAttribute>false</GenerateAssemblyFileVersionAttribute>
+    <GenerateAssemblyInformationalVersionAttribute>false</GenerateAssemblyInformationalVersionAttribute>
   </PropertyGroup>
-
-
-
-	<Target Name="SetVersion" BeforeTargets="BeforeBuild" Condition="'$(Configuration)'=='Release'">
-		<PropertyGroup>
-			<Year>$([System.DateTime]::Now.ToString("yyyy"))</Year>
-			<Month>$([System.DateTime]::Now.ToString("MM"))</Month>
-			<Day>$([System.DateTime]::Now.ToString("dd"))</Day>
-			<Time>$([System.DateTime]::Now.ToString("HHmm"))</Time>
-			<AssemblyVersion>$(Year).$(Month).$(Day).$(Time)</AssemblyVersion>
-			<InformationalVersion>$(Year).$(Month).$(Day).$(Time)</InformationalVersion>
-		</PropertyGroup>
-	</Target>
-
-
-	<ItemGroup>
+<ItemGroup>
     <Compile Remove="Controls\CodeNode.cs" />
     <Compile Remove="Roslyn\RoslynSignatureHelper.cs" />
     <Compile Remove="Roslyn\RoslynSummarys.cs" />
@@ -134,6 +122,17 @@
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
   </ItemGroup>
+
+  <Target Name="GenerateAssemblyVersionInfo" BeforeTargets="CoreCompile">
+    <Exec Command="powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File &quot;$(ProjectDir)updateAssemblyInfo.cs.ps1&quot; -Configuration &quot;$(Configuration)&quot;" />
+    <ItemGroup>
+      <Compile Include="obj\GeneratedAssemblyVersionInfo.cs" Visible="false" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="GenerateNuGetPackageReport" BeforeTargets="PostBuildEvent">
+    <Exec Command="powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File &quot;$(ProjectDir)generateNuGetPackageReport.ps1&quot; -Configuration &quot;$(Configuration)&quot; -OutputPath &quot;$(TargetDir)NuGetPackages.csv&quot;" />
+  </Target>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <Exec Command="if /I &quot;$(ConfigurationName)&quot;==&quot;Release&quot; (&#xD;&#xA;    if not exist &quot;$(SolutionDir)Setup\Release\bin\qbookCode&quot; mkdir $(SolutionDir)Setup\Release\bin\qbookCode&quot;&#xD;&#xA;    xcopy &quot;$(TargetDir)*&quot; &quot;$(SolutionDir)Setup\Release\bin\qbookCode\&quot; /E /I /Y&#xD;&#xA;)&#xD;&#xA;&#xD;&#xA;if /I &quot;$(ConfigurationName)&quot;==&quot;Debug&quot; (&#xD;&#xA;    if not exist &quot;$(SolutionDir)Setup\Debug\bin\qbookCode&quot; mkdir &quot;$(SolutionDir)Setup\Debug\bin\qbookCode&quot;&#xD;&#xA;    xcopy &quot;$(TargetDir)*&quot; &quot;$(SolutionDir)Setup\Debug\bin\qbookCode\&quot; /E /I /Y&#xD;&#xA;)" />
