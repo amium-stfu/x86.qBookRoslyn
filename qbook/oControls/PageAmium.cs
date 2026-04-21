@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Drawing.Text;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 
 namespace qbook
 {
@@ -30,6 +31,8 @@ namespace qbook
 
         public static void AmiumDefault(int Width, int Height, bool frame, string format)
         {
+
+
             /*
             try
             {
@@ -71,7 +74,9 @@ namespace qbook
             { 
             }
             */
+
             Draw.g.DrawRectangle(Pens.LightSlateGray, 0, 0, Width - 1, Height - 1);
+            try { 
             oTag.rCursorX = Draw.Width - qbook.Core.SelectedPage.rItemWidth;
             oTag.lCursorX = qbook.Core.SelectedPage.lItemWidth;
 
@@ -81,6 +86,13 @@ namespace qbook
             oTag.rCursor[0] = 30;
             oTag.rCursor[1] = 100;
             oTag.rCursor[2] = 150;
+        }
+
+        catch
+            { 
+
+
+            }
 
             if (Draw.renderBounds != null)
             {

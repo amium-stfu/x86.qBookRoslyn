@@ -1635,11 +1635,11 @@ namespace QB.Controls
 
             if (!LedStyle)
             {
-                double bF = W * 0.12;
+                double bF = W * 0.3;
                 Frame = new QB.Controls.Box(Name, text: Target.Text, x: X, y: Y, w: W, h: H, format: $"font::{H * 0.7}:,align:tl,bg-hover:Transparent"
                     , boxes: new[] {
-                On = new QB.Controls.Box("read", text:"ON", x:"70%", y:"5%", w:"15%", h:"90%", style:$"font::{bF}:b:bg:#e6e6e6,border:1", onClick:(s) => set(1)) {Directory = Page},
-                Off = new QB.Controls.Box("set", text:"OFF", x:"85%", y:"5%", w:"15%", h:"90%", style:$"font::{bF}:b:bg:#e6e6e6,border:1", onClick:(s) => set(0)) {Directory = Page},
+                On = new QB.Controls.Box("read", text:"ON", x:"20%", y:"40%", w:"40%", h:"50%", style:$"font::{bF}:b:bg:#e6e6e6,border:1", onClick:(s) => set(1)) {Directory = Page},
+                Off = new QB.Controls.Box("set", text:"OFF", x:"60%", y:"40%", w:"40%", h:"50%", style:$"font::{bF}:b:bg:#e6e6e6,border:1", onClick:(s) => set(0)) {Directory = Page},
                     }
                 );
             }
