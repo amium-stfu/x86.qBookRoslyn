@@ -1,4 +1,5 @@
-﻿using log4net;
+﻿using CefSharp;
+using log4net;
 using log4net.Appender;
 using log4net.Layout;
 using QB;
@@ -18,6 +19,7 @@ namespace qbook
     static class Program
     {
         static MainForm LandingPage;
+        static int CurrentProcessId;
         
         [DllImport("shell32.dll", SetLastError = true)]
         private static extern void ShellExecute(IntPtr hwnd, string lpOperation, string lpFile, string lpParameters, string lpDirectory, int nShowCmd);
@@ -41,6 +43,7 @@ namespace qbook
         internal static string[] Args = null;
 
         internal static UdpLogListener AppUdpLogListener;
+        internal static Process ExternalEditorProcess;
 
 
 
@@ -50,6 +53,7 @@ namespace qbook
         [STAThread]
         static void Main(string[] args)
         {
+            CurrentProcessId = Process.GetCurrentProcess().Id;
 
 
 
@@ -178,9 +182,160 @@ namespace qbook
 
 
             Thread.CurrentThread.CurrentUICulture = new CultureInfo("en-US");
+            try
+            {
                 Application.Run(LandingPage = new MainForm(args));
+            }
+            finally
+            {
+                TryScheduleSelfKill();
+
+                try
+                {
+                    MainForm.log.Info("Program.Main finally: starting shutdown");
+                }
+                catch
+                {
+                }
+
+                try
+                {
+                    Core.Shutdown();
+                }
+                catch
+                {
+                }
+
+                try
+                {
+                    AppUdpLogListener?.StopListening();
+                    MainForm.log.Info("Program.Main finally: UDP listener stopped");
+                }
+                catch
+                {
+                }
+
+                try
+                {
+                    ShutdownExternalEditor();
+                    MainForm.log.Info("Program.Main finally: external editor shutdown complete");
+                }
+                catch
+                {
+                }
+
+                try
+                {
+                    if (Cef.IsInitialized == true)
+                    {
+                        Cef.Shutdown();
+                    }
+
+                    MainForm.log.Info("Program.Main finally: Cef shutdown complete");
+                }
+                catch
+                {
+                }
+
+                try
+                {
+                    MainForm.log.Info("Program.Main finally: shutdown completed");
+                }
+                catch
+                {
+                }
+
+                Environment.Exit(0);
+            }
 
 
+        }
+
+        internal static void RegisterExternalEditorProcess(Process process)
+        {
+            if (process == null)
+                return;
+
+            try
+            {
+                if (ExternalEditorProcess != null && !ExternalEditorProcess.HasExited)
+                    return;
+            }
+            catch
+            {
+            }
+
+            ExternalEditorProcess = process;
+        }
+
+        internal static void ShutdownExternalEditor()
+        {
+            var process = ExternalEditorProcess;
+            if (process == null)
+                return;
+
+            try
+            {
+                if (process.HasExited)
+                    return;
+            }
+            catch
+            {
+                return;
+            }
+
+            try
+            {
+                process.CloseMainWindow();
+                if (!process.WaitForExit(3000))
+                {
+                    process.Kill();
+                    process.WaitForExit(2000);
+                }
+            }
+            catch
+            {
+            }
+            finally
+            {
+                try
+                {
+                    process.Dispose();
+                }
+                catch
+                {
+                }
+
+                ExternalEditorProcess = null;
+            }
+        }
+
+        private static void TryScheduleSelfKill()
+        {
+            try
+            {
+                MainForm.log.Info("Program.Main finally: scheduling self-kill fallback for pid " + CurrentProcessId);
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = "-NoProfile -WindowStyle Hidden -Command \"Start-Sleep -Milliseconds 1500; Stop-Process -Id " + CurrentProcessId + " -Force\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
+                };
+
+                Process.Start(psi);
+            }
+            catch
+            {
+            }
         }
 
         //static List<long> _ticks10ms = new List<long>();

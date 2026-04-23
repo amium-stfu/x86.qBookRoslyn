@@ -89,6 +89,97 @@ namespace qbook
             PipeCommandManager.Start();
         }
 
+        /// <summary>
+        /// Stops background communication components before the application exits.
+        /// </summary>
+        public static void Shutdown()
+        {
+            try
+            {
+                log.Info("Core.Shutdown: starting runtime destroy");
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                BookRuntime.DestroyAll();
+                log.Info("Core.Shutdown: runtime destroy completed");
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    log.Warn("Core.Shutdown: runtime destroy failed", ex);
+                }
+                catch
+                {
+                }
+            }
+
+            try
+            {
+                PipeHeartbeat?.Dispose();
+                PipeHeartbeat = null;
+                log.Info("Core.Shutdown: heartbeat disposed");
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                RuntimeWatchdog.Stop();
+                log.Info("Core.Shutdown: runtime watchdog stopped");
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                PipeCommandManager.Stop();
+                log.Info("Core.Shutdown: pipe command manager stopped");
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                if (ComChannel != null)
+                {
+                    var disposeTask = ComChannel.DisposeAsync().AsTask();
+                    if (!disposeTask.Wait(TimeSpan.FromMilliseconds(250)))
+                    {
+                        log.Warn("Core.Shutdown: communication channel dispose timed out");
+                    }
+                }
+
+                ComChannel = null;
+                log.Info("Core.Shutdown: communication channel disposed");
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    log.Warn("Core.Shutdown: communication channel dispose failed", ex);
+                }
+                catch
+                {
+                }
+            }
+
+            try
+            {
+                log.Info("Core.Shutdown: completed");
+            }
+            catch
+            {
+            }
+        }
+
         public static string StatusText { get; set; } = "Status:Init";
 
         public static System.Threading.Timer PipeHeartbeat = new System.Threading.Timer((e) =>

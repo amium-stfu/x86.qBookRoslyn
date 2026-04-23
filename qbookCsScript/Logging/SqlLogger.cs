@@ -681,6 +681,88 @@ namespace QB.Logging
             return !DatabaseIsOpen();
         }
         /// <summary>
+        /// Executes a scalar SQL query against the SQLite database.
+        /// </summary>
+        /// <param name="sql">The SQL query to execute.</param>
+        /// <returns>The first column of the first row in the result set; otherwise, <c>null</c>.</returns>
+        public object QueryScalar(string sql)
+        {
+            return QueryScalarInternal(sql, null);
+        }
+
+        private object QueryScalarInternal(string sql, params SQLiteParameter[] parameters)
+        {
+            if (string.IsNullOrWhiteSpace(sql) || string.IsNullOrWhiteSpace(connectionString))
+                return null;
+
+            try
+            {
+                using (var database = new SQLiteConnection(connectionString))
+                {
+                    database.Open();
+
+                    using (var command = new SQLiteCommand(sql, database))
+                    {
+                        if (parameters != null && parameters.Length > 0)
+                            command.Parameters.AddRange(parameters);
+
+                        object result = command.ExecuteScalar();
+                        if (result == null || result == DBNull.Value)
+                            return null;
+
+                        return result;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                QB.Logger.Error($"{Name}.SqlLogger QueryScalar failed: {ex.Message}");
+                return null;
+            }
+        }
+        /// <summary>
+        /// Executes a scalar SQL query and converts the result to a <see cref="string"/>.
+        /// </summary>
+        /// <param name="sql">The SQL query to execute.</param>
+        /// <param name="defaultValue">The fallback value returned when no valid string value is available.</param>
+        /// <returns>The scalar result as a string if available; otherwise, <paramref name="defaultValue"/>.</returns>
+        public string QueryString(string sql, string defaultValue = null)
+        {
+            object value = QueryScalar(sql);
+            if (value == null)
+                return defaultValue;
+
+            try
+            {
+                return Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture);
+            }
+            catch
+            {
+                return defaultValue;
+            }
+        }
+        /// <summary>
+        /// Executes a scalar SQL query and converts the result to a <see cref="double"/>.
+        /// </summary>
+        /// <param name="sql">The SQL query to execute.</param>
+        /// <param name="defaultValue">The fallback value returned when no valid numeric value is available.</param>
+        /// <returns>The scalar result as a double if available; otherwise, <paramref name="defaultValue"/>.</returns>
+        public double QueryDouble(string sql, double defaultValue = double.NaN)
+        {
+            object value = QueryScalar(sql);
+            if (value == null)
+                return defaultValue;
+
+            try
+            {
+                return Convert.ToDouble(value, System.Globalization.CultureInfo.InvariantCulture);
+            }
+            catch
+            {
+                return defaultValue;
+            }
+        }
+        /// <summary>
         /// Gets the latest persisted raw or statistic value from the SQLite database.
         /// </summary>
         /// <param name="name">The name of the raw log value or statistic definition.</param>

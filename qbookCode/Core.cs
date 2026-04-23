@@ -37,6 +37,26 @@ namespace qbookCode
             PipeCommandManager.RegisterCommandHandler("RuntimeErrors", async cmd => await PipeCommands.RuntimeErrors(cmd));
             PipeCommandManager.Start();
         }
+
+        public static void Shutdown()
+        {
+            try
+            {
+                PipeCommandManager.Stop();
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                ComChannel?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                ComChannel = null;
+            }
+            catch
+            {
+            }
+        }
         public static void SendToQbook(string command, params string[] args)
         {
             ComChannel?.Send(new PipeCommand

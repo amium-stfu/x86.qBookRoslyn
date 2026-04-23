@@ -120,8 +120,11 @@ namespace QB.Net
             public static int readMsgs = 0;
 
             UdpClient udpClient = null;
+            UdpClient rxClient = null;
             System.Threading.Thread rxThread = null;
             System.Threading.Thread txThread = null;
+            private volatile bool _isClosing = false;
+            private readonly object _closeSync = new object();
 
             public Link(string socket)
             {
@@ -146,12 +149,41 @@ namespace QB.Net
 
             public void Close()
             {
-                if (rxThread != null)
-                    rxThread.Abort();
-                if (txThread != null)
-                    txThread.Abort();
-                if (udpClient != null)
-                    udpClient.Close();
+                lock (_closeSync)
+                {
+                    if (_isClosing)
+                        return;
+
+                    _isClosing = true;
+                }
+
+                try
+                {
+                    rxClient?.Close();
+                }
+                catch
+                {
+                }
+
+                try
+                {
+                    udpClient?.Close();
+                }
+                catch
+                {
+                }
+
+                if (rxThread != null && rxThread != System.Threading.Thread.CurrentThread)
+                    rxThread.Join(500);
+                if (txThread != null && txThread != System.Threading.Thread.CurrentThread)
+                    txThread.Join(500);
+
+                rxClient = null;
+                udpClient = null;
+                rxThread = null;
+                txThread = null;
+                MessageReceived = null;
+                LogEvent = null;
             }
 
             System.Collections.Generic.Queue<Message> txBuffer = new System.Collections.Generic.Queue<Message>();
@@ -168,7 +200,7 @@ namespace QB.Net
             {
                 byte[] bytes = new byte[1500];
                 int packageCounter = 0;
-                while (true)
+                while (!_isClosing)
                 {
                     if (txBuffer.Count > 0)
                     {
@@ -212,12 +244,15 @@ namespace QB.Net
 
                             packageCounter++;
 
-                            if (udpClient.Client.Connected)
+                            if (!_isClosing && udpClient != null && udpClient.Client != null && udpClient.Client.Connected)
                                 udpClient.Send(bytes, offset);
 
                         }
                         catch (Exception ex)
                         {
+                            if (_isClosing)
+                                break;
+
                             if (LogEvent != null)
                                 LogEvent(this, "txThreadIdle " + ex.ToString());
                             //   System.Windows.Forms.MessageBox.Show("CanUdp TransmitUdp " + ex.ToString());
@@ -234,35 +269,37 @@ namespace QB.Net
                 //if (!udpClient.Client.Connected) return;
                 
                 IPEndPoint ipep;
-                UdpClient newsock = null;
                 IPEndPoint sender = null;
                 System.Threading.Thread.Sleep(100);
                 try
                 {
                     int port = ((IPEndPoint)udpClient.Client.LocalEndPoint).Port;
                     ipep = new IPEndPoint(IPAddress.Any, port);
-                    newsock = new UdpClient((IPEndPoint)udpClient.Client.LocalEndPoint);
-                    newsock.DontFragment = true;
+                    rxClient = new UdpClient((IPEndPoint)udpClient.Client.LocalEndPoint);
+                    rxClient.DontFragment = true;
                     if (LogEvent != null)
                         LogEvent(this, "Waiting for a client...");
                     sender = new IPEndPoint(IPAddress.Any, port);
                 }
                 catch (Exception ex)
                 {
+                    if (_isClosing)
+                        return;
+
                     if (LogEvent != null)
                         LogEvent(this, "rxThreadIdle " + ex.ToString());
                 }
-                if (newsock == null)
+                if (rxClient == null)
                     return;
 
                 byte[] data = new byte[64];
-                while (true)
+                while (!_isClosing)
                 {
                     try
                     {
-                        while (newsock.Available > 0)
+                        while (!_isClosing && rxClient != null && rxClient.Available > 0)
                         {
-                            byte[] bytes = newsock.Receive(ref sender);
+                            byte[] bytes = rxClient.Receive(ref sender);
                             /*
     UInt32 msgCounter =
         ((UInt32)bytes[0] << 24) +
@@ -326,10 +363,21 @@ namespace QB.Net
                     }
                     catch (Exception ex)
                     {
+                        if (_isClosing)
+                            break;
+
                         if (LogEvent != null)
                             LogEvent(this, "txThreadIdle " + ex.ToString());
                     }
                     System.Threading.Thread.Sleep(1);
+                }
+
+                try
+                {
+                    rxClient?.Close();
+                }
+                catch
+                {
                 }
             }
         }

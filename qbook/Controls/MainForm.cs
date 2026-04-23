@@ -2483,7 +2483,8 @@ namespace qbook
                 CreateNoWindow = false   // true, wenn kein Fenster angezeigt werden soll
             };
 
-            Process.Start(psi);
+            var editorProcess = Process.Start(psi);
+            Program.RegisterExternalEditorProcess(editorProcess);
 
          //   await Core.ShowCodeExploror();
         }

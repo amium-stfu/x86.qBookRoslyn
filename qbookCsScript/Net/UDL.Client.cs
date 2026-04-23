@@ -15,6 +15,10 @@ namespace QB.Net
         {
 
             System.Threading.Thread idleThread = null;
+            private volatile bool _isStopping = false;
+            private bool _isDestroyed = false;
+            private readonly object _destroySync = new object();
+
             public Client(string name, string uri = "127.0.0.1:9001") : base(name)
             {
                 this.uri = uri;
@@ -27,14 +31,27 @@ namespace QB.Net
 
             public override void Destroy()
             {
-              
-                if (CanClient != null)
-                    CanClient.Close();
-                  
-               
+                lock (_destroySync)
+                {
+                    if (_isDestroyed)
+                        return;
 
-                if (idleThread != null)
-                    idleThread.Abort();
+                    _isDestroyed = true;
+                    _isStopping = true;
+                }
+
+                var canClient = CanClient;
+                CanClient = null;
+                if (canClient != null)
+                {
+                    canClient.MessageReceived -= Can_MessageReived;
+                    canClient.Close();
+                }
+
+                var thread = idleThread;
+                idleThread = null;
+                if (thread != null && thread != System.Threading.Thread.CurrentThread)
+                    thread.Join(500);
 
                 base.Destroy();
             }
@@ -49,7 +66,7 @@ namespace QB.Net
             public void Idle()
             {
 
-                while (true)
+                while (!_isStopping)
                 {
                     HbIdle();
 
@@ -186,7 +203,10 @@ namespace QB.Net
                 try
                 {
                     if (CanClient != null)
+                    {
+                        CanClient.MessageReceived -= Can_MessageReived;
                         CanClient.Close();
+                    }
 
                     CanClient = new Can.Link(uri);
                     CanClient.MessageReceived += Can_MessageReived;

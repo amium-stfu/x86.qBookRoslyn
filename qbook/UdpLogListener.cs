@@ -12,6 +12,7 @@ namespace qbook
     {
         public Thread listenThread = null;
         UdpClient udpClient = null;
+        volatile bool stopRequested = false;
         Regex log4NetSplitRegex = new Regex(@"(?<date>\d\d\d\d-\d\d-\d\d)\s+(?<time>\d\d:\d\d:\d\d[\.,]\d\d\d)\s+\[(?<thread>[^\]]+)\]\s+(?<type>[^\s]+)\s+(?<logger>[^\s:]+):?\s+(?<text>.*)", RegexOptions.Compiled | RegexOptions.Singleline);
         Regex log4NetTextStyleRegex = new Regex(@"(?<text>.*)({style=(?<style>[^}]*)}\s*)", RegexOptions.Compiled | RegexOptions.RightToLeft);
         public bool udpLoggerListenThreadIsRunning = false;
@@ -23,8 +24,9 @@ namespace qbook
         {
             try
             {
+                stopRequested = false;
                 UdpLoggerStatus = "starting...";
-                Thread listenThread = new Thread(new ParameterizedThreadStart(ListenThread));
+                listenThread = new Thread(new ParameterizedThreadStart(ListenThread));
                 listenThread.IsBackground = true;
                 listenThread.Start(port);
                 return true;
@@ -58,7 +60,7 @@ namespace qbook
                     //udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, port));
 
                     udpLoggerListenThreadIsRunning = true;
-                    while (true)
+                    while (!stopRequested)
                     {
                         try
                         {
@@ -95,6 +97,9 @@ namespace qbook
                         }
                         catch (Exception ex1)
                         {
+                            if (stopRequested)
+                                break;
+
                             qbook.Core.AddLog('X', "#EX:" + ex1.Message);
                         }
                     }
@@ -106,6 +111,32 @@ namespace qbook
                 //Console.WriteLine(e.ToString());
                 udpLoggerListenThreadFailed = true;
                 qbook.Core.AddLog('X', "#EX:" + ex.Message);
+            }
+            finally
+            {
+                udpLoggerListenThreadIsRunning = false;
+            }
+        }
+
+        internal void StopListening()
+        {
+            stopRequested = true;
+
+            try
+            {
+                udpClient?.Close();
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                if (listenThread != null && listenThread.IsAlive)
+                    listenThread.Join(500);
+            }
+            catch
+            {
             }
         }
     }

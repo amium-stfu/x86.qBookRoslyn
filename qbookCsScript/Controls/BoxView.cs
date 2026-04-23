@@ -3215,6 +3215,7 @@ namespace QB.Controls
         internal Box ParameterUnit;
         internal Box ParameterLed;
         internal Box ParameterText;
+        public string SelctionUri = "";
 
 
         bool Locked = false;
@@ -3309,9 +3310,9 @@ namespace QB.Controls
             {
                 string folder = modeParameter == null ? System.IO.Path.Combine(QB.Book.SettingsDirectory, "csv") : modeParameter; 
       
-                QB.Logger.Info("Select file '" + folder + "'");
+               
 
-                    StringSignal read = Target as StringSignal;
+                StringSignal read = Target as StringSignal;
                 string uri = "";
                 using (System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog())
                 {
@@ -3323,7 +3324,9 @@ namespace QB.Controls
 
                     if (openFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                     {
-                        read.Value = System.IO.Path.GetFileName(openFileDialog.FileName);
+                        read.Value = openFileDialog.FileName;
+                      //  SelctionUri = openFileDialog.FileName;
+                       // QB.Logger.Debug("Selected file: " + SelctionUri);
                         Update();
                     }
                 }

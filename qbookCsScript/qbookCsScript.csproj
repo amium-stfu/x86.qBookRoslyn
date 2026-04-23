@@ -401,6 +401,9 @@
     <Reference Include="ZstdSharp, Version=0.8.5.0, Culture=neutral, PublicKeyToken=8d151af33a4ad5cf, processorArchitecture=MSIL">
       <HintPath>..\packages\ZstdSharp.Port.0.8.5\lib\net462\ZstdSharp.dll</HintPath>
     </Reference>
+    <Reference Include="DocumentFormat.OpenXml, Version=2.20.0.0, Culture=neutral, PublicKeyToken=8fb06cb64d019a17, processorArchitecture=MSIL">
+      <HintPath>..\packages\DocumentFormat.OpenXml.2.20.0\lib\net46\DocumentFormat.OpenXml.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Controls\BoxView.cs" />
@@ -449,6 +452,7 @@
     <Compile Include="Net\TLiteHCameraComClient.cs" />
     <Compile Include="Net\UdpBinaryClient.cs" />
     <Compile Include="Objects\Access.cs" />
+    <Compile Include="Objects\Excel.cs" />
     <Compile Include="Objects\Global.cs" />
     <Compile Include="Objects\Pdf.cs" />
     <Compile Include="Objects\State.cs" />

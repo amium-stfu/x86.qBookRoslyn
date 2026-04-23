@@ -191,7 +191,14 @@ namespace qbookCode
 
                 //var includedReferences = new List<string> { "qbookCsScript" };
                 //_ = Roslyn.RoslynSummarys.CollectAll(includedReferences);
-                Application.Run(Core.Explorer);
+                try
+                {
+                    Application.Run(Core.Explorer);
+                }
+                finally
+                {
+                    Core.Shutdown();
+                }
 
                
 

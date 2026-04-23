@@ -16,7 +16,15 @@ namespace qbookCode.Net
         {
             try
             {
-                Application.Exit();
+                var explorer = Core.Explorer;
+                if (explorer != null && explorer.IsHandleCreated)
+                {
+                    explorer.BeginInvoke((Action)(() => explorer.Close()));
+                }
+                else
+                {
+                    Application.ExitThread();
+                }
             }
             catch (Exception ex)
             {
