@@ -51,6 +51,7 @@ export type WebviewMessageDispatchContext = {
   selectedPath: string | undefined;
   errorPaths: Set<string>;
   reorderPayloadNodes: (nextOrder: string[]) => void;
+  setPendingAutoRunAfterRebuild: (value: boolean) => void;
 };
 
 export async function dispatchWebviewMessage(context: WebviewMessageDispatchContext): Promise<void> {
@@ -73,35 +74,36 @@ export async function dispatchWebviewMessage(context: WebviewMessageDispatchCont
       await context.verifyAllTreeCsFiles();
       const canRebuild = await ensureNoCSharpErrorsBeforeRebuild();
       if (!canRebuild) {
-        postStatusText(context.currentView, 'Rebuild abgebrochen: C#-Fehler gefunden');
+        postStatusText(context.currentView, 'Rebuild canceled: C# errors found');
         context.applyRuntimeHighlight('rebuild', 'alert');
         break;
       }
       try {
         const snapshotUri = await createTimestampedBackup(context.lastBookRoot);
         const snapshotName = snapshotUri.path.split('/').filter(Boolean).pop() ?? snapshotUri.fsPath;
-        postStatusText(context.currentView, `Backup erstellt: ${snapshotName}`);
+        postStatusText(context.currentView, `Backup created: ${snapshotName}`);
       } catch (error: unknown) {
         const details = error instanceof Error ? error.message : String(error);
-        postStatusText(context.currentView, `Rebuild abgebrochen: Backup fehlgeschlagen (${details})`);
+        postStatusText(context.currentView, `Rebuild canceled: Backup failed (${details})`);
         context.applyRuntimeHighlight('rebuild', 'alert');
-        vscode.window.showErrorMessage(`Backup fehlgeschlagen: ${details}`);
+        vscode.window.showErrorMessage(`Backup failed: ${details}`);
         break;
       }
-      postStatusText(context.currentView, 'Rebuild lÃ¤uft');
+      postStatusText(context.currentView, 'Rebuild running');
+      context.setPendingAutoRunAfterRebuild(true);
       await sendRuntimeCommand(context.pipeCommandSenderContext, 'Rebuild');
       break;
     }
     case 'backup':
       try {
-        postStatusText(context.currentView, 'Backup lÃ¤uft');
+        postStatusText(context.currentView, 'Backup running');
         const snapshotUri = await createTimestampedBackup(context.lastBookRoot);
         const snapshotName = snapshotUri.path.split('/').filter(Boolean).pop() ?? snapshotUri.fsPath;
-        postStatusText(context.currentView, `Backup erstellt: ${snapshotName}`);
+        postStatusText(context.currentView, `Backup created: ${snapshotName}`);
       } catch (error: unknown) {
         const details = error instanceof Error ? error.message : String(error);
-        postStatusText(context.currentView, `Backup fehlgeschlagen: ${details}`);
-        vscode.window.showErrorMessage(`Backup fehlgeschlagen: ${details}`);
+        postStatusText(context.currentView, `Backup failed: ${details}`);
+        vscode.window.showErrorMessage(`Backup failed: ${details}`);
       }
       break;
     case 'debugStart':

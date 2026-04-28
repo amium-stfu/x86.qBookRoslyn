@@ -83,7 +83,7 @@ function logRuntimeMessage(level: RuntimeLogLevel, rawMessage: string, context: 
   if (!channel) {
     return;
   }
-  const message = rawMessage?.trim().length ? rawMessage : '(keine Nachricht)';
+  const message = rawMessage?.trim().length ? rawMessage : '(no message)';
   switch (level) {
     case 'debug':
       channel.debug(message);
@@ -192,7 +192,7 @@ export async function sendRuntimeCommand(
 ): Promise<void> {
   const bridge = context.getBridge();
   if (!bridge) {
-    context.showErrorMessage('Pipe ist nicht verbunden.');
+    context.showErrorMessage('Pipe is not connected.');
     return;
   }
 
@@ -205,7 +205,7 @@ export async function sendRuntimeCommand(
     await bridge.send(payload);
   } catch (error: unknown) {
     const details = error instanceof Error ? error.message : String(error);
-    context.showErrorMessage(`PipeCommand '${command}' fehlgeschlagen: ${details}`);
+    context.showErrorMessage(`Pipe command '${command}' failed: ${details}`);
     context.broadcastStatus('disconnected');
   }
 }

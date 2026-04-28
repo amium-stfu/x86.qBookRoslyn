@@ -3,7 +3,7 @@
   "displayName": "amium qBook",
   "publisher": "amium",
   "description": "qbook bridge",
-  "version": "2026.36.87",
+  "version": "2026.424.1149",
   "engines": {
     "vscode": "^1.109.0"
   },

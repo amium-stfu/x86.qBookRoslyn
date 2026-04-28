@@ -501,22 +501,22 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
       <button id="btnAddPage" class="icon-button" title="Add Page" aria-label="Add Page">+</button>
     </div>
     <div id="bookTree">
-      <div class="tree-empty">Lade Book.json ...</div>
+      <div class="tree-empty">Loading Book.json ...</div>
     </div>
   </div>
 
   <div id="menuBackdrop" class="menu-backdrop" aria-hidden="true"></div>
   <div id="contextMenu" class="context-menu" role="dialog" aria-modal="true">
     <div class="menu-header">
-      <span id="menuTitle">Page Optionen</span>
+      <span id="menuTitle">Page Options</span>
     </div>
     <div class="menu-section">
       <label for="pageInput">Page</label>
       <input id="pageInput" type="text" value="" autocomplete="off" />
     </div>
     <div class="menu-section">
-      <label for="titleInput">Titel</label>
-      <input id="titleInput" type="text" placeholder="Titel" autocomplete="off" />
+      <label for="titleInput">Title</label>
+      <input id="titleInput" type="text" placeholder="Title" autocomplete="off" />
     </div>
     <div class="menu-section">
       <label>Format</label>
@@ -564,7 +564,7 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
 
   <div id="newPageMenu" class="context-menu" role="dialog" aria-modal="true">
     <div class="menu-header">
-      <span>Neue Page</span>
+      <span>New Page</span>
     </div>
     <div class="menu-actions">
       <button id="createPageBtn" type="button">New Page</button>
@@ -879,28 +879,28 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
     }
 
     btnRun?.addEventListener('click', () => {
-      setStatus('Run gestartet');
+      setStatus('Run started');
       vscode.postMessage(payload('run'));
     });
 
     btnStop?.addEventListener('click', () => {
-      setStatus('Stop angefordert');
+      setStatus('Stop requested');
       vscode.postMessage(payload('stop'));
     });
 
     btnRebuild?.addEventListener('click', () => {
-      setStatus('Rebuild lÃ¤uft');
+      setStatus('Rebuild running');
       vscode.postMessage(payload('rebuild'));
     });
 
     btnBackup?.addEventListener('click', () => {
-      setStatus('Backup lÃ¤uft');
+      setStatus('Backup running');
       vscode.postMessage(payload('backup'));
     });
 
     btnDebugToggle?.addEventListener('click', () => {
       const shouldStop = debugState.active;
-      setStatus(shouldStop ? 'Debugger wird getrennt ...' : 'Debugger wird verbunden ...');
+      setStatus(shouldStop ? 'Debugger disconnecting ...' : 'Debugger connecting ...');
       vscode.postMessage({ type: shouldStop ? 'debugStop' : 'debugStart' });
     });
 
@@ -1086,7 +1086,7 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
       updateFormatButtons();
 
       if (menuTitle) {
-        menuTitle.textContent = titleValue || pageValue || 'Page Optionen';
+        menuTitle.textContent = titleValue || pageValue || 'Page Options';
       }
 
       menuState.folder = pageData?.folder ?? null;
@@ -1130,12 +1130,12 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
 
       const codeName = extractCodeName(page, fileName);
       if (!codeName) {
-        setStatus('Dieses File kann nicht editiert werden.');
+        setStatus('This file cannot be edited.');
         return;
       }
 
       if (locked || codeName.toLowerCase() === 'qpage') {
-        setStatus('qPage Dateien dÃ¼rfen nicht verÃ¤ndert werden.');
+        setStatus('qPage files cannot be modified.');
         return;
       }
 
@@ -1215,7 +1215,7 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
       }
       const nextValue = subnodeNameInput.value.trim();
       if (!nextValue) {
-        setStatus('Name darf nicht leer sein.');
+        setStatus('Name cannot be empty.');
         return;
       }
       vscode.postMessage({
@@ -1236,7 +1236,7 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
 
     subnodeDeleteBtn?.addEventListener('click', () => {
       if (!subnodeState.page || !subnodeState.fileName) {
-        setStatus('Keine Datei ausgewÃ¤hlt.');
+        setStatus('No file selected.');
         return;
       }
       vscode.postMessage({
@@ -1284,7 +1284,7 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
       }
 
       if (!nodes.length) {
-        bookTree.innerHTML = '<p class="tree-empty">Keine Pages gefunden.</p>';
+        bookTree.innerHTML = '<p class="tree-empty">No pages found.</p>';
         return;
       }
 
@@ -1331,7 +1331,7 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
           const dragHandle =
             '<span class="drag-handle" draggable="true" data-page="' +
             normalizedPage +
-            '" title="Seite verschieben" aria-label="Seite verschieben">&#8942;&#8942;</span>';
+            '" title="Move page" aria-label="Move page">&#8942;&#8942;</span>';
           const summaryAttributes =
             ' data-page="' +
             encodeAttr(node.metadata?.name ?? node.page ?? '') +
@@ -1368,7 +1368,7 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
         return;
       }
 
-      const text = message ?? 'Tree konnte nicht geladen werden.';
+      const text = message ?? 'Failed to load tree.';
       const safeText = encodeHtml(text);
       if (treeHeaderTitle) {
         treeHeaderTitle.textContent = 'Book';

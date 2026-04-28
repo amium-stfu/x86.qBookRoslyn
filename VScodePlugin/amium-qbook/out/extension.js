@@ -286,6 +286,7 @@ class QBookViewProvider {
     isRenamingPage = false;
     debugAttachRunCounter = 0;
     knownDebugSessions = new Map();
+    pendingAutoRunAfterRebuild = false;
     constructor(context) {
         this.context = context;
         this.context.subscriptions.push(...(0, sessionLifecycleService_js_1.registerDebugSessionLifecycle)({
@@ -344,6 +345,9 @@ class QBookViewProvider {
                 reorderPayloadNodes: (nextOrder) => {
                     this.reorderPayloadNodes(nextOrder);
                 },
+                setPendingAutoRunAfterRebuild: (value) => {
+                    this.pendingAutoRunAfterRebuild = value;
+                },
             });
         });
         const logoFile = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'amiumlogo2gray.png');
@@ -364,7 +368,7 @@ class QBookViewProvider {
                 this.clearProjectState();
                 webviewView.webview.postMessage({
                     type: 'bookError',
-                    message: 'Keine Book.json im aktuellen Workspace gefunden.',
+                    message: 'No Book.json found in the current workspace.',
                 });
                 return;
             }
@@ -376,7 +380,7 @@ class QBookViewProvider {
             const details = error instanceof Error ? error.message : String(error);
             webviewView.webview.postMessage({
                 type: 'bookError',
-                message: `Fehler beim Laden der Book.json: ${details}`,
+                message: `Error loading Book.json: ${details}`,
             });
         }
     }
@@ -520,6 +524,11 @@ class QBookViewProvider {
         if (signal.kind === 'status') {
             if (signal.button === 'rebuild') {
                 (0, webviewStatusService_js_1.postStatusText)(this.currentView, 'Rebuild done');
+                if (this.pendingAutoRunAfterRebuild) {
+                    this.pendingAutoRunAfterRebuild = false;
+                    void (0, pipeCommands_js_1.sendRuntimeCommand)(pipeCommandSenderContext, 'Run');
+                    (0, webviewStatusService_js_1.postStatusText)(this.currentView, 'Run started automatically after rebuild');
+                }
             }
             else if (signal.button === 'run') {
                 (0, webviewStatusService_js_1.postStatusText)(this.currentView, 'Running...');

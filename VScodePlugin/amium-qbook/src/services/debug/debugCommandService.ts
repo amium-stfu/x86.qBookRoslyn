@@ -21,7 +21,7 @@ export type StartDebuggingContext = {
 
 export async function handleStartDebuggingCommand(context: StartDebuggingContext): Promise<void> {
   if (context.managedDebugSession) {
-    vscode.window.showInformationMessage('Debugger ist bereits verbunden.');
+    vscode.window.showInformationMessage('Debugger is already connected.');
     return;
   }
 
@@ -47,7 +47,7 @@ export async function handleStartDebuggingCommand(context: StartDebuggingContext
   if (adoptedSession) {
     context.setManagedDebugSession(adoptedSession);
     postDebugState(context.currentView, Boolean(adoptedSession));
-    postStatusText(context.currentView, 'Debugger bereits verbunden');
+    postStatusText(context.currentView, 'Debugger already connected');
     runtimeChannel?.info(`Attach run #${runId} reused existing session id=${adoptedSession.id} name=${adoptedSession.name}`);
     runtimeChannel?.info(`==== qBook Attach Run #${runId} ATTACHED-EXISTING ====`);
     return;
@@ -76,7 +76,7 @@ export async function handleStartDebuggingCommand(context: StartDebuggingContext
 
   runtimeChannel?.info('Using only resolved project attach configuration (no dynamic attach payloads).');
 
-  postStatusText(context.currentView, 'Debugger wird verbunden ...');
+  postStatusText(context.currentView, 'Debugger connecting ...');
   const startedFromLaunch = await startDebuggingFromProjectLaunchConfig(
     debugWorkspace,
     launchConfigSelection,
@@ -91,8 +91,8 @@ export async function handleStartDebuggingCommand(context: StartDebuggingContext
     runtimeChannel
   );
   if (!startedFromLaunch) {
-    vscode.window.showErrorMessage('Debugger konnte nicht gestartet werden.');
-    postStatusText(context.currentView, 'Debugger-Start fehlgeschlagen');
+    vscode.window.showErrorMessage('Failed to start debugger.');
+    postStatusText(context.currentView, 'Debugger start failed');
     runtimeChannel?.error(`==== qBook Attach Run #${runId} FAILED totalElapsed=${Date.now() - startedAt}ms ====`);
   }
 }
@@ -102,15 +102,15 @@ export async function handleStopDebuggingCommand(
   currentView: vscode.WebviewView | undefined
 ): Promise<void> {
   if (!managedDebugSession) {
-    vscode.window.showInformationMessage('Kein qBook-Debugger aktiv.');
+    vscode.window.showInformationMessage('No active qBook debugger.');
     return;
   }
 
-  postStatusText(currentView, 'Debugger wird getrennt ...');
+  postStatusText(currentView, 'Debugger disconnecting ...');
   try {
     await vscode.debug.stopDebugging(managedDebugSession);
   } catch (error: unknown) {
     const details = error instanceof Error ? error.message : String(error);
-    vscode.window.showErrorMessage(`Debugger konnte nicht beendet werden: ${details}`);
+    vscode.window.showErrorMessage(`Failed to stop debugger: ${details}`);
   }
 }

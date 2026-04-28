@@ -26,7 +26,7 @@ export function registerDebugSessionLifecycle(
       if (context.isManagedDebugSession(session)) {
         context.setManagedDebugSession(session);
         postDebugState(context.getCurrentView(), true);
-        postStatusText(context.getCurrentView(), 'Debugger verbunden');
+          postStatusText(context.getCurrentView(), 'Debugger connected');
       }
     }),
     vscode.debug.onDidTerminateDebugSession((session: vscode.DebugSession) => {
@@ -41,7 +41,7 @@ export function registerDebugSessionLifecycle(
       if (managedSession && managedSession.id === session.id) {
         context.setManagedDebugSession(undefined);
         postDebugState(context.getCurrentView(), false);
-        postStatusText(context.getCurrentView(), 'Debugger getrennt');
+          postStatusText(context.getCurrentView(), 'Debugger disconnected');
       }
     }),
     vscode.debug.onDidChangeActiveDebugSession((session: vscode.DebugSession | undefined) => {

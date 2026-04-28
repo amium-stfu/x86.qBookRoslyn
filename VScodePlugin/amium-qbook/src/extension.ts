@@ -10,6 +10,7 @@ import {
   RuntimeButtonId,
   RuntimeSignal,
   RuntimeSignalKind,
+  sendRuntimeCommand,
 } from './pipes/pipeCommands.js';
 import {
   ActivePipeConfiguration,
@@ -338,6 +339,7 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
   private isRenamingPage = false;
   private debugAttachRunCounter = 0;
   private knownDebugSessions = new Map<string, vscode.DebugSession>();
+  private pendingAutoRunAfterRebuild = false;
 
   public constructor(private readonly context: vscode.ExtensionContext) {
     this.context.subscriptions.push(
@@ -401,6 +403,9 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
         reorderPayloadNodes: (nextOrder: string[]) => {
           this.reorderPayloadNodes(nextOrder);
         },
+        setPendingAutoRunAfterRebuild: (value: boolean) => {
+          this.pendingAutoRunAfterRebuild = value;
+        },
       });
     });
 
@@ -426,7 +431,7 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
         this.clearProjectState();
         webviewView.webview.postMessage({
           type: 'bookError',
-          message: 'Keine Book.json im aktuellen Workspace gefunden.',
+          message: 'No Book.json found in the current workspace.',
         });
         return;
       }
@@ -438,7 +443,7 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
       const details = error instanceof Error ? error.message : String(error);
       webviewView.webview.postMessage({
         type: 'bookError',
-        message: `Fehler beim Laden der Book.json: ${details}`,
+        message: `Error loading Book.json: ${details}`,
       });
     }
   }
@@ -615,6 +620,11 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
     if (signal.kind === 'status') {
       if (signal.button === 'rebuild') {
         postStatusText(this.currentView, 'Rebuild done');
+        if (this.pendingAutoRunAfterRebuild) {
+          this.pendingAutoRunAfterRebuild = false;
+          void sendRuntimeCommand(pipeCommandSenderContext, 'Run');
+          postStatusText(this.currentView, 'Run started automatically after rebuild');
+        }
       } else if (signal.button === 'run') {
         postStatusText(this.currentView, 'Running...');
       } else if (signal.button === 'stop') {
