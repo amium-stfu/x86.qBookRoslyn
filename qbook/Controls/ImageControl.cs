@@ -1,4 +1,4 @@
-﻿using QB.Controls;
+﻿﻿using QB.Controls;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
@@ -21,9 +21,9 @@ namespace qbook
 
         private void ImageControl_Paint(object sender, PaintEventArgs e)
         {
-            if (Image == null)
+            if (DrawingImage == null)
                 return;
-            e.Graphics.DrawImage(Image, 0, 0);
+            e.Graphics.DrawImage(DrawingImage, 0, 0);
 
             if (!down)
                 return;
@@ -53,7 +53,7 @@ namespace qbook
         }
 
         public Image RawImage { get; set; }
-        public Image Image { get; set; }
+        public Image DrawingImage { get; set; }
 
 
         Point p1;
@@ -87,14 +87,14 @@ namespace qbook
 
             if ((w > 20) && (h > 20))
             {
-                float xScale = (float)RawImage.Width / Image.Width;
-                float yScale = (float)RawImage.Height / Image.Height;
+                float xScale = (float)RawImage.Width / DrawingImage.Width;
+                float yScale = (float)RawImage.Height / DrawingImage.Height;
 
-                Image = cropImage(RawImage, new System.Drawing.Rectangle((int)(x * xScale), (int)(y * yScale), (int)(w * xScale), (int)(h * yScale)));
-                Image = Draw.ResizeImage(Image, 1200, 1200);
+                DrawingImage = cropImage(RawImage, new System.Drawing.Rectangle((int)(x * xScale), (int)(y * yScale), (int)(w * xScale), (int)(h * yScale)));
+                DrawingImage = Draw.ResizeImage(DrawingImage, 1200, 1200);
                 //  Image = cropImage(Image, new Rectangle(x, y, w,h));
                 if (Done != null)
-                    Done(Image);
+                    Done(DrawingImage);
             }
         }
 
@@ -107,7 +107,7 @@ namespace qbook
         {
 
             if (Done != null)
-                Done(Image);
+                Done(DrawingImage);
         }
     }
 }

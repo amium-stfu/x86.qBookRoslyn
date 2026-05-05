@@ -36,7 +36,7 @@ namespace qbook
             // imageControl1
             // 
             this.imageControl1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.imageControl1.Image = null;
+            this.imageControl1.DrawingImage = null;
             this.imageControl1.Location = new System.Drawing.Point(0, 0);
             this.imageControl1.Name = "imageControl1";
             this.imageControl1.RawImage = null;
