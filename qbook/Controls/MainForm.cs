@@ -304,6 +304,11 @@ namespace qbook
         bool _FormClosingNoUserInteraction = false;
         private async void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
+            Program.WriteProcessDiagnostic(
+                "MainForm.FormClosing reason=" + e.CloseReason
+                + " cancel=" + e.Cancel
+                + " noUserInteraction=" + _FormClosingNoUserInteraction);
+
            
             Core.SendToEditor("CloseEditor");
 

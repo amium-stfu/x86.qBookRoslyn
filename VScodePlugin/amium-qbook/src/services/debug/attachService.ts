@@ -126,7 +126,7 @@ export async function startDebuggingFromProjectLaunchConfig(
   );
 
   try {
-    const started = await vscode.debug.startDebugging(workspaceFolder, launchSelection.configurationName);
+    const started = await vscode.debug.startDebugging(workspaceFolder, launchSelection.configuration);
     runtimeChannel?.info(`Project launch startDebugging returned ${started} (run=${runId})`);
     if (started) {
       runtimeChannel?.info(

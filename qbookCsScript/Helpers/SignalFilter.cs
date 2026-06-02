@@ -186,9 +186,12 @@ namespace QB.Helpers
                 return;
 
             double v = raw.Value * Adjust.gain.Value + Adjust.offset.Value;
+            Adjust.raw.Value = v;
 
             if (Filter.zeroClipping.Value == 1)
                 Adjust.raw.Value = Adjust.raw.Value < 0 ? 0 : Adjust.raw.Value;
+
+            v = Adjust.raw.Value;
 
 
 
@@ -460,7 +463,9 @@ namespace QB.Helpers
         {
             try
             {
-                raw.Set.Value = (Set.Value + Adjust.offset.Value * -1) / Adjust.gain.Value;
+                if (raw == null) return; 
+                if(raw.Set.Value != (Set.Value + Adjust.offset.Value * -1) / Adjust.gain.Value)
+                    raw.Set.Value = (Set.Value + Adjust.offset.Value * -1) / Adjust.gain.Value;
 
                 Out.Value = raw.Out.Value;
                 timer.Interval = Filter.interval.Value.ToInt32();

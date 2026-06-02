@@ -19,7 +19,7 @@
 		},
 		{
 			"name": "qBook Attach",
-			"type": "coreclr",
+			"type": "clr",
 			"request": "attach",
 			"processId": "${command:pickProcess}",
 			"justMyCode": false,

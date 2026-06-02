@@ -81,7 +81,7 @@ namespace QB.Net
                                 lock (module)
                                 {
                                     if (module.NetUploadQueue.Count > 0)
-                                        PdoUpload((uint)module.NetId, 3, module.NetUploadQueue.Dequeue());
+                                        module.NetUploadQueue.Clear();
 
                                     if (!QB.Global.TempDisableUdlTimeout)
                                     {

@@ -123,6 +123,11 @@ namespace QB.Logging
         /// <param name="period">The logging interval in milliseconds.</param>
         public void AddSignal(Signal signal, int period) 
         {
+            if(signal == null)
+            {
+                QB.Logger.Error($"{Name}.SqlLogger AddSignal received a null signal.");
+                return;
+            }
             Add(signal.Name, signal.Text, signal.Unit, signal.DefaultDisplayFormat, period, () => signal.Value);
 
         }

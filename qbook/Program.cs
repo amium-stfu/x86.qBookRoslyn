@@ -7,6 +7,7 @@ using qbook.Controls;
 using System;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -54,6 +55,7 @@ namespace qbook
         static void Main(string[] args)
         {
             CurrentProcessId = Process.GetCurrentProcess().Id;
+            RegisterProcessDiagnostics();
 
 
 
@@ -184,10 +186,13 @@ namespace qbook
             Thread.CurrentThread.CurrentUICulture = new CultureInfo("en-US");
             try
             {
+                WriteProcessDiagnostic("Application.Run starting");
                 Application.Run(LandingPage = new MainForm(args));
+                WriteProcessDiagnostic("Application.Run returned");
             }
             finally
             {
+                WriteProcessDiagnostic("Program.Main finally entered");
                 TryScheduleSelfKill();
 
                 try
@@ -202,8 +207,9 @@ namespace qbook
                 {
                     Core.Shutdown();
                 }
-                catch
+                catch (Exception ex)
                 {
+                    WriteProcessDiagnostic("Core.Shutdown failed", ex);
                 }
 
                 try
@@ -211,8 +217,9 @@ namespace qbook
                     AppUdpLogListener?.StopListening();
                     MainForm.log.Info("Program.Main finally: UDP listener stopped");
                 }
-                catch
+                catch (Exception ex)
                 {
+                    WriteProcessDiagnostic("UDP listener shutdown failed", ex);
                 }
 
                 try
@@ -220,8 +227,9 @@ namespace qbook
                     ShutdownExternalEditor();
                     MainForm.log.Info("Program.Main finally: external editor shutdown complete");
                 }
-                catch
+                catch (Exception ex)
                 {
+                    WriteProcessDiagnostic("External editor shutdown failed", ex);
                 }
 
                 try
@@ -233,22 +241,75 @@ namespace qbook
 
                     MainForm.log.Info("Program.Main finally: Cef shutdown complete");
                 }
-                catch
+                catch (Exception ex)
                 {
+                    WriteProcessDiagnostic("Cef shutdown failed", ex);
                 }
 
                 try
                 {
                     MainForm.log.Info("Program.Main finally: shutdown completed");
                 }
-                catch
+                catch (Exception ex)
                 {
+                    WriteProcessDiagnostic("Final shutdown log failed", ex);
                 }
 
+                WriteProcessDiagnostic("Environment.Exit(0)");
                 Environment.Exit(0);
             }
 
 
+        }
+
+        internal static void WriteProcessDiagnostic(string message, Exception exception = null)
+        {
+            try
+            {
+                string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+                string logPath = Path.Combine(baseDirectory, "qbookStudio.process-diagnostics.log");
+                string line = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture)
+                    + " pid=" + CurrentProcessId
+                    + " debugger=" + Debugger.IsAttached
+                    + " " + message;
+
+                if (exception != null)
+                {
+                    line += Environment.NewLine + exception;
+                }
+
+                File.AppendAllText(logPath, line + Environment.NewLine);
+            }
+            catch
+            {
+            }
+        }
+
+        private static void RegisterProcessDiagnostics()
+        {
+            WriteProcessDiagnostic("Process diagnostics registered");
+
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+            {
+                WriteProcessDiagnostic(
+                    "UnhandledException terminating=" + e.IsTerminating,
+                    e.ExceptionObject as Exception);
+            };
+
+            TaskScheduler.UnobservedTaskException += (s, e) =>
+            {
+                WriteProcessDiagnostic("UnobservedTaskException", e.Exception);
+            };
+
+            Application.ThreadException += (s, e) =>
+            {
+                WriteProcessDiagnostic("Application.ThreadException", e.Exception);
+            };
+
+            Application.ApplicationExit += (s, e) =>
+            {
+                WriteProcessDiagnostic("Application.ApplicationExit");
+            };
         }
 
         internal static void RegisterExternalEditorProcess(Process process)

@@ -1114,11 +1114,11 @@ namespace QB.Controls
             Frame.Text = header;
             Width = width;
 
- 
+            Frame.ZOrder = 99;
             Visible = true;
-            okButton.ZOrder = 10;
+            okButton.ZOrder = 100;
             okButton.Frame.Clickable = true;
-            cancelButton.ZOrder = 10;
+            cancelButton.ZOrder = 100;
             cancelButton.Frame.Clickable = true;
             Update();
 
