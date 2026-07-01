@@ -223,7 +223,7 @@ namespace QB.Helpers
                     QB.Logger.Info("peak peakDetected length = " + PeakFilter.length.Set.Value);
                     if (PeakFilter.length.Set.Value < PeakFilter.length.Value)
                     {
-                        Adjust.raw.Value = Value;
+                        return;
                     }
                     else
                     {
@@ -241,8 +241,6 @@ namespace QB.Helpers
                         PeakFilter.counter = 0;
                 }
             }
-
-
 
             if (Filter.filterTime.Value > 0)
             {

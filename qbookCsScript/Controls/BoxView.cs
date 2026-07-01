@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using OpenCvSharp;
 using OpenCvSharp.Flann;
 using PdfSharp.Pdf.Filters;
+using QB.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -56,6 +57,7 @@ namespace QB.Controls
         List<BoxList> BoxLists = new List<BoxList>();
         List<ChartExtended> ChartChartExtendeds = new List<ChartExtended>();
         List<BoxLogView> boxLogViews = new List<BoxLogView>();
+        List<BoxProcessLogView> boxProcessLogViews = new List<BoxProcessLogView>();
 
         public void Add(object box)
         {
@@ -84,6 +86,10 @@ namespace QB.Controls
             {
                 boxLogViews.Add((BoxLogView)box);
 
+            }
+            else if (box is BoxProcessLogView)
+            {
+                boxProcessLogViews.Add((BoxProcessLogView)box);
             }
         }
 
@@ -181,6 +187,12 @@ namespace QB.Controls
                 charts.Visible = Visible;
 
             foreach (BoxLogView log in boxLogViews) 
+            {
+                log.Visible = Visible;
+                log.Navigation.Visible = Visible;
+            }
+
+            foreach (BoxProcessLogView log in boxProcessLogViews)
             {
                 log.Visible = Visible;
                 log.Navigation.Visible = Visible;
@@ -2786,6 +2798,228 @@ namespace QB.Controls
         }
 
     }
+
+    public class BoxProcessLogView : BoxFlowPanel
+    {
+        public QB.Controls.Box Navigation;
+        public QB.Controls.Box Up;
+        public QB.Controls.Box Down;
+        public QB.Controls.Box Last;
+
+        private ProcessLog processLog;
+        int StartLine = -1;
+        int TotalLines;
+
+        public BoxProcessLogView(string name, double x, double y, double h, double w, int rows, string page, ProcessLog target = null, double gap = 0.2, object backColor = null) :
+            base(name: name, position: null, x: x, y: y, h: h, w: w, columns: 1, rows: rows, page: page, gap: gap, backColor: backColor)
+        {
+            Navigation = new QB.Controls.Box("Navi", x: X + w - 5, y: Y, w: 5, h: h, style: $"font::12:b,align:tl,bg:red,bg:lightgray,border:black:0.5", boxes: new[] {
+                Up = new QB.Controls.Box("up", h:"20%", style:$"font::10,align:tl,bg:transparent", icon:"fa:angle-up", onClick:(b) => moveUp()),
+                Down = new QB.Controls.Box("down", y:"60%", h:"20%", style:$"font::10,align:tl,bg:transparent", icon:"fa:angle-down", onClick:(b) => moveDown()),
+                Last = new QB.Controls.Box("last", y:"80%", h:"20%", style:$"font::10,align:tl,bg:transparent", icon:"fa:arrows-down-to-line", onClick:(b) => ToLast())
+            }
+            );
+
+            Navigation.BackgroundColor = BackColor;
+            Navigation.Directory = page;
+            Navigation.OnWheel += (box, delta) => MouseWheel(box, delta);
+            Navigation.Clickable = true;
+
+            Up.Directory = page;
+            Down.Directory = page;
+            Last.Directory = page;
+
+            Up.BackgroundColorHover = Navigation.BackgroundColor.ChangeBrightness(60);
+            Down.BackgroundColorHover = Navigation.BackgroundColor.ChangeBrightness(60);
+
+            create();
+            SetTarget(target);
+        }
+
+        public override void SetChildVisible()
+        {
+            Navigation.Visible = Visible;
+        }
+
+        public void SetTarget(ProcessLog target)
+        {
+            if (processLog != null)
+            {
+                processLog.EntryAdded -= OnEntryAdded;
+                processLog.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+            }
+
+            processLog = target;
+
+            if (processLog != null)
+            {
+                processLog.EntryAdded += OnEntryAdded;
+                processLog.DisplaySettingsChanged += OnDisplaySettingsChanged;
+            }
+
+            StartLine = -1;
+            Update("SetTarget");
+        }
+
+        void OnEntryAdded(ProcessLogEntry entry)
+        {
+            Update("EntryAdded");
+        }
+
+        void OnDisplaySettingsChanged()
+        {
+            StartLine = -1;
+            Update("DisplaySettingsChanged");
+        }
+
+        private void ToLast()
+        {
+            StartLine = -1;
+            Update("ToLast");
+        }
+
+        public void MouseWheel(Control c, int delta)
+        {
+            if (delta == 1)
+                moveUp();
+            if (delta == -1)
+                moveDown();
+        }
+
+        public void moveUp()
+        {
+            if (StartLine > 0)
+            {
+                StartLine--;
+                Update("moveUp");
+            }
+        }
+
+        public void moveDown()
+        {
+            Read();
+            if (StartLine + Rows < TotalLines)
+            {
+                StartLine++;
+                Update("moveDown");
+            }
+        }
+
+        void Read()
+        {
+            TotalLines = processLog == null ? 0 : processLog.GetEntries().Count;
+        }
+
+        void create()
+        {
+            for (int i = 0; i < Rows; i++)
+            {
+                double x = X + (cellW * NextColumn) + Gap;
+                double y = Y + (cellH * NextRow) + Gap;
+                double w = cellW - 2 * Gap;
+                double h = cellH - 2 * Gap;
+
+                BoxProcessLogLine line = new BoxProcessLogLine("l" + i, this, 0, "", x, y, w - 5, h, "", "transparent", false, "", 0.6);
+                line.Page = Page;
+                line.Create();
+                line.Description.Clickable = true;
+
+                Boxes.Add("l" + i, line);
+                NextRow++;
+            }
+        }
+
+        public void Update(string sender)
+        {
+            try
+            {
+                IReadOnlyList<ProcessLogEntry> entries = processLog == null
+                    ? new List<ProcessLogEntry>()
+                    : processLog.GetEntries();
+
+                TotalLines = entries.Count;
+                if (StartLine == -1)
+                    StartLine = Math.Max(TotalLines - Rows, 0);
+
+                int maxStart = Math.Max(TotalLines - Rows, 0);
+                if (StartLine > maxStart)
+                    StartLine = maxStart;
+                if (StartLine < 0)
+                    StartLine = 0;
+
+                for (int i = 0; i < Rows; i++)
+                {
+                    Boxes["l" + i].State.Icon = "";
+                    Boxes["l" + i].Description.Text = "";
+                    Boxes["l" + i].SetBackColor("transparent");
+                }
+
+                int viewRow = 0;
+                for (int i = StartLine; i < StartLine + Rows && i < TotalLines; i++)
+                {
+                    ProcessLogEntry item = entries[i];
+                    string level = (item.Level ?? string.Empty).ToLower();
+                    string icon = "fa:circle-info";
+                    string color = "#EEEEEE";
+
+                    if (level == "fatal" || level == "error")
+                    {
+                        icon = "fa:triangle-exclamation";
+                        color = "#FF9A9A";
+                    }
+                    else if (level == "warning")
+                    {
+                        icon = "fa:circle-exclamation";
+                        color = "lightyellow";
+                    }
+                    else if (level == "debug")
+                    {
+                        icon = "fa:bug";
+                        color = "#EAF3FF";
+                    }
+
+                    Boxes["l" + viewRow].State.Icon = icon;
+                    Boxes["l" + viewRow].Description.Text = $"{item.Timestamp:HH:mm:ss} {item.Context} {item.Message}";
+                    Boxes["l" + viewRow].SetBackColor(color);
+                    viewRow++;
+                }
+            }
+            catch
+            {
+                QB.Logger.Error(Name + " '" + sender + "' Failed to update ProcessLog-View");
+            }
+        }
+    }
+
+    public class BoxProcessLogLine : BoxButton
+    {
+        public BoxProcessLogView View;
+
+        public BoxProcessLogLine(string name, BoxProcessLogView view, int line = 0, string id = null, double x = double.NaN, double y = double.NaN, double w = double.NaN, double h = double.NaN, string description = null, object backColor = null, bool locked = false, string icon = null, double iconSizeFactor = 0.6, QB.Controls.Box.ClickEventHandler onClick = null) :
+            base(name, id, x, y, w, h, description, backColor, locked, icon, iconSizeFactor, onClick)
+        {
+            View = view;
+        }
+
+        public override void MouseWheel(Control c, int delta)
+        {
+            if (delta == 1)
+                MoveDown();
+            if (delta == -1)
+                MoveUp();
+        }
+
+        public override void MoveUp()
+        {
+            View.moveUp();
+        }
+
+        public override void MoveDown()
+        {
+            View.moveDown();
+        }
+    }
+
     public class DeviceLog : IDisposable
     {
         private readonly string Id;

@@ -181,13 +181,6 @@
     <Reference Include="Dapper.Extensions.SQLite, Version=5.2.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Dapper.Extensions.SQLite.5.2.0\lib\netstandard2.0\Dapper.Extensions.SQLite.dll</HintPath>
     </Reference>
-    <Reference Include="DevExpress.Data.Desktop.v25.1, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
-    <Reference Include="DevExpress.Data.v25.1, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
-    <Reference Include="DevExpress.Drawing.v25.1, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
-    <Reference Include="DevExpress.Printing.v25.1.Core, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
-    <Reference Include="DevExpress.Sparkline.v25.1.Core, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
-    <Reference Include="DevExpress.Utils.v25.1, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
-    <Reference Include="DevExpress.XtraEditors.v25.1, Version=25.1.6.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL" />
     <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>..\packages\EntityFramework.6.5.1\lib\net45\EntityFramework.dll</HintPath>
     </Reference>
@@ -398,6 +391,9 @@
     </Reference>
     <Reference Include="Scintilla.NET, Version=5.3.2.7, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Scintilla.NET.5.3.2.7\lib\net45\Scintilla.NET.dll</HintPath>
+    </Reference>
+    <Reference Include="Serilog, Version=4.3.0.0, Culture=neutral, PublicKeyToken=24c2f752a8e58a10, processorArchitecture=MSIL">
+      <HintPath>..\packages\Serilog.4.3.1\lib\net471\Serilog.dll</HintPath>
     </Reference>
     <Reference Include="ShellBrowser, Version=5.4.0.175, Culture=neutral, PublicKeyToken=54688575bb3fe70e, processorArchitecture=MSIL" />
     <Reference Include="SQLitePCLRaw.batteries_v2, Version=2.1.11.2622, Culture=neutral, PublicKeyToken=8226ea5df37bcae9, processorArchitecture=MSIL">
@@ -1125,6 +1121,7 @@ if /I "$(ConfigurationName)"=="Debug" (
     <Error Condition="!Exists('..\packages\CefSharp.Common.141.0.110\build\CefSharp.Common.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\CefSharp.Common.141.0.110\build\CefSharp.Common.props'))" />
     <Error Condition="!Exists('..\packages\CefSharp.Common.141.0.110\build\CefSharp.Common.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\CefSharp.Common.141.0.110\build\CefSharp.Common.targets'))" />
     <Error Condition="!Exists('..\packages\Scintilla.NET.5.3.2.7\build\scintilla.net.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Scintilla.NET.5.3.2.7\build\scintilla.net.targets'))" />
+    <Error Condition="!Exists('..\packages\Serilog.4.3.1\build\Serilog.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Serilog.4.3.1\build\Serilog.targets'))" />
   </Target>
   <Target Name="GenerateAssemblyVersionInfo" BeforeTargets="CoreCompile">
     <Exec Command="powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File &quot;$(ProjectDir)updateAssemblyInfo.cs.ps1&quot; -Configuration &quot;$(Configuration)&quot;" />
@@ -1149,4 +1146,5 @@ if /I "$(ConfigurationName)"=="Debug" (
   </Target>
   <Import Project="..\packages\CefSharp.Common.141.0.110\build\CefSharp.Common.targets" Condition="Exists('..\packages\CefSharp.Common.141.0.110\build\CefSharp.Common.targets')" />
   <Import Project="..\packages\Scintilla.NET.5.3.2.7\build\scintilla.net.targets" Condition="Exists('..\packages\Scintilla.NET.5.3.2.7\build\scintilla.net.targets')" />
+  <Import Project="..\packages\Serilog.4.3.1\build\Serilog.targets" Condition="Exists('..\packages\Serilog.4.3.1\build\Serilog.targets')" />
 </Project>

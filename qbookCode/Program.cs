@@ -1,7 +1,6 @@
 using qbookCode.Controls;
 using qbookCode.Net;
 using Serilog;
-using Serilog.Sinks.WinForms.Base;
 using System.Collections;
 using System.Diagnostics;
 using qbookCode.Roslyn;
@@ -39,40 +38,7 @@ namespace qbookCode
 
           //  WindFormsSink.GridLogSink.OnGridLogReceived += OnGridLogReceived;
         }
-        private static void OnGridLogReceived(GridLogEvent logEvent)
-        {
-            if (LogBindingSource?.List is IList list)
-            {
-                try
-                {
-                    void Add()
-                    {
-                        list.Add(logEvent);
-
-                        // --- wichtig: Begrenzen ---
-                        if (list.Count > MaxLogEntries)
-                        {
-                            list.RemoveAt(0); // älteste Zeile löschen
-                        }
-                    }
-
-                    if (UiContext != null)
-                    {
-                        // Immer auf dem echten UI-Thread ausführen
-                        UiContext.Post(_ => Add(), null);
-                    }
-                    else
-                    {
-                        // Fallback: noch kein UIContext gesetzt (sehr früh im Startup)
-                        Add();
-                    }
-                }
-                catch
-                {
-
-                }
-            }
-        }
+    
     }
 
 

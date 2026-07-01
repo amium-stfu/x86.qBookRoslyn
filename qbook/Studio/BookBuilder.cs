@@ -190,7 +190,6 @@ namespace qbook.Studio
             System.IO.File.WriteAllText(file, sb.ToString());
             return sb.ToString();
         }
-
         private static string CreateGlobalUsing(string file = "T:\\qbooksave\\GlobalUsings.cs")
         {
             var sb = new StringBuilder();

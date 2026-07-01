@@ -10,4 +10,4 @@
 - For merged Excel cells, do not silently redirect writes to the anchor cell; throw instead.
 
 ## Response Preferences
-- User prefers responses without code and wants this remembered in Ask mode.
+- User prefers responses in German and without code, and wants this remembered in Ask mode.
