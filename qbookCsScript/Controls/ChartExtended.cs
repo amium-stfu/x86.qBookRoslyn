@@ -772,12 +772,25 @@ namespace QB.Controls
         {
             if (AutoColor) s.Color = ChartColors.GetNextColor();
 
-            signals.Add(new ChartSeries(s.Text, s, chart, History, legendIndex++, this, X, Y + 6, Page, yAxis,UserNormName));
+            int visible = signals.Count();
+
+            signals.Add(new ChartSeries(s.Text, s, chart, History, visible++, this, X, Y + 6, Page, yAxis,UserNormName));
             if (yAxis == 2) { y2Control.Visible = true; y2Active = true; y2Control.Clickable = true; y2Control.Directory = Page; };
             if (yAxis == 3) { y3Control.Visible = true; y3Active = true; y3Control.Clickable = true; y3Control.Directory = Page; };
             if (yAxis == 4) { y4Control.Visible = true; y4Active = true; y4Control.Clickable = true; y4Control.Directory = Page; } ;
 
             Streamer.Add(s);
+        }
+
+        public void Remove(Signal s)
+        {
+            ChartSeries seriesToRemove = signals.FirstOrDefault(series => series.Read == s);
+            if (seriesToRemove != null)
+            {
+                chart.Remove(seriesToRemove.Read);
+                signals.Remove(seriesToRemove);
+                Streamer.Remove(s);
+            }
         }
 
         void toggleRecording()

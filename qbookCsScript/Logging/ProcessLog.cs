@@ -456,7 +456,7 @@ public class ProcessLog
             return $"[{owner}]";
         }
 
-        return $"[{owner}:{sender}]";
+        return $"[{owner}.{sender}]";
     }
 
     private static string TryGetPropertyValue(LogEvent logEvent, string propertyName)

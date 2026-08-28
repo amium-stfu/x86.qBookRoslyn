@@ -2979,7 +2979,7 @@ namespace QB.Controls
                     }
 
                     Boxes["l" + viewRow].State.Icon = icon;
-                    Boxes["l" + viewRow].Description.Text = $"{item.Timestamp:HH:mm:ss} {item.Context} {item.Message}";
+                    Boxes["l" + viewRow].Description.Text = $"{item.Timestamp:yyyy-MM-dd HH:mm:ss} {item.Context} {item.Message}";
                     Boxes["l" + viewRow].SetBackColor(color);
                     viewRow++;
                 }

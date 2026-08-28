@@ -56,11 +56,40 @@ namespace QB.Net
 
         public UInt16 Add(string name, string text, UInt16 interval, bool stepMode, string unit = "")
         {
+            if (ValueTypes.TryGetValue(name, out UInt16 existingId))
+            {
+                for (int i = 0; i < ValueType.Count; i++)
+                {
+                    if (ValueType[i].Name == name)
+                    {
+                        ValueType[i] = new ValueDescriptor(id: existingId, name: name, text: text, unit: unit, interval: interval, stepMode: stepMode);
+                        break;
+                    }
+                }
+
+                return existingId;
+            }
+
             ValueTypes.Add(name, idCount);
             ValueType.Add(new ValueDescriptor(id: idCount, name: name, text: text, unit: unit, interval: interval, stepMode: stepMode));
             UInt16 id = idCount;
             idCount++;
             return id;
+        }
+
+        public bool Remove(string name)
+        {
+            bool removed = ValueTypes.Remove(name);
+
+            for (int i = ValueType.Count - 1; i >= 0; i--)
+            {
+                if (ValueType[i].Name == name)
+                {
+                    ValueType.RemoveAt(i);
+                }
+            }
+
+            return removed;
         }
     }
     public struct EpochValue
@@ -482,6 +511,19 @@ namespace QB.Net
 
             Streams.Add(signal.Name, new BinaryStream(id: id, signal.Name, interval, source));
             QB.Logger.Info($"[{this.GetType().Name}] {Name}: " + "Stream add -> " + signal.Name);
+        }
+
+        public void Remove(Signal signal)
+        {
+            if (Streams.ContainsKey(signal.Name))
+            {
+                Streams.Remove(signal.Name);
+                QB.Logger.Info($"[{this.GetType().Name}] {Name}: " + "Stream remove -> " + signal.Name);
+            }
+            else
+            {
+                QB.Logger.Error($"[{this.GetType().Name}] {Name}: " + "Stream not found -> " + signal.Name);
+            }
         }
 
         public void StartSteam()
