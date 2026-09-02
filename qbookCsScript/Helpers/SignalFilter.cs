@@ -33,6 +33,7 @@ namespace QB.Helpers
             Signal active,
             Module threshold,
             Module length,
+
             double[] buffer,
             int counter,
             double bufferAvg,

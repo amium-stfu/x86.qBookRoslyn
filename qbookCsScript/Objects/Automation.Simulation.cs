@@ -16,7 +16,7 @@ namespace QB.Automation
 
         // Timer _timer;
 
-        public Simulation(string name, string unit = "", int interval = 10) : base(name)
+            public Simulation(string name, string unit = "", int interval = 10) : base(name)
         {
             Unit = unit;
             Color = System.Drawing.Color.DarkViolet;
@@ -243,7 +243,7 @@ namespace QB.Automation
         //Noise parameter
         private int noiseCounter = 1;
         private double NoiseValue;
-        private int noisePeak = 0;
+        private double noisePeak = 0;
 
         //rate
         DateTime startTime;
@@ -349,6 +349,11 @@ namespace QB.Automation
         {
             var r = new Random();
             noisePeak = r.Next(-500, 500);
+        }
+
+        public void AddManualPeak(double value)
+        {
+          noisePeak = value;
         }
 
     }
