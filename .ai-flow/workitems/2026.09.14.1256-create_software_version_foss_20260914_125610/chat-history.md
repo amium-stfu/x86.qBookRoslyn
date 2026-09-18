@@ -2,7 +2,7 @@
 
 - Session Title: Create Software Version FOSS - 20260914-125610
 - Session Id: 4f9a045f-ade3-45d5-b11d-c2403ec5483f
-- Exported At: 2026-09-18T08:50:31.7788917+00:00
+- Exported At: 2026-09-18T08:59:51.6341043+00:00
 - WorkItem Path: .ai-flow/workitems/2026.09.14.1256-create_software_version_foss_20260914_125610
 
 ## 2026-09-14T10:56:11.0307502+00:00 | User | dac001ff-2b43-47a8-9667-16f5021d3ac1
@@ -1153,3 +1153,69 @@ Debug with gpt-5.6-sol • Medium
 **Korrektur umgesetzt:** `qbook/release.ps1` ruft `vswhere` jetzt mit `-prerelease` auf, sodass die auf dem GitHub-Runner vorhandene Visual-Studio-18-Vorabinstallation erkannt werden kann. Die PowerShell-Syntaxprüfung war fehlerfrei.
 
 Die vorgeschriebene lokale Buildprüfung erreichte die Release-Projekte, scheiterte jedoch weiterhin an der bekannten Einschränkung `MSB4803`: .NET-Core-MSBuild unterstützt den Legacy-Task `ResolveComReference` nicht. Eine externe Runner-Validierung war nicht verfügbar. Daher ist der DEBUG-Lauf als `failed` dokumentiert; verbleibender Nachweis ist ein erneuter manueller GitHub-Actions-Workflow-Lauf. Voraussetzung ist, dass Visual Studio 18 beim Installer registriert und durch `vswhere -prerelease` auffindbar ist.
+
+
+## 2026-09-18T08:54:15.5409494+00:00 | User | 232a7f3a-8e4c-4e1f-aa37-eddae83d01c8
+
+Es wird nur noch schlimmer nach dem letzten Versuch:release-qbook
+Process completed with exit code 1.
+release-qbook
+Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, NuGet/setup-nuget@v2. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+
+
+## 2026-09-18T08:55:34.0209688+00:00 | Assistant | 07d84b56-1d2e-4d50-8c74-a31183784532
+
+Die Node.js-20-Meldung ist nur eine GitHub-Warnung, nicht die Ursache für `exit code 1`. GitHub führt `checkout@v4` und `setup-nuget@v2` bereits zwangsweise mit Node 24 aus.
+
+Der tatsächliche Fehler steht im fehlgeschlagenen Workflow-Schritt – sehr wahrscheinlich erneut bei **Build qbook Release**. Bitte öffne diesen Schritt im GitHub-Run und sende die letzten Zeilen ab `Exception:`, `error`, `MSB...` oder die komplette Logdatei dieses Schritts. Dann lässt sich die konkrete Ursache gezielt beheben.
+
+Die Action-Versionen können später aktualisiert werden, sind aber aktuell kein Blocker für den Release-Build.
+
+
+## 2026-09-18T08:56:42.2014052+00:00 | User | c24d251a-2d9a-4099-b299-87ea1137cda2
+
+Run .\qbook\release.ps1 -BuildRevision "3"
+Exception: D:\a\x86.qBookRoslyn\x86.qBookRoslyn\qbook\release.ps1:21
+Line |
+  21 |  … e Container)) { throw "A Visual Studio installation was not found." }
+     |                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | A Visual Studio installation was not found.
+Error: Process completed with exit code 1.
+
+
+## 2026-09-18T08:57:07.4018108+00:00 | Assistant | eb60e8a8-4992-426e-bf4b-33254b7d3bb6
+
+Der echte Fehler ist jetzt eindeutig: `release.ps1` findet auf dem GitHub-Windows-Runner keine Visual-Studio-Installation. Der Build wird deshalb noch gar nicht gestartet.
+
+Das passt zu den vorherigen Restore-Logs: NuGet konnte dort bereits MSBuild aus Visual Studio 18 verwenden, aber `release.ps1` erkennt diese offenbar als Prerelease-Installation nicht. Die Node-Warnung ist davon unabhängig.
+
+Die nötige Korrektur ist begrenzt: Die Visual-Studio-/MSBuild-Suche im Release-Skript muss GitHub Actions mit Visual Studio 18 bzw. Prerelease zuverlässig unterstützen. Das gehört in eine Debug-/Implementierungssitzung; im aktuellen STRUCTURE-Modus darf ich keine Fehlerbehebung am Skript durchführen.
+
+
+## 2026-09-18T08:57:41.8179033+00:00 | User | 15f43448-b368-47ae-99bd-55f3865316a0
+
+Debug with claude-sonnet-5 • Medium
+
+
+## 2026-09-18T08:59:51.5972503+00:00 | Assistant | 6d366671-e478-45e8-9186-e8160c3fb81d
+
+## Zusammenfassung
+
+**Ursprünglicher Fehler:** `release.ps1` warf auf dem GitHub-Windows-Runner erneut `A Visual Studio installation was not found.`, obwohl der vorherige Fix bereits `-prerelease` zur `vswhere`-Abfrage hinzugefügt hatte.
+
+**Ursachenanalyse:** `vswhere -latest -prerelease -products *` schließt laut `vswhere -help` standardmäßig **unvollständige** Installationen aus ("complete, launchable" only). Auf dem Runner liegt die VS-Installation offenbar in einem solchen unvollständigen Zustand vor, wurde daher trotz `-prerelease` nie zurückgegeben.
+
+**Korrektur in `qbook/release.ps1`:**
+- Abfrage auf `vswhere -all -prerelease -products * -format json` umgestellt (`-all` inkludiert auch unvollständige Installationen).
+- Alle gefundenen Instanzen werden nach `installationVersion` absteigend sortiert; für jede wird geprüft, ob ein gültiges `MSBuild.exe` (`MSBuild\Current\Bin` bzw. `MSBuild\17.0\Bin`) existiert – die erste passende Instanz wird verwendet, statt blind der "-latest"-Instanz zu vertrauen.
+- Bei Fehlschlag werden alle gefundenen Instanzen (Name, Version, Pfad) in der Fehlermeldung aufgelistet, um künftige Diagnosen zu erleichtern.
+
+**Validierung:**
+- Syntaxprüfung via `System.Management.Automation.Language.Parser` erfolgreich.
+- Lokal mit vorhandenem `vswhere.exe` getestet: `-all -prerelease -products * -format json` liefert die lokal installierte VS-2026-Community-Instanz; die Discovery-Logik löst daraus korrekt `MSBuild\Current\Bin\MSBuild.exe` auf.
+- Ein echter `dotnet build --no-restore`-Lauf war weiterhin nicht zielführend (bekannte `MSB4803`/`ResolveComReference`-Einschränkung von .NET-Core-MSBuild, unverändert dokumentiert).
+
+**Offene Punkte:**
+- Der Fix wurde nicht auf einem echten GitHub-Actions-Windows-Runner verifiziert; das erfordert den nächsten manuellen Release-Workflow-Lauf.
+- Es bleibt die Annahme, dass die Runner-VS-Installation tatsächlich im "incomplete"-Zustand registriert ist und durch `-all` erfasst wird.
+- Die bekannte lokale Build-Einschränkung (`ResolveComReference` unter .NET-Core-MSBuild) besteht unverändert fort.

@@ -17,15 +17,28 @@ $vswherePath = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Insta
 if (-not (Test-Path -LiteralPath $solutionPath -PathType Leaf)) { throw "qbookStudio.sln was not found." }
 if (-not (Test-Path -LiteralPath $vswherePath -PathType Leaf)) { throw "Visual Studio Build Tools were not found." }
 
-$visualStudioPath = (& $vswherePath -latest -prerelease -products * -property installationPath | Select-Object -First 1).Trim()
-if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($visualStudioPath) -or -not (Test-Path -LiteralPath $visualStudioPath -PathType Container)) { throw "A Visual Studio installation was not found." }
+$vswhereJson = & $vswherePath -all -prerelease -products * -format json
+if ($LASTEXITCODE -ne 0) { throw "vswhere.exe failed to enumerate Visual Studio installations." }
 
-$msbuildCandidates = @(
-    (Join-Path $visualStudioPath "MSBuild\Current\Bin\MSBuild.exe"),
-    (Join-Path $visualStudioPath "MSBuild\17.0\Bin\MSBuild.exe")
-)
-$msbuildPath = $msbuildCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
-if ([string]::IsNullOrWhiteSpace($msbuildPath)) { throw "MSBuild.exe was not found in the selected Visual Studio installation." }
+$visualStudioInstances = @($vswhereJson | ConvertFrom-Json)
+if ($visualStudioInstances.Count -eq 0) { throw "A Visual Studio installation was not found. vswhere.exe reported no installations (including prerelease and incomplete products)." }
+
+$msbuildPath = $null
+foreach ($instance in ($visualStudioInstances | Sort-Object -Property installationVersion -Descending)) {
+    if ([string]::IsNullOrWhiteSpace($instance.installationPath) -or -not (Test-Path -LiteralPath $instance.installationPath -PathType Container)) { continue }
+
+    $candidate = @(
+        (Join-Path $instance.installationPath "MSBuild\Current\Bin\MSBuild.exe"),
+        (Join-Path $instance.installationPath "MSBuild\17.0\Bin\MSBuild.exe")
+    ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+
+    if (-not [string]::IsNullOrWhiteSpace($candidate)) { $msbuildPath = $candidate; break }
+}
+
+if ([string]::IsNullOrWhiteSpace($msbuildPath)) {
+    $foundInstallations = ($visualStudioInstances | ForEach-Object { "$($_.displayName) $($_.installationVersion) at $($_.installationPath)" }) -join "; "
+    throw "MSBuild.exe was not found in any discovered Visual Studio installation. Discovered installations: $foundInstallations"
+}
 
 & $msbuildPath $solutionPath /m /t:Rebuild /p:Configuration=Release /p:Platform=x86 /p:BuildRevision=$BuildRevision
 if ($LASTEXITCODE -ne 0) { throw "qbook Release build failed." }
