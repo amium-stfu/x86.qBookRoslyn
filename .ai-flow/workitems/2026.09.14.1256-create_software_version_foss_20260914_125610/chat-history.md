@@ -2,7 +2,7 @@
 
 - Session Title: Create Software Version FOSS - 20260914-125610
 - Session Id: 4f9a045f-ade3-45d5-b11d-c2403ec5483f
-- Exported At: 2026-09-18T08:16:03.4072542+00:00
+- Exported At: 2026-09-18T08:27:33.5594789+00:00
 - WorkItem Path: .ai-flow/workitems/2026.09.14.1256-create_software_version_foss_20260914_125610
 
 ## 2026-09-14T10:56:11.0307502+00:00 | User | dac001ff-2b43-47a8-9667-16f5021d3ac1
@@ -942,3 +942,31 @@ Ein externer Host-Build war nicht verfügbar; es wurde kein Restore ausgeführt.
 ## Verbleibend
 
 Die endgültige Bestätigung erfordert einen erneuten manuellen GitHub-Actions-Lauf. Der Debug-Status wurde deshalb korrekt als `failed` dokumentiert, bis dieser Runner-Lauf die Ermittlung bestätigt.
+
+
+## 2026-09-18T08:26:24.5018834+00:00 | User | e8099aff-be22-4a6d-bb00-576579c73fd9
+
+Hier der Log von Github.Bei Build qbook Release ging wieder was schief
+
+Attachments:
+- [1_Set up job.txt](attachments/e8099aff-be22-4a6d-bb00-576579c73fd9/1_Set up job.txt) (text/plain)
+- [2_Checkout selected ref.txt](attachments/e8099aff-be22-4a6d-bb00-576579c73fd9/2_Checkout selected ref.txt) (text/plain)
+- [3_Set up NuGet.txt](attachments/e8099aff-be22-4a6d-bb00-576579c73fd9/3_Set up NuGet.txt) (text/plain)
+- [4_Restore legacy NuGet packages.txt](attachments/e8099aff-be22-4a6d-bb00-576579c73fd9/4_Restore legacy NuGet packages.txt) (text/plain)
+- [5_Build qbook Release.txt](attachments/e8099aff-be22-4a6d-bb00-576579c73fd9/5_Build qbook Release.txt) (text/plain)
+- [6_Upload qbook Release artifact.txt](attachments/e8099aff-be22-4a6d-bb00-576579c73fd9/6_Upload qbook Release artifact.txt) (text/plain)
+- [12_Post Checkout selected ref.txt](attachments/e8099aff-be22-4a6d-bb00-576579c73fd9/12_Post Checkout selected ref.txt) (text/plain)
+- [13_Complete job.txt](attachments/e8099aff-be22-4a6d-bb00-576579c73fd9/13_Complete job.txt) (text/plain)
+- [system.txt](attachments/e8099aff-be22-4a6d-bb00-576579c73fd9/system.txt) (text/plain)
+
+## 2026-09-18T08:27:33.5389749+00:00 | Assistant | f73a47f8-68f6-4072-9932-573e240ec06d
+
+Der Fehler liegt nicht am NuGet-Restore oder am FOSS-Check. Der Restore war erfolgreich.
+
+Der Release brach vorher in `qbook/release.ps1` ab, weil das Skript `MSBuild.exe` in der falschen Visual-Studio-Installation suchte:
+
+> `MSBuild.exe was not found in Visual Studio Build Tools.`
+
+Der Log belegt jedoch, dass auf dem GitHub-Runner Visual Studio 18 Enterprise mit MSBuild vorhanden war. Das aktuelle Skript verwendet nun den von `vswhere` gelieferten Installationspfad und sucht dort unter `MSBuild\Current\Bin\MSBuild.exe` sowie als Fallback unter `MSBuild\17.0\Bin\MSBuild.exe`.
+
+Der nächste Schritt ist daher: den manuell ausgelösten GitHub-Releaseworkflow erneut starten. Erst dann zeigt sich, ob der eigentliche qbook-Release inklusive FOSS-Prüfung und Artefakt-Upload durchläuft.

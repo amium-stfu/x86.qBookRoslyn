@@ -1,0 +1,174 @@
+﻿2026-09-18T08:17:53.0164410Z ##[debug]Evaluating condition for step: 'Checkout selected ref'
+2026-09-18T08:17:53.0201198Z ##[debug]Evaluating: success()
+2026-09-18T08:17:53.0206390Z ##[debug]Evaluating success:
+2026-09-18T08:17:53.0221919Z ##[debug]=> true
+2026-09-18T08:17:53.0228033Z ##[debug]Result: true
+2026-09-18T08:17:53.0255759Z ##[debug]Starting: Checkout selected ref
+2026-09-18T08:17:53.1069693Z ##[debug]Register post job cleanup for action: actions/checkout@v4
+2026-09-18T08:17:53.1175564Z ##[debug]Loading inputs
+2026-09-18T08:17:53.1187904Z ##[debug]Evaluating: github.repository
+2026-09-18T08:17:53.1189150Z ##[debug]Evaluating Index:
+2026-09-18T08:17:53.1191330Z ##[debug]..Evaluating github:
+2026-09-18T08:17:53.1192626Z ##[debug]..=> Object
+2026-09-18T08:17:53.1198721Z ##[debug]..Evaluating String:
+2026-09-18T08:17:53.1199702Z ##[debug]..=> 'repository'
+2026-09-18T08:17:53.1204481Z ##[debug]=> 'amium-stfu/x86.qBookRoslyn'
+2026-09-18T08:17:53.1206304Z ##[debug]Result: 'amium-stfu/x86.qBookRoslyn'
+2026-09-18T08:17:53.1210524Z ##[debug]Evaluating: github.token
+2026-09-18T08:17:53.1211137Z ##[debug]Evaluating Index:
+2026-09-18T08:17:53.1211664Z ##[debug]..Evaluating github:
+2026-09-18T08:17:53.1212197Z ##[debug]..=> Object
+2026-09-18T08:17:53.1212682Z ##[debug]..Evaluating String:
+2026-09-18T08:17:53.1213207Z ##[debug]..=> 'token'
+2026-09-18T08:17:53.1217648Z ##[debug]=> '***'
+2026-09-18T08:17:53.1222472Z ##[debug]Result: '***'
+2026-09-18T08:17:53.1252423Z ##[debug]Loading env
+2026-09-18T08:17:53.1318888Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-09-18T08:17:53.1328417Z ##[group]Run actions/checkout@v4
+2026-09-18T08:17:53.1329199Z with:
+2026-09-18T08:17:53.1329673Z   repository: amium-stfu/x86.qBookRoslyn
+2026-09-18T08:17:53.1333975Z   token: ***
+2026-09-18T08:17:53.1334409Z   ssh-strict: true
+2026-09-18T08:17:53.1334846Z   ssh-user: git
+2026-09-18T08:17:53.1335288Z   persist-credentials: true
+2026-09-18T08:17:53.1335776Z   clean: true
+2026-09-18T08:17:53.1336228Z   sparse-checkout-cone-mode: true
+2026-09-18T08:17:53.1336754Z   fetch-depth: 1
+2026-09-18T08:17:53.1338137Z   fetch-tags: false
+2026-09-18T08:17:53.1338599Z   show-progress: true
+2026-09-18T08:17:53.1339042Z   lfs: false
+2026-09-18T08:17:53.1339444Z   submodules: false
+2026-09-18T08:17:53.1339890Z   set-safe-directory: true
+2026-09-18T08:17:53.1340397Z   allow-unsafe-pr-checkout: false
+2026-09-18T08:17:53.1341225Z ##[endgroup]
+2026-09-18T08:17:53.2769357Z ##[debug]GITHUB_WORKSPACE = 'D:\a\x86.qBookRoslyn\x86.qBookRoslyn'
+2026-09-18T08:17:53.2772249Z ##[debug]qualified repository = 'amium-stfu/x86.qBookRoslyn'
+2026-09-18T08:17:53.2774301Z ##[debug]ref = 'refs/heads/main'
+2026-09-18T08:17:53.2776057Z ##[debug]commit = 'e09d164c57985298242e12fc82aa3b72fdc710df'
+2026-09-18T08:17:53.2778024Z ##[debug]clean = true
+2026-09-18T08:17:53.2779593Z ##[debug]filter = undefined
+2026-09-18T08:17:53.2781260Z ##[debug]fetch depth = 1
+2026-09-18T08:17:53.2783187Z ##[debug]fetch tags = false
+2026-09-18T08:17:53.2784710Z ##[debug]show progress = true
+2026-09-18T08:17:53.2785836Z ##[debug]lfs = false
+2026-09-18T08:17:53.2786635Z ##[debug]submodules = false
+2026-09-18T08:17:53.2787449Z ##[debug]recursive submodules = false
+2026-09-18T08:17:53.2788356Z ##[debug]GitHub Host URL = 
+2026-09-18T08:17:53.2789159Z ##[debug]allow unsafe PR checkout = false
+2026-09-18T08:17:53.2791764Z ::add-matcher::D:\a\_actions\actions\checkout\v4\dist\problem-matcher.json
+2026-09-18T08:17:53.2871971Z ##[debug]Added matchers: 'checkout-git'. Problem matchers scan action output for known warning or error strings and report these inline.
+2026-09-18T08:17:53.2877219Z Syncing repository: amium-stfu/x86.qBookRoslyn
+2026-09-18T08:17:53.2878587Z ::group::Getting Git version info
+2026-09-18T08:17:53.2882443Z ##[group]Getting Git version info
+2026-09-18T08:17:53.2883224Z Working directory is 'D:\a\x86.qBookRoslyn\x86.qBookRoslyn'
+2026-09-18T08:17:53.3782005Z ##[debug]Getting git version
+2026-09-18T08:17:53.3801342Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-09-18T08:17:53.7502955Z git version 2.55.0.windows.5
+2026-09-18T08:17:53.7555968Z ##[debug]0
+2026-09-18T08:17:53.7557456Z ##[debug]git version 2.55.0.windows.5
+2026-09-18T08:17:53.7558638Z ##[debug]
+2026-09-18T08:17:53.7560216Z ##[debug]Set git useragent to: git/2.55.0 (github-actions-checkout)
+2026-09-18T08:17:53.7562696Z ::endgroup::
+2026-09-18T08:17:53.7563512Z ##[endgroup]
+2026-09-18T08:17:53.7567881Z ::add-mask::***
+2026-09-18T08:17:53.7579399Z Temporarily overriding HOME='D:\a\_temp\1a9dabdd-4130-43de-a439-85949136de0f' before making global git config changes
+2026-09-18T08:17:53.7582051Z Adding repository directory to the temporary git global config as a safe directory
+2026-09-18T08:17:53.7591326Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\x86.qBookRoslyn\x86.qBookRoslyn
+2026-09-18T08:17:53.8433206Z ##[debug]0
+2026-09-18T08:17:53.8436551Z ##[debug]
+2026-09-18T08:17:53.8441593Z Deleting the contents of 'D:\a\x86.qBookRoslyn\x86.qBookRoslyn'
+2026-09-18T08:17:53.8449564Z ::group::Initializing the repository
+2026-09-18T08:17:53.8451792Z ##[group]Initializing the repository
+2026-09-18T08:17:53.8458229Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\x86.qBookRoslyn\x86.qBookRoslyn
+2026-09-18T08:17:53.9321840Z Initialized empty Git repository in D:/a/x86.qBookRoslyn/x86.qBookRoslyn/.git/
+2026-09-18T08:17:53.9357050Z ##[debug]0
+2026-09-18T08:17:53.9359498Z ##[debug]Initialized empty Git repository in D:/a/x86.qBookRoslyn/x86.qBookRoslyn/.git/
+2026-09-18T08:17:53.9361822Z ##[debug]
+2026-09-18T08:17:53.9367539Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/amium-stfu/x86.qBookRoslyn
+2026-09-18T08:17:54.0013574Z ##[debug]0
+2026-09-18T08:17:54.0016220Z ##[debug]
+2026-09-18T08:17:54.0018721Z ::endgroup::
+2026-09-18T08:17:54.0020158Z ##[endgroup]
+2026-09-18T08:17:54.0023099Z ::group::Disabling automatic garbage collection
+2026-09-18T08:17:54.0025304Z ##[group]Disabling automatic garbage collection
+2026-09-18T08:17:54.0028265Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+2026-09-18T08:17:54.0375884Z ##[debug]0
+2026-09-18T08:17:54.0377480Z ##[debug]
+2026-09-18T08:17:54.0378954Z ::endgroup::
+2026-09-18T08:17:54.0379857Z ##[endgroup]
+2026-09-18T08:17:54.0381368Z ::group::Setting up auth
+2026-09-18T08:17:54.0382413Z ##[group]Setting up auth
+2026-09-18T08:17:54.0394482Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-09-18T08:17:54.0757084Z ##[debug]1
+2026-09-18T08:17:54.0760117Z ##[debug]
+2026-09-18T08:17:54.0771046Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-09-18T08:17:55.6864065Z ##[debug]0
+2026-09-18T08:17:55.6875738Z ##[debug]
+2026-09-18T08:17:55.6876954Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-09-18T08:17:55.7166942Z ##[debug]1
+2026-09-18T08:17:55.7167564Z ##[debug]
+2026-09-18T08:17:55.7177595Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-09-18T08:17:56.2588919Z ##[debug]0
+2026-09-18T08:17:56.2589955Z ##[debug]
+2026-09-18T08:17:56.2600847Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-09-18T08:17:56.2887404Z ##[debug]1
+2026-09-18T08:17:56.2888345Z ##[debug]
+2026-09-18T08:17:56.2898086Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-09-18T08:17:56.8190052Z ##[debug]0
+2026-09-18T08:17:56.8190933Z ##[debug]
+2026-09-18T08:17:56.8211780Z [command]"C:\Program Files\Git\bin\git.exe" config --local http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+2026-09-18T08:17:56.8518452Z ##[debug]0
+2026-09-18T08:17:56.8518935Z ##[debug]
+2026-09-18T08:17:56.8533450Z ::endgroup::
+2026-09-18T08:17:56.8533819Z ##[endgroup]
+2026-09-18T08:17:56.8534459Z ::group::Fetching the repository
+2026-09-18T08:17:56.8534947Z ##[group]Fetching the repository
+2026-09-18T08:17:56.8546205Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +e09d164c57985298242e12fc82aa3b72fdc710df:refs/remotes/origin/main
+2026-09-18T08:17:58.4590360Z From https://github.com/amium-stfu/x86.qBookRoslyn
+2026-09-18T08:17:58.4590959Z  * [new ref]         e09d164c57985298242e12fc82aa3b72fdc710df -> origin/main
+2026-09-18T08:17:58.4632994Z ##[debug]0
+2026-09-18T08:17:58.4634370Z ##[debug]
+2026-09-18T08:17:58.4634890Z ::endgroup::
+2026-09-18T08:17:58.4635103Z ##[endgroup]
+2026-09-18T08:17:58.4635474Z ::group::Determining the checkout info
+2026-09-18T08:17:58.4635785Z ##[group]Determining the checkout info
+2026-09-18T08:17:58.4636812Z ::endgroup::
+2026-09-18T08:17:58.4637046Z ##[endgroup]
+2026-09-18T08:17:58.4645570Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+2026-09-18T08:17:58.5103468Z ##[debug]0
+2026-09-18T08:17:58.5105085Z ##[debug]
+2026-09-18T08:17:58.5114073Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+2026-09-18T08:17:58.5397756Z ##[debug]0
+2026-09-18T08:17:58.5398343Z ##[debug]
+2026-09-18T08:17:58.5398892Z ::group::Checking out the ref
+2026-09-18T08:17:58.5399169Z ##[group]Checking out the ref
+2026-09-18T08:17:58.5406820Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force -B main refs/remotes/origin/main
+2026-09-18T08:17:58.9607062Z Switched to a new branch 'main'
+2026-09-18T08:17:58.9676973Z branch 'main' set up to track 'origin/main'.
+2026-09-18T08:17:58.9738325Z ##[debug]0
+2026-09-18T08:17:58.9740197Z ##[debug]branch 'main' set up to track 'origin/main'.
+2026-09-18T08:17:58.9740862Z ##[debug]
+2026-09-18T08:17:58.9741250Z ::endgroup::
+2026-09-18T08:17:58.9741445Z ##[endgroup]
+2026-09-18T08:17:59.0100774Z ##[debug]0
+2026-09-18T08:17:59.0101361Z ##[debug]commit e09d164c57985298242e12fc82aa3b72fdc710df
+2026-09-18T08:17:59.0101826Z ##[debug]Author: Stefan Funk <stefan.funk@amium.at>
+2026-09-18T08:17:59.0102425Z ##[debug]Date:   Fri Sep 18 10:09:25 2026 +0200
+2026-09-18T08:17:59.0102770Z ##[debug]
+2026-09-18T08:17:59.0103009Z ##[debug]    NEW: VOSS Revisionsystem
+2026-09-18T08:17:59.0103325Z ##[debug]
+2026-09-18T08:17:59.0108571Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+2026-09-18T08:17:59.0370254Z e09d164c57985298242e12fc82aa3b72fdc710df
+2026-09-18T08:17:59.0403670Z ##[debug]0
+2026-09-18T08:17:59.0404207Z ##[debug]e09d164c57985298242e12fc82aa3b72fdc710df
+2026-09-18T08:17:59.0404570Z ##[debug]
+2026-09-18T08:17:59.0411848Z ##[debug]Unsetting HOME override
+2026-09-18T08:17:59.0419903Z ::remove-matcher owner=checkout-git::
+2026-09-18T08:17:59.0432089Z ##[debug]Removed matchers: 'checkout-git'
+2026-09-18T08:17:59.0550153Z ##[debug]Node Action run completed with exit code 0
+2026-09-18T08:17:59.0590299Z ##[debug]Save intra-action state isPost = true
+2026-09-18T08:17:59.0590858Z ##[debug]Save intra-action state setSafeDirectory = true
+2026-09-18T08:17:59.0591379Z ##[debug]Save intra-action state repositoryPath = D:\a\x86.qBookRoslyn\x86.qBookRoslyn
+2026-09-18T08:17:59.0595791Z ##[debug]Set output commit = e09d164c57985298242e12fc82aa3b72fdc710df
+2026-09-18T08:17:59.0596509Z ##[debug]Set output ref = refs/heads/main
+2026-09-18T08:17:59.0611410Z ##[debug]Finishing: Checkout selected ref

@@ -1,0 +1,34 @@
+﻿2026-09-18T08:19:32.9723423Z ##[debug]Evaluating condition for step: 'Build qbook Release'
+2026-09-18T08:19:32.9725586Z ##[debug]Evaluating: success()
+2026-09-18T08:19:32.9725953Z ##[debug]Evaluating success:
+2026-09-18T08:19:32.9726436Z ##[debug]=> true
+2026-09-18T08:19:32.9726790Z ##[debug]Result: true
+2026-09-18T08:19:32.9727417Z ##[debug]Starting: Build qbook Release
+2026-09-18T08:19:32.9852837Z ##[debug]Loading inputs
+2026-09-18T08:19:32.9861366Z ##[debug]Evaluating: format('.\qbook\release.ps1 -BuildRevision "{0}"', github.run_number)
+2026-09-18T08:19:32.9862115Z ##[debug]Evaluating format:
+2026-09-18T08:19:32.9866374Z ##[debug]..Evaluating String:
+2026-09-18T08:19:32.9866760Z ##[debug]..=> '.\qbook\release.ps1 -BuildRevision "{0}"'
+2026-09-18T08:19:32.9878941Z ##[debug]..Evaluating Index:
+2026-09-18T08:19:32.9879231Z ##[debug]....Evaluating github:
+2026-09-18T08:19:32.9879503Z ##[debug]....=> Object
+2026-09-18T08:19:32.9880211Z ##[debug]....Evaluating String:
+2026-09-18T08:19:32.9880467Z ##[debug]....=> 'run_number'
+2026-09-18T08:19:32.9880779Z ##[debug]..=> '1'
+2026-09-18T08:19:32.9881778Z ##[debug]=> '.\qbook\release.ps1 -BuildRevision "1"'
+2026-09-18T08:19:32.9882174Z ##[debug]Result: '.\qbook\release.ps1 -BuildRevision "1"'
+2026-09-18T08:19:32.9882762Z ##[debug]Loading env
+2026-09-18T08:19:32.9887251Z ##[group]Run .\qbook\release.ps1 -BuildRevision "1"
+2026-09-18T08:19:32.9887617Z [36;1m.\qbook\release.ps1 -BuildRevision "1"[0m
+2026-09-18T08:19:32.9955208Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-09-18T08:19:32.9955570Z env:
+2026-09-18T08:19:32.9955839Z   NUGET: C:\hostedtoolcache\windows\nuget.exe\7.9.0\x64/nuget.exe
+2026-09-18T08:19:32.9956163Z ##[endgroup]
+2026-09-18T08:19:33.0030918Z ##[debug]C:\Program Files\PowerShell\7\pwsh.EXE -command ". 'D:\a\_temp\b3b08740-296b-4f29-b54d-214a49833a4d.ps1'"
+2026-09-18T08:19:38.0989101Z [31;1mException: [0mD:\a\x86.qBookRoslyn\x86.qBookRoslyn\qbook\release.ps1:21[0m
+2026-09-18T08:19:38.0990434Z [31;1m[0m[36;1mLine |[0m
+2026-09-18T08:19:38.0991580Z [31;1m[0m[36;1m[36;1m  21 | [0m … pe Leaf)) { [36;1mthrow "MSBuild.exe was not found in Visual Studio Build T[0m …[0m
+2026-09-18T08:19:38.0993210Z [31;1m[0m[36;1m[36;1m[0m[36;1m[0m[36;1m     | [31;1m               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-09-18T08:19:38.0994684Z [31;1m[0m[36;1m[36;1m[0m[36;1m[0m[36;1m[31;1m[31;1m[36;1m     | [31;1mMSBuild.exe was not found in Visual Studio Build Tools.[0m
+2026-09-18T08:19:38.1555492Z ##[error]Process completed with exit code 1.
+2026-09-18T08:19:38.1569584Z ##[debug]Finishing: Build qbook Release

@@ -1,0 +1,34 @@
+﻿2026-09-18T08:17:59.0633235Z ##[debug]Evaluating condition for step: 'Set up NuGet'
+2026-09-18T08:17:59.0637356Z ##[debug]Evaluating: success()
+2026-09-18T08:17:59.0702294Z ##[debug]Evaluating success:
+2026-09-18T08:17:59.0703119Z ##[debug]=> true
+2026-09-18T08:17:59.0703865Z ##[debug]Result: true
+2026-09-18T08:17:59.0705002Z ##[debug]Starting: Set up NuGet
+2026-09-18T08:17:59.0866540Z ##[debug]Loading inputs
+2026-09-18T08:17:59.0870097Z ##[debug]Loading env
+2026-09-18T08:17:59.0877033Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-09-18T08:17:59.0879068Z ##[group]Run NuGet/setup-nuget@v2
+2026-09-18T08:17:59.0879314Z with:
+2026-09-18T08:17:59.0879502Z   nuget-version: latest
+2026-09-18T08:17:59.0879709Z ##[endgroup]
+2026-09-18T08:17:59.2095033Z (node:8904) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-09-18T08:17:59.2096224Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-09-18T08:17:59.3768846Z ##[debug]Found NuGet version: 7.9.0
+2026-09-18T08:17:59.3776791Z ##[debug]isExplicit: 7.9.0
+2026-09-18T08:17:59.3777557Z ##[debug]explicit? true
+2026-09-18T08:17:59.3781523Z ##[debug]checking cache: C:\hostedtoolcache\windows\nuget.exe\7.9.0\x64
+2026-09-18T08:17:59.3783002Z ##[debug]not found
+2026-09-18T08:17:59.3821394Z ##[debug]Downloading https://dist.nuget.org/win-x86-commandline/v7.9.0/nuget.exe
+2026-09-18T08:17:59.3822742Z ##[debug]Destination D:\a\_temp\ac36cf72-94fa-4b75-9087-3fdca4894cc7
+2026-09-18T08:17:59.4960729Z ##[debug]download complete
+2026-09-18T08:17:59.4963420Z ##[debug]Caching tool nuget.exe 7.9.0 x64
+2026-09-18T08:17:59.4964449Z ##[debug]source file: D:\a\_temp\ac36cf72-94fa-4b75-9087-3fdca4894cc7
+2026-09-18T08:17:59.4966769Z ##[debug]destination C:\hostedtoolcache\windows\nuget.exe\7.9.0\x64
+2026-09-18T08:17:59.4989078Z ##[debug]destination file C:\hostedtoolcache\windows\nuget.exe\7.9.0\x64\nuget.exe
+2026-09-18T08:17:59.5042190Z ##[debug]finished caching tool
+2026-09-18T08:17:59.5043980Z ##[debug]nuget.exe cache path: C:\hostedtoolcache\windows\nuget.exe\7.9.0\x64.
+2026-09-18T08:17:59.5053462Z Installed nuget.exe version 7.9.0
+2026-09-18T08:17:59.5177569Z ##[debug]Node Action run completed with exit code 0
+2026-09-18T08:17:59.5184144Z ##[debug]NUGET='C:\hostedtoolcache\windows\nuget.exe\7.9.0\x64/nuget.exe'
+2026-09-18T08:17:59.5186759Z ##[debug]Set output nuget-version = 7.9.0
+2026-09-18T08:17:59.5188271Z ##[debug]Finishing: Set up NuGet

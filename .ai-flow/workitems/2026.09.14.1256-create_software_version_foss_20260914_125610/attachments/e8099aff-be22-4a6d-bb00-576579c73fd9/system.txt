@@ -1,0 +1,8 @@
+2026-09-18T08:17:49.1460000Z Job is waiting for a hosted runner to come online.
+2026-09-18T08:17:49.1360000Z Evaluating release-qbook.if
+2026-09-18T08:17:49.1360000Z Evaluating: success()
+2026-09-18T08:17:49.1360000Z Result: true
+2026-09-18T08:17:49.1450000Z Job is about to start running on the hosted runner: GitHub Actions 1000000005
+2026-09-18T08:17:49.1380000Z Requested labels: windows-latest
+2026-09-18T08:17:49.1380000Z Job defined at: amium-stfu/x86.qBookRoslyn/.github/workflows/release-qbook.yml@refs/heads/main
+2026-09-18T08:17:49.1380000Z Waiting for a runner to pick up this job...

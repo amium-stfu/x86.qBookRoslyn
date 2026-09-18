@@ -4,7 +4,7 @@
     "Id": "4f9a045f-ade3-45d5-b11d-c2403ec5483f",
     "Title": "Create Software Version FOSS - 20260914-125610",
     "WorkItemPath": ".ai-flow/workitems/2026.09.14.1256-create_software_version_foss_20260914_125610",
-    "ExportedAt": "2026-09-18T08:16:03.4072542+00:00",
+    "ExportedAt": "2026-09-18T08:27:33.5594789+00:00",
     "ApplicationVersion": "1.0.0"
   },
   "Messages": [
@@ -384,6 +384,66 @@
       "CreatedAt": "2026-09-18T08:16:03.3649059+00:00",
       "Role": "Assistant",
       "Text": "## Ergebnis\n\nDie MSBuild-Ermittlung in \u0060qbook/release.ps1\u0060 wurde korrigiert. Statt einer restriktiven Komponenten-/Wildcard-Suche ermittelt das Skript nun die aktuelle Visual-Studio-Installation und verwendet dort \u0060MSBuild\\Current\\Bin\\MSBuild.exe\u0060 (mit \u0060MSBuild\\17.0\\Bin\u0060 als Fallback).\n\nDer urspr\u00FCngliche GitHub-Fehler \u201EMSBuild.exe was not found\u201C sollte damit auf \u0060windows-latest\u0060 behoben sein.\n\n## Validierung\n\nDie vorgeschriebene lokale Pr\u00FCfung mit \u0060dotnet build --no-restore\u0060 wurde ausgef\u00FChrt. Sie erreicht die Release-Projekte, scheitert jedoch an \u0060MSB4803\u0060 f\u00FCr den Legacy-Task \u0060ResolveComReference\u0060: .NET-Core-MSBuild kann diesen nicht ausf\u00FChren. Das ist unabh\u00E4ngig von der korrigierten Visual-Studio-MSBuild-Ermittlung.\n\nEin externer Host-Build war nicht verf\u00FCgbar; es wurde kein Restore ausgef\u00FChrt.\n\n## Verbleibend\n\nDie endg\u00FCltige Best\u00E4tigung erfordert einen erneuten manuellen GitHub-Actions-Lauf. Der Debug-Status wurde deshalb korrekt als \u0060failed\u0060 dokumentiert, bis dieser Runner-Lauf die Ermittlung best\u00E4tigt.",
+      "Attachments": []
+    },
+    {
+      "Id": "e8099aff-be22-4a6d-bb00-576579c73fd9",
+      "CreatedAt": "2026-09-18T08:26:24.5018834+00:00",
+      "Role": "User",
+      "Text": "Hier der Log von Github.\u000BBei Build qbook Release ging wieder was schief",
+      "Attachments": [
+        {
+          "FileName": "1_Set up job.txt",
+          "FileType": "text/plain",
+          "RelativePath": "attachments/e8099aff-be22-4a6d-bb00-576579c73fd9/1_Set up job.txt"
+        },
+        {
+          "FileName": "2_Checkout selected ref.txt",
+          "FileType": "text/plain",
+          "RelativePath": "attachments/e8099aff-be22-4a6d-bb00-576579c73fd9/2_Checkout selected ref.txt"
+        },
+        {
+          "FileName": "3_Set up NuGet.txt",
+          "FileType": "text/plain",
+          "RelativePath": "attachments/e8099aff-be22-4a6d-bb00-576579c73fd9/3_Set up NuGet.txt"
+        },
+        {
+          "FileName": "4_Restore legacy NuGet packages.txt",
+          "FileType": "text/plain",
+          "RelativePath": "attachments/e8099aff-be22-4a6d-bb00-576579c73fd9/4_Restore legacy NuGet packages.txt"
+        },
+        {
+          "FileName": "5_Build qbook Release.txt",
+          "FileType": "text/plain",
+          "RelativePath": "attachments/e8099aff-be22-4a6d-bb00-576579c73fd9/5_Build qbook Release.txt"
+        },
+        {
+          "FileName": "6_Upload qbook Release artifact.txt",
+          "FileType": "text/plain",
+          "RelativePath": "attachments/e8099aff-be22-4a6d-bb00-576579c73fd9/6_Upload qbook Release artifact.txt"
+        },
+        {
+          "FileName": "12_Post Checkout selected ref.txt",
+          "FileType": "text/plain",
+          "RelativePath": "attachments/e8099aff-be22-4a6d-bb00-576579c73fd9/12_Post Checkout selected ref.txt"
+        },
+        {
+          "FileName": "13_Complete job.txt",
+          "FileType": "text/plain",
+          "RelativePath": "attachments/e8099aff-be22-4a6d-bb00-576579c73fd9/13_Complete job.txt"
+        },
+        {
+          "FileName": "system.txt",
+          "FileType": "text/plain",
+          "RelativePath": "attachments/e8099aff-be22-4a6d-bb00-576579c73fd9/system.txt"
+        }
+      ]
+    },
+    {
+      "Id": "f73a47f8-68f6-4072-9932-573e240ec06d",
+      "CreatedAt": "2026-09-18T08:27:33.5389749+00:00",
+      "Role": "Assistant",
+      "Text": "Der Fehler liegt nicht am NuGet-Restore oder am FOSS-Check. Der Restore war erfolgreich.\n\nDer Release brach vorher in \u0060qbook/release.ps1\u0060 ab, weil das Skript \u0060MSBuild.exe\u0060 in der falschen Visual-Studio-Installation suchte:\n\n\u003E \u0060MSBuild.exe was not found in Visual Studio Build Tools.\u0060\n\nDer Log belegt jedoch, dass auf dem GitHub-Runner Visual Studio 18 Enterprise mit MSBuild vorhanden war. Das aktuelle Skript verwendet nun den von \u0060vswhere\u0060 gelieferten Installationspfad und sucht dort unter \u0060MSBuild\\Current\\Bin\\MSBuild.exe\u0060 sowie als Fallback unter \u0060MSBuild\\17.0\\Bin\\MSBuild.exe\u0060.\n\nDer n\u00E4chste Schritt ist daher: den manuell ausgel\u00F6sten GitHub-Releaseworkflow erneut starten. Erst dann zeigt sich, ob der eigentliche qbook-Release inklusive FOSS-Pr\u00FCfung und Artefakt-Upload durchl\u00E4uft.",
       "Attachments": []
     }
   ]

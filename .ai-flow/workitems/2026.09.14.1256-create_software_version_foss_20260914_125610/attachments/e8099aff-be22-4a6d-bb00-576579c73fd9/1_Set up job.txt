@@ -1,0 +1,61 @@
+﻿2026-09-18T08:17:51.7642083Z ##[debug]Starting: Set up job
+2026-09-18T08:17:51.7643818Z Current runner version: '2.337.0'
+2026-09-18T08:17:51.7667300Z ##[group]Runner Image Provisioner
+2026-09-18T08:17:51.7668087Z Hosted Compute Agent
+2026-09-18T08:17:51.7668648Z Version: 20260828.587
+2026-09-18T08:17:51.7669268Z Commit: abac92662cab4cc7352de4f9f9d2e2419aad9c29
+2026-09-18T08:17:51.7670039Z Build Date: 2026-08-28T16:44:25Z
+2026-09-18T08:17:51.7670714Z Worker ID: {3f502098-865b-47e8-adf0-c970b0d6c395}
+2026-09-18T08:17:51.7671469Z Azure Region: westus
+2026-09-18T08:17:51.7672036Z ##[endgroup]
+2026-09-18T08:17:51.7673391Z ##[group]Operating System
+2026-09-18T08:17:51.7674044Z Microsoft Windows Server 2025
+2026-09-18T08:17:51.7674608Z 10.0.26100
+2026-09-18T08:17:51.7675116Z Datacenter
+2026-09-18T08:17:51.7675598Z ##[endgroup]
+2026-09-18T08:17:51.7676098Z ##[group]Runner Image
+2026-09-18T08:17:51.7677049Z Image: windows-2025-vs2026
+2026-09-18T08:17:51.7677659Z Version: 20260907.229.1
+2026-09-18T08:17:51.7678774Z Included Software: https://github.com/actions/runner-images/blob/win25-vs2026/20260907.229/images/windows/Windows2025-VS2026-Readme.md
+2026-09-18T08:17:51.7680360Z Image Release: https://github.com/actions/runner-images/releases/tag/win25-vs2026%2F20260907.229
+2026-09-18T08:17:51.7681375Z ##[endgroup]
+2026-09-18T08:17:51.7682498Z ##[group]GITHUB_TOKEN Permissions
+2026-09-18T08:17:51.7684965Z Contents: read
+2026-09-18T08:17:51.7685724Z Metadata: read
+2026-09-18T08:17:51.7686337Z ##[endgroup]
+2026-09-18T08:17:51.7688421Z Secret source: Actions
+2026-09-18T08:17:51.7689387Z Cache mode: write
+2026-09-18T08:17:51.7690091Z ##[debug]Primary repository: amium-stfu/x86.qBookRoslyn
+2026-09-18T08:17:51.7690908Z Prepare workflow directory
+2026-09-18T08:17:51.7775741Z ##[debug]Creating pipeline directory: 'D:\a\x86.qBookRoslyn'
+2026-09-18T08:17:51.7780992Z ##[debug]Creating workspace directory: 'D:\a\x86.qBookRoslyn\x86.qBookRoslyn'
+2026-09-18T08:17:51.7786795Z ##[debug]Update context data
+2026-09-18T08:17:51.7793862Z ##[debug]Evaluating job-level environment variables
+2026-09-18T08:17:51.8080619Z ##[debug]Evaluating job container
+2026-09-18T08:17:51.8083638Z ##[debug]Evaluating job service containers
+2026-09-18T08:17:51.8087099Z ##[debug]Evaluating job defaults
+2026-09-18T08:17:51.8116911Z Prepare all required actions
+2026-09-18T08:17:51.8166921Z Getting action download info
+2026-09-18T08:17:52.1995522Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-09-18T08:17:52.2307672Z ##[debug]Copied action archive 'C:\actionarchivecache\actions_checkout\11d5960a326750d5838078e36cf38b85af677262.zip' to 'D:\a\_actions\_temp_de7c9c14-089c-4559-aab5-0e695c673b8e\4734aee4-ccc3-47a7-ab1a-0674d0228030.zip'
+2026-09-18T08:17:52.2847525Z ##[debug]Unwrap 'actions-checkout-11d5960' to 'D:\a\_actions\actions\checkout\v4'
+2026-09-18T08:17:52.3320686Z ##[debug]Archive 'D:\a\_actions\_temp_de7c9c14-089c-4559-aab5-0e695c673b8e\4734aee4-ccc3-47a7-ab1a-0674d0228030.zip' has been unzipped into 'D:\a\_actions\actions\checkout\v4'.
+2026-09-18T08:17:52.3456798Z Download action repository 'NuGet/setup-nuget@v2' (SHA:d105a947828025cd7a980103c35ba2bfae586d0f)
+2026-09-18T08:17:52.6094227Z ##[debug]Download 'https://codeload.github.com/NuGet/setup-nuget/zip/d105a947828025cd7a980103c35ba2bfae586d0f' to 'D:\a\_actions\_temp_7917f560-cfe3-4763-9a43-82de42ce9944\1279de63-bbe1-4f06-9364-32adb9232dfc.zip'
+2026-09-18T08:17:52.6266406Z ##[debug]Unwrap 'setup-nuget-d105a947828025cd7a980103c35ba2bfae586d0f' to 'D:\a\_actions\NuGet\setup-nuget\v2'
+2026-09-18T08:17:52.6381285Z ##[debug]Archive 'D:\a\_actions\_temp_7917f560-cfe3-4763-9a43-82de42ce9944\1279de63-bbe1-4f06-9364-32adb9232dfc.zip' has been unzipped into 'D:\a\_actions\NuGet\setup-nuget\v2'.
+2026-09-18T08:17:52.6416082Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+2026-09-18T08:17:52.6622871Z ##[debug]Copied action archive 'C:\actionarchivecache\actions_upload-artifact\ea165f8d65b6e75b540449e92b4886f43607fa02.zip' to 'D:\a\_actions\_temp_9fa8815a-5a23-454f-b955-21368b0b645d\10c927e6-198e-424f-aa04-975c011d97e4.zip'
+2026-09-18T08:17:52.7524959Z ##[debug]Unwrap 'actions-upload-artifact-ea165f8' to 'D:\a\_actions\actions\upload-artifact\v4'
+2026-09-18T08:17:52.8346339Z ##[debug]Archive 'D:\a\_actions\_temp_9fa8815a-5a23-454f-b955-21368b0b645d\10c927e6-198e-424f-aa04-975c011d97e4.zip' has been unzipped into 'D:\a\_actions\actions\upload-artifact\v4'.
+2026-09-18T08:17:52.8518671Z ##[debug]action.yml for action: 'D:\a\_actions\actions\checkout\v4\action.yml'.
+2026-09-18T08:17:52.9700814Z ##[debug]action.yml for action: 'D:\a\_actions\NuGet\setup-nuget\v2\action.yml'.
+2026-09-18T08:17:52.9735334Z ##[debug]action.yml for action: 'D:\a\_actions\actions\upload-artifact\v4\action.yml'.
+2026-09-18T08:17:52.9857138Z ##[debug]Set step '__actions_checkout' display name to: 'Checkout selected ref'
+2026-09-18T08:17:52.9860923Z ##[debug]Set step '__NuGet_setup-nuget' display name to: 'Set up NuGet'
+2026-09-18T08:17:52.9863562Z ##[debug]Set step '__run' display name to: 'Restore legacy NuGet packages'
+2026-09-18T08:17:52.9866107Z ##[debug]Set step '__run_2' display name to: 'Build qbook Release'
+2026-09-18T08:17:52.9868730Z ##[debug]Set step '__actions_upload-artifact' display name to: 'Upload qbook Release artifact'
+2026-09-18T08:17:52.9869806Z Complete job name: release-qbook
+2026-09-18T08:17:52.9902782Z ##[debug]Collect running processes for tracking orphan processes.
+2026-09-18T08:17:52.9974801Z ##[debug]Finishing: Set up job
