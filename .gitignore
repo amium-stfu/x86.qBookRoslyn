@@ -59,3 +59,15 @@ setup/
 /ASAP2Lib/ASAP2/obj
 /ASAP2Lib/ASAP2If/obj/Debug
 /ASAP2Lib
+
+# AiFlow shared workflow profile
+.ai-flow/*
+!.ai-flow/*.md
+!.ai-flow/agents/
+!.ai-flow/agents/*.md
+!.ai-flow/protocol/
+!.ai-flow/protocol/*.md
+!.ai-flow/workitems/
+!.ai-flow/workitems/*/
+!.ai-flow/workitems/**/*.md
+# End AiFlow shared workflow profile

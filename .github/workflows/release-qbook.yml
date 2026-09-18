@@ -1,0 +1,34 @@
+name: Release qbook
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-qbook:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout selected ref
+        uses: actions/checkout@v4
+
+      - name: Set up NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Restore legacy NuGet packages
+        shell: pwsh
+        run: nuget restore .\qbookStudio.sln
+
+      - name: Build qbook Release
+        shell: pwsh
+        run: .\qbook\release.ps1 -BuildRevision "${{ github.run_number }}"
+
+      - name: Upload qbook Release artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qbook-release-${{ github.run_number }}
+          path: Setup\Release\bin\qbook
+          if-no-files-found: error

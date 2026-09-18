@@ -1,0 +1,376 @@
+{
+  "FormatVersion": 1,
+  "Session": {
+    "Id": "4f9a045f-ade3-45d5-b11d-c2403ec5483f",
+    "Title": "Create Software Version FOSS - 20260914-125610",
+    "WorkItemPath": ".ai-flow/workitems/2026.09.14.1256-create_software_version_foss_20260914_125610",
+    "ExportedAt": "2026-09-18T08:07:26.5151186+00:00",
+    "ApplicationVersion": "1.0.0"
+  },
+  "Messages": [
+    {
+      "Id": "dac001ff-2b43-47a8-9667-16f5021d3ac1",
+      "CreatedAt": "2026-09-14T10:56:11.0307502+00:00",
+      "Role": "User",
+      "Text": "Current Context:\r\nThe project currently generates a new assembly version for every release build using a PowerShell script (updateAssemblyInfo.cs.ps1).\n\nThe current version format is timestamp-based:\n\nyyyy.MM.dd.HHmm\n\nFor future FOSS/compliance reviews this is not ideal. A new application build does not necessarily mean that the FOSS-relevant dependency state has changed. Repeating a FOSS review for every application build should therefore be avoided.\n\nThe intended future version concept is:\n\nyy.FossRevision.BuildRevision\n\nExample:\n\n26.09.00125\n\nMeaning:\n\n26 = release year\n09 = approved FOSS/dependency revision\n00125 = application/release build revision\n\nMultiple application builds may use the same approved FOSS revision.\n\nA new FOSS review is required only when the FOSS-relevant third-party dependency state changes.\n\nThe existing updateAssemblyInfo.cs.ps1 is available as the current release-version implementation.\r\n\r\nGoal:\r\nDesign a robust automated FOSS dependency check that can be integrated into the Release Build process.\n\nThe Release Build should automatically determine whether the currently used FOSS/third-party dependency state is identical to the last approved state.\n\nThe intended workflow is:\n\nDetermine the effective FOSS-relevant dependency state.\nBuild a deterministic representation of that state.\nCalculate a reproducible hash/fingerprint.\nCompare it against the last approved FOSS fingerprint.\nIf unchanged:\nkeep the current FossRevision\nincrement/use the normal BuildRevision\nallow the Release Build\nIf changed:\nclearly report which dependency state changed where technically feasible\nmark the build as requiring a new FOSS review\ndo not silently approve the new dependency state\npreferably prevent creation of an official release until the new FOSS state has been approved\nAfter an explicit FOSS approval, the new fingerprint can become the approved baseline and the FossRevision is incremented.\n\nDetermine how this should integrate with the existing version-generation PowerShell script and Release Build.\n\nImportant Requirements\n\nThe detection itself should be automatic.\n\nFOSS approval must remain an explicit operation. A Release Build must never automatically declare a changed dependency state as approved.\n\nDo not define FOSS relevance as NuGet packages only.\n\nThe design should be extensible to other distributed third-party components such as:\n\nNuGet packages\nnative third-party DLLs\nbundled third-party source code\nJavaScript/web dependencies if applicable\nfonts, icons, assets or other distributed components with external licenses\n\nFor the first implementation, focus on the dependencies actually relevant to the current project and avoid unnecessary generic infrastructure.\n\nThe dependency fingerprint must be deterministic. Identical dependency states must always produce the same fingerprint independent of machine, build time or ordering.\n\nPrefer checking the resolved dependency state over merely hashing project files where practical.\n\nDefine where the following information should be persisted:\n\ncurrent approved FossRevision\napproved dependency fingerprint/hash\noptionally the corresponding dependency manifest\nbuild revision\n\nThe persisted data must be suitable for source control and later compliance traceability.\n\nThe design should make it possible to demonstrate that multiple application versions were built against the same approved FOSS dependency state.\n\nExample:\n\n26.09.00123\n26.09.00124\n26.09.00125\n\nmust be identifiable as using the same approved FOSS revision 09.\n\nA dependency change should result in a new FOSS state, for example:\n\n26.10.xxxxx\n\nonly after that state has been explicitly approved.\u000B\u000BExpected Structure Outcome\n\nDetermine and document:\n\nwhich dependencies/components are FOSS-relevant for the current project\nhow their effective versions/files are discovered\nhow the deterministic FOSS manifest is created\nhow its fingerprint is calculated\nwhere the approved state is stored\nhow an explicit FOSS approval updates that state\nexact behavior of a Release Build when the state is unchanged\nexact behavior when the state has changed\nversion-number generation rules for yy.FossRevision.BuildRevision\nrequired changes to updateAssemblyInfo.cs.ps1 and any other affected build files\nfailure and edge cases\nvalidation strategy\n\nPrefer the smallest maintainable implementation that provides reliable automated detection and auditable FOSS-state separation.\r\n\r\nOut of Scope:\r\nPerforming the actual legal/FOSS license review\nAutomatically approving licenses or dependency changes\nBuilding a complete enterprise SBOM/compliance platform\nChanging dependencies solely to simplify the implementation\nUnrelated changes to the build or deployment system\nLarge architectural changes where a small Release Build integration is sufficient",
+      "Attachments": []
+    },
+    {
+      "Id": "1cf10ea9-15b2-4f4a-8136-080d5e510957",
+      "CreatedAt": "2026-09-14T10:59:47.9199706+00:00",
+      "Role": "Assistant",
+      "Text": "## Befund\n\nDer Release-Einstieg f\u00FCr qbook ist \u0060qbook/updateAssemblyInfo.cs.ps1\u0060, \u00FCber \u0060GenerateAssemblyVersionInfo\u0060 vor \u0060CoreCompile\u0060 eingebunden. Derzeit erzeugt er f\u00FCr Release die Zeitversion \u006020yy.MM.dd.*\u0060 bzw. \u0060.0\u0060.\n\nF\u00FCr die qbook-Auslieferung sind mindestens diese FOSS-relevanten Zust\u00E4nde zu erfassen:\n\n- Alle aufgel\u00F6sten NuGet-Pakete aus \u0060qbook/packages.config\u0060 und dem referenzierten Projekt \u0060qbookCsScript/packages.config\u0060, inklusive Version und Projektzuordnung.\n- Von NuGet eingebrachte native Runtimes, insbesondere CEF/CefSharp, Chromium, OpenCvSharp und SQLite.\n- Der au\u00DFerhalb der lokalen \u0060packages\u0060-Ablage kopierte Roslyn-\u0060BuildHost-netcore\u0060 aus dem globalen NuGet-Cache.\n- Eingecheckte, separat verteilte Bin\u00E4rdateien wie \u0060qbook/PdfSharp.dll\u0060.\n- Ausgelieferte Third-Party-Notices und extern lizenzierte Ressourcen, sofern sie im Release-Paket landen.\n\n\u0060qbook-publisher\u0060 ist eine separate L\u00F6sung; das VS-Code-Plugin ist ebenfalls ein eigenst\u00E4ndiges npm-Artefakt. Beide sollten nur dann in denselben FOSS-Revision-Fingerprint aufgenommen werden, wenn sie Bestandteil desselben offiziellen qbook-Releasepakets sind.\n\n## Vorgeschlagene technische Struktur\n\nEin schlankes PowerShell-Modul erzeugt vor dem Release-Build einen kanonischen JSON-Manifest:\n\n- feste Schema-Version;\n- sortierte Komponentenliste;\n- je Komponente: \u0060type\u0060, logischer Pfad, Herkunft, Paketkennung/Version und SHA-256 der tats\u00E4chlich verteilten Datei, wo vorhanden;\n- keine Maschinenpfade, Zeitstempel oder unsortierten JSON-Eigenschaften;\n- UTF-8 ohne BOM, LF-Zeilenenden;\n- SHA-256 \u00FCber die kanonische Manifest-Datei als FOSS-Fingerprint.\n\nDer Baseline-Stand wird versioniert abgelegt, beispielsweise unter \u0060compliance/foss/approved-state.json\u0060 plus \u0060compliance/foss/manifests/\u003Cfingerprint\u003E.json\u0060. Die Baseline enth\u00E4lt mindestens \u0060fossRevision\u0060, \u0060fingerprint\u0060, Freigabezeitpunkt, Freigabe-Commit und den Manifestpfad. Der BuildRevision-Z\u00E4hler liegt getrennt versioniert in derselben Datei oder in \u0060compliance/foss/build-revision.json\u0060; f\u00FCr reproduzierbare CI-Releasebuilds w\u00E4re ein explizit \u00FCbergebener \u0060BuildRevision\u0060 noch robuster als eine Build-seitige Mutation.\n\nRelease-Verhalten:\n\n| Zustand | Ergebnis |\n|---|---|\n| Fingerprint entspricht Baseline | \u0060yy.FossRevision.BuildRevision\u0060 erzeugen und Release erlauben |\n| Fingerprint weicht ab | kanonischen Manifest-Diff ausgeben, Build mit eindeutiger FOSS-Review-Meldung abbrechen |\n| explizite Freigabe | separater, manuell gestarteter \u0060Approve-FossState\u0060-Befehl schreibt Manifest/Baseline, erh\u00F6ht \u0060FossRevision\u0060; erst danach ist der Release zul\u00E4ssig |\n\nDie Versionsfelder w\u00E4ren f\u00FCr .NET als \u0060yy.FossRevision.BuildRevision.0\u0060 zu erzeugen (vier numerische Assembly-Felder); die sichtbare fachliche Version bleibt \u0060yy.FossRevision.BuildRevision\u0060, etwa \u006026.09.00125\u0060. Die Information-Version kann zus\u00E4tzlich Commit und Fingerprint enthalten.\n\nDie bestehende \u0060generateNuGetPackageReport.ps1\u0060 ist ein brauchbarer Ausgangspunkt, aber kein ausreichender Fingerprint: sie betrachtet nur deklarierte \u0060packages.config\u0060-Pakete und enth\u00E4lt Lizenzinformationen aus lokal installierten Paketordnern. Der neue Check muss die tats\u00E4chlich ins Release gelangenden Dateien und die expliziten Zusatzartefakte einbeziehen.\n\nZur Planung fehlen zwei materielle Entscheidungen \u00FCber den Releaseumfang und die Z\u00E4hlerverantwortung.\n\n:::questions\n{\n  \u0022questions\u0022: [\n    {\n      \u0022id\u0022: \u0022release_scope\u0022,\n      \u0022type\u0022: \u0022single_select\u0022,\n      \u0022text\u0022: \u0022Which artifacts belong to the official qbook release covered by this FOSS revision?\u0022,\n      \u0022options\u0022: [\n        \u0022qbook plus qbookCsScript only\u0022,\n        \u0022qbook, qbookCsScript, qbook-publisher, and VS Code plugin\u0022,\n        \u0022Other\u0022\n      ],\n      \u0022required\u0022: true\n    },\n    {\n      \u0022id\u0022: \u0022release_scope_other\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Describe the release artifacts that must share one FOSS revision.\u0022,\n      \u0022required\u0022: true,\n      \u0022visible_when\u0022: {\n        \u0022question_id\u0022: \u0022release_scope\u0022,\n        \u0022has_any_of\u0022: [\n          \u0022Other\u0022\n        ]\n      }\n    },\n    {\n      \u0022id\u0022: \u0022build_revision_owner\u0022,\n      \u0022type\u0022: \u0022single_select\u0022,\n      \u0022text\u0022: \u0022How should the monotonically increasing BuildRevision be assigned?\u0022,\n      \u0022options\u0022: [\n        \u0022Release pipeline passes the revision explicitly\u0022,\n        \u0022Version script updates a versioned counter file\u0022,\n        \u0022Other\u0022\n      ],\n      \u0022required\u0022: true\n    },\n    {\n      \u0022id\u0022: \u0022build_revision_owner_other\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Describe the required BuildRevision assignment method.\u0022,\n      \u0022required\u0022: true,\n      \u0022visible_when\u0022: {\n        \u0022question_id\u0022: \u0022build_revision_owner\u0022,\n        \u0022has_any_of\u0022: [\n          \u0022Other\u0022\n        ]\n      }\n    }\n  ]\n}\n:::endquestions",
+      "Attachments": []
+    },
+    {
+      "Id": "0c17fca1-c4ca-4a08-a2b6-00e57a0e0e67",
+      "CreatedAt": "2026-09-14T11:03:26.0741912+00:00",
+      "Role": "User",
+      "Text": ":::answers\r\n{\u0022answers\u0022:[{\u0022id\u0022:\u0022release_scope\u0022,\u0022value\u0022:\u0022qbook plus qbookCsScript only\u0022,\u0022question\u0022:\u0022Which artifacts belong to the official qbook release covered by this FOSS revision?\u0022},{\u0022id\u0022:\u0022build_revision_owner\u0022,\u0022value\u0022:\u0022Release pipeline passes the revision explicitly\u0022,\u0022question\u0022:\u0022How should the monotonically increasing BuildRevision be assigned?\u0022}]}\r\n:::endanswers",
+      "Attachments": []
+    },
+    {
+      "Id": "f76a770d-647c-4caa-be4f-3ee5e87f6a10",
+      "CreatedAt": "2026-09-14T11:04:19.2871792+00:00",
+      "Role": "Assistant",
+      "Text": "## Struktur abgeschlossen\n\n\u0060planning_ready\u0060 ist im aktiven Workitem auf \u0060true\u0060 gesetzt.\n\nZiel ist ein automatischer, deterministischer Nachweis des FOSS-Zustands f\u00FCr den offiziellen qbook-Release, ohne eine ge\u00E4nderte Abh\u00E4ngigkeitslage automatisch freizugeben.\n\n### Festgelegter Scope\n\n- Enthalten: \u0060qbook\u0060 und das mit ausgelieferte Projekt \u0060qbookCsScript\u0060.\n- Nicht enthalten: \u0060qbook-publisher\u0060 und das VS-Code-Plugin; diese bleiben eigenst\u00E4ndige Release- und FOSS-Kontexte.\n- Erfasst werden:\n  - NuGet-Pakete beider \u0060packages.config\u0060-Projekte, einschlie\u00DFlich nativer Runtimes;\n  - tats\u00E4chlich in den Release kopierte Drittdateien, insbesondere CEF/Chromium, OpenCvSharp, SQLite und Roslyn \u0060BuildHost-netcore\u0060;\n  - eingecheckte, separat ausgelieferte Drittdateien wie \u0060qbook/PdfSharp.dll\u0060;\n  - \u0060ThirdPartyNotices.txt\u0060 sowie extern lizenzierte Dateien, sofern sie Teil der Release-Ausgabe sind.\n\n### Deterministischer FOSS-Zustand\n\nEin Release-Preflight erstellt nach Paket-Restore und vor dem offiziellen Packaging ein kanonisches FOSS-Manifest. Es enth\u00E4lt pro Komponente mindestens Typ, logischen Releasepfad, Herkunft, Paket-ID/-Version und SHA-256 der verteilten Datei.\n\nDas Manifest wird stabil sortiert, ohne absolute Pfade, Zeitwerte oder maschinenabh\u00E4ngige Daten serialisiert. Sein SHA-256 ist der FOSS-Fingerprint. Ein Vergleich zweier Manifeste liefert komponentengenau die hinzugef\u00FCgten, entfernten oder ver\u00E4nderten Eintr\u00E4ge.\n\n### Persistenz und Freigabe\n\nVersionierte Ablage im Repository:\n\n- \u0060compliance/foss/approved-state.json\u0060: freigegebene \u0060FossRevision\u0060, Fingerprint, Freigabe-Commit und Manifestreferenz.\n- \u0060compliance/foss/manifests/\u003Cfingerprint\u003E.json\u0060: vollst\u00E4ndiger, unver\u00E4nderlicher Manifestbeleg je freigegebenem Zustand.\n\nEine separate, manuell gestartete Freigabeaktion \u00FCbernimmt einen gepr\u00FCften aktuellen Fingerprint als Baseline und erh\u00F6ht dabei die \u0060FossRevision\u0060. Der regul\u00E4re Release-Build darf diese Dateien niemals ver\u00E4ndern.\n\n### Release-Verhalten\n\n| Bedingung | Verhalten |\n|---|---|\n| Fingerprint entspricht der Baseline | Release ist zul\u00E4ssig; freigegebene \u0060FossRevision\u0060 wird verwendet. |\n| Fingerprint weicht ab | Release wird abgebrochen; der Manifest-Diff benennt die technische \u00C4nderung. |\n| Neue FOSS-Pr\u00FCfung abgeschlossen | Manueller Freigabebefehl schreibt neue Baseline und erh\u00F6ht die FOSS-Revision. |\n\nDamit sind beispielsweise \u006026.09.00123\u0060, \u006026.09.00124\u0060 und \u006026.09.00125\u0060 eindeutig derselben freigegebenen FOSS-Revision zugeordnet.\n\n### Versionsregeln\n\nDie Release-Pipeline \u00FCbergibt die monotone \u0060BuildRevision\u0060 explizit an den Build. Das Versionsskript verwendet die genehmigte Revision aus \u0060approved-state.json\u0060.\n\n- Fachliche Produktversion: \u0060yy.FossRevision.BuildRevision\u0060, etwa \u006026.09.00125\u0060.\n- .NET-Assemblyversion: \u006026.9.125.0\u0060, weil \u0060System.Version\u0060 keine f\u00FChrenden Nullen bewahrt.\n- \u0060AssemblyInformationalVersion\u0060: \u006026.09.00125\u002B\u003Ccommit\u003E\u0060; sie ist die anzuzeigende, formatstabile Version.\n- Bei Jahreswechsel bleibt die genehmigte FOSS-Revision unver\u00E4ndert; nur das f\u00FChrende Jahr wird aus dem Releasejahr gebildet.\n\n\u0060qbook/updateAssemblyInfo.cs.ps1\u0060 wird zum Verbraucher des validierten FOSS-Status und der Pipeline-\u0060BuildRevision\u0060. Der bisherige zeitbasierte Versionscode entf\u00E4llt f\u00FCr Release. Der MSBuild-Hook bleibt der Integrationspunkt, erh\u00E4lt aber zuvor einen verpflichtenden FOSS-Preflight.\n\n### Fehlerf\u00E4lle und Validierung\n\nDer Release schl\u00E4gt fehl bei fehlender Baseline, fehlendem Manifest, nicht wiederhergestellten Paketdateien, nicht aufl\u00F6sbaren Drittartefakten, ung\u00FCltiger Revision oder fehlender BuildRevision. Debug-Builds bleiben von der Release-Sperre ausgenommen.\n\nDie Validierung umfasst deterministische Wiederholung auf zwei Arbeitspl\u00E4tzen, unver\u00E4nderten Release mit identischem Fingerprint, gezielte \u00C4nderungen eines Pakets bzw. einer Drittdatei mit aussagekr\u00E4ftigem Diff sowie die Pr\u00FCfung, dass nur die explizite Freigabe eine Baseline \u00E4ndern kann.",
+      "Attachments": []
+    },
+    {
+      "Id": "0575d6a3-a216-4855-8979-8b680fc6cc87",
+      "CreatedAt": "2026-09-14T11:06:47.0673311+00:00",
+      "Role": "User",
+      "Text": "Plan",
+      "Attachments": []
+    },
+    {
+      "Id": "7e8d4dd8-5c02-4cde-95b9-62eda3921e77",
+      "CreatedAt": "2026-09-14T11:08:40.5216854+00:00",
+      "Role": "Assistant",
+      "Text": "Der ausf\u00FChrbare Implementierungsauftrag wurde erstellt. Er umfasst den deterministischen FOSS-Fingerprint f\u00FCr \u0060qbook\u0060 und \u0060qbookCsScript\u0060, die explizite Freigabe-Baseline, die Release-Sperre bei Abweichungen sowie die neue, pipelinegesteuerte Versionierung.\n\n[Open implementation handoff](aiflow-handoff:implementation)",
+      "Attachments": []
+    },
+    {
+      "Id": "b6da8f26-2e25-4855-8d20-97ceb7467c5b",
+      "CreatedAt": "2026-09-14T11:08:58.1625514+00:00",
+      "Role": "User",
+      "Text": "Implement with gpt-6-astra \u2022 Medium",
+      "Attachments": []
+    },
+    {
+      "Id": "59892493-6d04-4631-aba3-9c74df57f341",
+      "CreatedAt": "2026-09-14T11:10:43.933115+00:00",
+      "Role": "Assistant",
+      "Text": "Keine Implementierungsdateien ge\u00E4ndert. Build und Validierungen wurden nicht ausgef\u00FChrt: \u0060.ai-flow/solution.md\u0060 ist leer und definiert keinen verpflichtenden Build-Befehl; unregistrierte Pr\u00FCfungen sind untersagt.\n\n\u0060workitem.md\u0060 wurde auf \u0060status: failed\u0060 und \u0060planning_ready: false\u0060 gesetzt. Die Handoff-Archivierung muss der Host \u00FCbernehmen; sie wurde hier nicht ausgef\u00FChrt.",
+      "Attachments": []
+    },
+    {
+      "Id": "28eb1061-3bf1-4057-8b4d-027374f1431c",
+      "CreatedAt": "2026-09-14T12:08:42.8100478+00:00",
+      "Role": "User",
+      "Text": "Wie kann ich das jetzt testen.",
+      "Attachments": []
+    },
+    {
+      "Id": "4672c200-20b0-45d5-804b-188bc0ee9cc7",
+      "CreatedAt": "2026-09-14T12:09:19.8324801+00:00",
+      "Role": "Assistant",
+      "Text": "Im aktuellen Arbeitsverzeichnis ist die geplante Implementierung nicht vorhanden: Weder \u0060qbook/updateFossState.ps1\u0060 und \u0060qbook/approveFossState.ps1\u0060 noch \u0060compliance/foss/approved-state.json\u0060 existieren. Daher kann der FOSS-Workflow noch nicht getestet werden.\n\nSobald die Implementierung vorliegt, ist die sinnvolle Testreihenfolge:\n\n1. Paket-Restore durchf\u00FChren und den expliziten FOSS-Freigabebefehl nach der externen Pr\u00FCfung ausf\u00FChren. Das erzeugt die erste Baseline, etwa FOSS-Revision \u006009\u0060.\n\n2. Einen Release mit einer explizit \u00FCbergebenen \u0060BuildRevision\u0060 erstellen. Erwartet: Erfolg und Produktversion wie \u006026.09.00123\u0060.\n\n3. Ohne Abh\u00E4ngigkeits\u00E4nderung erneut mit einer h\u00F6heren \u0060BuildRevision\u0060 erstellen. Erwartet: Erfolg, etwa \u006026.09.00124\u0060, bei unver\u00E4nderter FOSS-Revision \u006009\u0060.\n\n4. Eine relevante Abh\u00E4ngigkeit oder ausgelieferte Drittdatei gezielt \u00E4ndern. Erwartet: Release-Abbruch mit einem komponentenbezogenen Manifest-Diff; die Baseline darf unver\u00E4ndert bleiben.\n\n5. Nach tats\u00E4chlicher FOSS-Pr\u00FCfung den expliziten Freigabebefehl ausf\u00FChren. Erwartet: neue Baseline und FOSS-Revision \u006010\u0060.\n\n6. Den Release erneut ausf\u00FChren. Erwartet: Erfolg mit einer Version wie \u006026.10.00125\u0060.\n\nDer Workitem-Status wurde f\u00FCr diese Testkl\u00E4rung wieder auf \u0060defining\u0060 gesetzt.",
+      "Attachments": []
+    },
+    {
+      "Id": "05eff135-43d7-432e-87ab-266c0b7ce103",
+      "CreatedAt": "2026-09-14T12:10:41.8769311+00:00",
+      "Role": "User",
+      "Text": "Ich hatte die Implentierung gestartet?\u000BUser\n14.09.2026 13:08\nImplement with gpt-6-astra \u2022 Medium\n\nAgent\n14.09.2026 13:10\nKeine Implementierungsdateien ge\u00E4ndert. Build und Validierungen wurden nicht ausgef\u00FChrt: .ai-flow/solution.md ist leer und definiert keinen verpflichtenden Build-Befehl; unregistrierte Pr\u00FCfungen sind untersagt.\n\nworkitem.md wurde auf status: failed und planning_ready: false gesetzt. Die Handoff-Archivierung muss der Host \u00FCbernehmen; sie wurde hier nicht ausgef\u00FChrt.",
+      "Attachments": []
+    },
+    {
+      "Id": "a214c960-d5b2-4524-b991-3ae9c85010e5",
+      "CreatedAt": "2026-09-14T12:11:07.5550137+00:00",
+      "Role": "Assistant",
+      "Text": "Ja. Die Implementierung wurde gestartet, aber bereits vor Datei\u00E4nderungen abgebrochen.\n\nDer Abbruchgrund war nicht die FOSS-Logik, sondern die verpflichtende Build-Verifikation: \u0060.ai-flow/solution.md\u0060 enth\u00E4lt keinen registrierten Build-Befehl, und der Agent durfte keinen eigenen, unregistrierten Befehl erfinden oder ausf\u00FChren. Deshalb wurden keine Implementierungsdateien, Builds oder Tests ge\u00E4ndert bzw. ausgef\u00FChrt.\n\nDer aktuelle Status \u0060defining\u0060 ist korrekt: Ihre anschlie\u00DFende Frage zum Testen hat gem\u00E4\u00DF Workflow einen neuen Strukturzyklus er\u00F6ffnet. Um die Implementierung erneut starten zu k\u00F6nnen, muss der zul\u00E4ssige Build-Nachweis verbindlich festgelegt werden.\n\n:::questions\n{\n  \u0022questions\u0022: [\n    {\n      \u0022id\u0022: \u0022build_validation\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Which exact build command should be registered as the required workspace build verification for this solution?\u0022,\n      \u0022required\u0022: true\n    }\n  ]\n}\n:::endquestions",
+      "Attachments": []
+    },
+    {
+      "Id": "76995fa4-a234-45ac-8fd7-5b7ba0f4eb80",
+      "CreatedAt": "2026-09-14T12:12:23.4649977+00:00",
+      "Role": "User",
+      "Text": ":::answers\r\n{\u0022answers\u0022:[{\u0022id\u0022:\u0022build_validation\u0022,\u0022value\u0022:\u0022Es soll ein normales dotnet build mit --no restore ausgef\\u00FChrt werden\u0022,\u0022question\u0022:\u0022Which exact build command should be registered as the required workspace build verification for this solution?\u0022}]}\r\n:::endanswers",
+      "Attachments": []
+    },
+    {
+      "Id": "565686d4-7142-4145-bf01-0eff88833303",
+      "CreatedAt": "2026-09-14T12:13:06.7834831+00:00",
+      "Role": "Assistant",
+      "Text": "Als konkrete Build-Verifikation gilt damit:\n\n\u0060\u0060\u0060powershell\ndotnet build qbookStudio.sln --no-restore\n\u0060\u0060\u0060\n\nDie Solution-Datei ist eindeutig; ohne explizite Konfiguration baut der Befehl die Standardkonfiguration.\n\nDer Befehl muss nun vom Host in \u0060.ai-flow/solution.md\u0060 als verpflichtende Workspace-Buildpr\u00FCfung registriert werden. STRUCTURE darf ausschlie\u00DFlich das Workitem \u00E4ndern und kann diese Konfiguration nicht selbst schreiben. Bis zu dieser Registrierung bleibt \u0060planning_ready: false\u0060; anschlie\u00DFend kann ein neuer PLAN-/IMPLEMENT-Lauf die FOSS-Implementierung ausf\u00FChren und den Build tats\u00E4chlich pr\u00FCfen.",
+      "Attachments": []
+    },
+    {
+      "Id": "ec7630e9-b17e-4c72-b78c-2ec8897f58be",
+      "CreatedAt": "2026-09-14T12:33:42.6793311+00:00",
+      "Role": "User",
+      "Text": "Ok ich habe die Solution.md erweitert",
+      "Attachments": []
+    },
+    {
+      "Id": "e534010d-af15-41ec-99b6-10a9879ac5cb",
+      "CreatedAt": "2026-09-14T12:34:08.7252287+00:00",
+      "Role": "Assistant",
+      "Text": "\u0060planning_ready\u0060 ist wieder auf \u0060true\u0060 gesetzt.\n\nDer Implementierungsauftrag bleibt unver\u00E4ndert: automatischer FOSS-Fingerprint f\u00FCr \u0060qbook\u0060 und \u0060qbookCsScript\u0060, explizite Baseline-Freigabe, Release-Sperre bei Abweichung und Versionierung \u0060yy.FossRevision.BuildRevision\u0060. Nicht umfasst bleiben Publisher, VS-Code-Plugin sowie automatische Lizenzfreigaben.\n\nDie Validierung ist nun verbindlich registriert: \u0060dotnet build\u0060 mit \u0060--no-restore\u0060; bei fehlenden Restore-Artefakten wird nicht autonom wiederhergestellt. Damit kann jetzt erneut PLAN und anschlie\u00DFend IMPLEMENT gestartet werden.",
+      "Attachments": []
+    },
+    {
+      "Id": "a4173a2e-6b2c-4966-93b5-917ab67fb37c",
+      "CreatedAt": "2026-09-14T12:34:46.8852105+00:00",
+      "Role": "User",
+      "Text": "Plan",
+      "Attachments": []
+    },
+    {
+      "Id": "fe8f33c0-ff92-4be1-8757-1829cf64b0ec",
+      "CreatedAt": "2026-09-14T12:35:43.9694206+00:00",
+      "Role": "Assistant",
+      "Text": "Der neue Implementierungs-Handoff ist geschrieben. Er deckt den FOSS-Preflight, die explizite Freigabe, die persistierte Baseline und die Release-Versionierung ab; die registrierte Workspace-Buildpr\u00FCfung wird vom Implementierungsmodus ausgef\u00FChrt.\n\n[Open implementation handoff](aiflow-handoff:implementation)",
+      "Attachments": []
+    },
+    {
+      "Id": "6ac81ad8-4251-4d30-86a8-258778102dd8",
+      "CreatedAt": "2026-09-14T12:36:39.4983474+00:00",
+      "Role": "User",
+      "Text": "Implement with gpt-5.6-terra \u2022 Medium",
+      "Attachments": []
+    },
+    {
+      "Id": "7d5407ad-468b-4a99-83d9-c6f8b1950250",
+      "CreatedAt": "2026-09-14T12:43:28.5766423+00:00",
+      "Role": "Assistant",
+      "Text": "Implementiert:\n\n- FOSS-Manifesterstellung, Fingerprint-Abgleich und Diff-Ausgabe\n- expliziten Freigabeprozess mit Baseline und Manifest\n- initiale Freigabe \u0060FossRevision: 1\u0060\n- Release-Versionierung aus validiertem FOSS-State und \u0060BuildRevision\u0060\n- MSBuild-Release-Preflight vor AssemblyInfo-Generierung\n\nDie Skriptpr\u00FCfung erzeugte f\u00FCr \u0060BuildRevision 125\u0060 die Version \u006026.01.00125\u0060 bzw. \u006026.1.125.0\u0060.\n\nDie verpflichtende Pr\u00FCfung \u0060dotnet build qbookStudio.sln --no-restore\u0060 ist fehlgeschlagen: \u0060qbookCsScript\u0060 wird mit \u0060PlatformTarget=AnyCPU\u0060 gebaut; CefSharp verlangt dort x86 oder x64. Dieser Fehler liegt au\u00DFerhalb des freigegebenen Umfangs. Der Workitem-Status wurde auf \u0060failed\u0060 gesetzt und \u0060planning_ready\u0060 auf \u0060false\u0060 zur\u00FCckgesetzt.",
+      "Attachments": []
+    },
+    {
+      "Id": "7e92b0bf-8c4e-4b4e-9e8a-76d5c2c16a29",
+      "CreatedAt": "2026-09-14T12:45:41.8289788+00:00",
+      "Role": "User",
+      "Text": "Debug with gpt-5.6-terra \u2022 Medium",
+      "Attachments": []
+    },
+    {
+      "Id": "9e075123-e67b-4a28-9cca-0125e520fe11",
+      "CreatedAt": "2026-09-14T12:48:19.0494409+00:00",
+      "Role": "Assistant",
+      "Text": "Der gemeldete Fehler ist beabsichtigt: Ein Release-Build ben\u00F6tigt zwingend eine numerische \u0060BuildRevision\u0060; ein lokaler Standardwert w\u00E4re nicht zul\u00E4ssig.\n\nF\u00FCr einen manuellen Aufruf muss sie explizit \u00FCbergeben werden:\n\n\u0060\u0060\u0060powershell\ndotnet build qbookStudio.sln --no-restore -c Release -p:Platform=x86 -p:BuildRevision=1\n\u0060\u0060\u0060\n\nMit \u0060BuildRevision=1\u0060 trat der urspr\u00FCngliche Fehler nicht mehr auf. Die Buildpr\u00FCfung scheiterte anschlie\u00DFend unabh\u00E4ngig davon in \u0060qbookCsScript\u0060 an CefSharp mit \u0060PlatformTarget=AnyCPU\u0060. Diese Plattformzuordnung liegt au\u00DFerhalb des freigegebenen FOSS-Versionsumfangs.\n\nIch habe keine Produktdateien ge\u00E4ndert, damit die verpflichtende Release-Sperre erhalten bleibt, und den Debug-Handoff sowie den Workitem-Status aktualisiert.",
+      "Attachments": []
+    },
+    {
+      "Id": "0566e30f-985c-41ce-b61c-d822c8d99544",
+      "CreatedAt": "2026-09-14T13:00:06.8680746+00:00",
+      "Role": "User",
+      "Text": "Debug with gpt-5.6-terra \u2022 Medium",
+      "Attachments": []
+    },
+    {
+      "Id": "ae28aca6-e0b9-47e1-b1ce-b4248aae4d90",
+      "CreatedAt": "2026-09-14T13:01:19.0443716+00:00",
+      "Role": "Assistant",
+      "Text": "Der Release-Fehler ist korrekt nach dem aktuell freigegebenen Vertrag: \u0060BuildRevision\u0060 muss von der Release-Pipeline geliefert werden.\n\nEine automatische lokale Revision f\u00FCr Visual Studio w\u00FCrde das ausdr\u00FCcklich geforderte Verhalten (\u201Efehlende BuildRevision muss fehlschlagen\u201C) aufheben. Auch ein Visual-Studio-\u0060PreBuildEvent\u0060 ist ungeeignet, weil er nach der Kompilierung l\u00E4uft; die Versionsdatei muss vorher erzeugt werden. Die vorhandene MSBuild-Reihenfolge vor \u0060CoreCompile\u0060 ist daf\u00FCr korrekt.\n\nEs wurden keine Quelldateien ge\u00E4ndert und keine Builds ausgef\u00FChrt, da die gew\u00FCnschte \u00C4nderung einen neuen Planungsentscheid ben\u00F6tigt. Debug-Handoff und \u0060workitem.md\u0060 wurden aktualisiert; der Workitem-Status ist \u0060failed\u0060, \u0060planning_ready: false\u0060.\n\nOffen: F\u00FCr eine automatische Visual-Studio-Revision braucht es einen freigegebenen Entwurf zu Quelle, Eindeutigkeit, Persistenz und Verhalten in der Pipeline.",
+      "Attachments": []
+    },
+    {
+      "Id": "32c9cae0-e260-4567-b7f0-a20fe470ca15",
+      "CreatedAt": "2026-09-14T13:21:12.6407403+00:00",
+      "Role": "User",
+      "Text": "Da prim\u00E4re \u00FCber Visual Studio ein Build erzeugt wird ist eine Powershell L\u00F6sung nicht ideal.\u000BAuch f\u00FCr die BuildRevision w\u00FCrde ich eine automatisierung besser finde. Gibt es da eine L\u00F6sung die dann passend zum GitHub Repo. passt.",
+      "Attachments": []
+    },
+    {
+      "Id": "473b40c1-aa47-4e10-8a46-856bfd920459",
+      "CreatedAt": "2026-09-14T13:22:30.4499014+00:00",
+      "Role": "Assistant",
+      "Text": "Ja. Die passendste L\u00F6sung ist, die **offizielle Release-Erzeugung** als manuell gestarteten GitHub-Actions-Workflow zu etablieren; Visual Studio bleibt f\u00FCr Entwicklung und lokale Builds zust\u00E4ndig.\n\nDer Workflow l\u00E4uft auf \u0060windows-latest\u0060, f\u00FChrt den FOSS-Check aus, erzeugt den Release und ver\u00F6ffentlicht das Artefakt. Als \u0060BuildRevision\u0060 dient die GitHub-Run-Nummer eines ausschlie\u00DFlich f\u00FCr Releases verwendeten Workflows. Sie ist automatisch fortlaufend; L\u00FCcken durch abgebrochene Runs sind unkritisch. So gibt es keine lokale Z\u00E4hlerdatei und keine konkurrierenden Visual-Studio-Builds.\n\nDie FOSS-Freigabe bleibt explizit: entweder als manuell freigegebener GitHub-Environment-Schritt oder als kontrollierter Commit/PR der neuen Baseline. GitHub Environments k\u00F6nnen Jobs bis zur Freigabe anhalten und Reviewer erzwingen; die verf\u00FCgbare Auspr\u00E4gung h\u00E4ngt bei privaten Repositories vom GitHub-Plan ab. [GitHub Environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)\n\nWichtig: Die FOSS-Ermittlung selbst sollte dann nicht prim\u00E4r in PowerShell leben, sondern als kleine .NET-Konsolenanwendung im Repository. Sie kann sowohl vom GitHub-Workflow als auch von MSBuild/Visual Studio aufgerufen werden; PowerShell bleibt h\u00F6chstens als d\u00FCnner Aufrufer entbehrlich. Die vorhandene GitHub-Action f\u00FCr AssemblyInfo-Validierung ist bereits ein guter Ausgangspunkt.\n\nF\u00FCr die gew\u00E4hlte Richtung sind zwei Architekturentscheidungen erforderlich.\n\n:::questions\n{\n  \u0022questions\u0022: [\n    {\n      \u0022id\u0022: \u0022official_release_authority\u0022,\n      \u0022type\u0022: \u0022single_select\u0022,\n      \u0022text\u0022: \u0022Which system should create official versioned release artifacts?\u0022,\n      \u0022options\u0022: [\n        \u0022GitHub Actions only (recommended)\u0022,\n        \u0022Visual Studio locally, with GitHub reservation of revisions\u0022,\n        \u0022Other\u0022\n      ],\n      \u0022required\u0022: true\n    },\n    {\n      \u0022id\u0022: \u0022foss_approval_mechanism\u0022,\n      \u0022type\u0022: \u0022single_select\u0022,\n      \u0022text\u0022: \u0022How should explicit FOSS approval update the source-controlled baseline?\u0022,\n      \u0022options\u0022: [\n        \u0022Manual pull request and merge (recommended)\u0022,\n        \u0022GitHub Actions environment approval\u0022,\n        \u0022Other\u0022\n      ],\n      \u0022required\u0022: true\n    },\n    {\n      \u0022id\u0022: \u0022approval_mechanism_other\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Describe the required FOSS approval mechanism.\u0022,\n      \u0022required\u0022: true,\n      \u0022visible_when\u0022: {\n        \u0022question_id\u0022: \u0022foss_approval_mechanism\u0022,\n        \u0022has_any_of\u0022: [\n          \u0022Other\u0022\n        ]\n      }\n    }\n  ]\n}\n:::endquestions",
+      "Attachments": []
+    },
+    {
+      "Id": "e5ef6833-64d5-42a0-a8c1-6cfbe7a763f1",
+      "CreatedAt": "2026-09-14T13:32:09.2478137+00:00",
+      "Role": "User",
+      "Text": "Bitte erkl\u00E4re deinen L\u00F6sungsvorschlag nochmal. Was muss der User Schritt f\u00FCr Schritt tun.\u000BMein Gedanke ist der User Pushed in Git.\u000B\u000BEine legitime L\u00F6sung w\u00E4re auch:\u000BDebug Build l\u00E4uft normal wie bisher per VS\u000BRelease per ps1 Script",
+      "Attachments": []
+    },
+    {
+      "Id": "4e64f601-1d49-4acb-be5f-7fe812e5f469",
+      "CreatedAt": "2026-09-14T13:32:53.9333081+00:00",
+      "Role": "Assistant",
+      "Text": "Ja, Ihre vereinfachte Variante ist legitim und passt gut:\n\n- Debug-Builds bleiben unver\u00E4ndert: Entwickler arbeiten und bauen in Visual Studio wie bisher.\n- Nur der offizielle Release l\u00E4uft \u00FCber ein PowerShell-Skript.\n- Dieses Skript wird idealerweise nicht auf dem Entwickler-PC, sondern in einem manuell gestarteten GitHub-Actions-Releaseworkflow auf einem Windows-Runner ausgef\u00FChrt.\n- Der Push nach GitHub ist die Voraussetzung; er erzeugt noch keinen Release.\n\n## Ablauf f\u00FCr den User\n\n1. Entwickler arbeitet in Visual Studio und erzeugt beliebig viele Debug-Builds.  \n   Diese erhalten keine offizielle FOSS- oder BuildRevision.\n\n2. \u00C4nderungen werden committed und nach \u0060main\u0060 gepusht.\n\n3. F\u00FCr einen offiziellen Release startet der Release-Verantwortliche in GitHub Actions den Workflow manuell f\u00FCr den gew\u00FCnschten Commit auf \u0060main\u0060.\n\n4. Der Workflow ermittelt den FOSS-Zustand und vergleicht ihn mit der eingecheckten, freigegebenen Baseline.\n\n5. Bei unver\u00E4ndertem FOSS-Zustand:\n   - GitHub vergibt automatisch die n\u00E4chste Run-Nummer als \u0060BuildRevision\u0060;\n   - das PowerShell-Release-Skript baut die Anwendung;\n   - es erzeugt beispielsweise \u006026.09.00125\u0060;\n   - GitHub stellt das Release-Artefakt zum Download bereit.\n\n6. Bei ver\u00E4ndertem FOSS-Zustand:\n   - der Workflow bricht vor der offiziellen Release-Erzeugung ab;\n   - er stellt Manifest und Diff als Artefakt bereit;\n   - die FOSS-Pr\u00FCfung erfolgt au\u00DFerhalb der Automatisierung;\n   - nach Freigabe wird die neue Baseline per Review/PR eingecheckt;\n   - erst danach kann der Releaseworkflow erneut gestartet werden und erzeugt beispielsweise \u006026.10.00126\u0060.\n\nDamit bleibt Visual Studio unkompliziert, w\u00E4hrend nur offizielle Releases eine zentral vergebene, nachvollziehbare Version erhalten. \u0060workflow_dispatch\u0060 unterst\u00FCtzt den manuellen Start von Workflows; GitHub Actions kann Build-Artefakte zwischen Schritten bereitstellen und ver\u00F6ffentlichen. [Workflow-Ausl\u00F6ser](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow), [Workflow-Artefakte](https://docs.github.com/en/actions/tutorials/store-and-share-data)\n\nDie zentrale Entscheidung ist damit nicht \u201EPowerShell oder GitHub\u201C, sondern der Ausf\u00FChrungsort des PowerShell-Release-Skripts.\n\n:::questions\n{\n  \u0022questions\u0022: [\n    {\n      \u0022id\u0022: \u0022release_script_execution\u0022,\n      \u0022type\u0022: \u0022single_select\u0022,\n      \u0022text\u0022: \u0022Where should the PowerShell release script create official releases?\u0022,\n      \u0022options\u0022: [\n        \u0022Manual GitHub Actions release workflow (recommended)\u0022,\n        \u0022Local developer PC after a Git push\u0022,\n        \u0022Other\u0022\n      ],\n      \u0022required\u0022: true\n    },\n    {\n      \u0022id\u0022: \u0022release_script_execution_other\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Describe the required official release execution environment.\u0022,\n      \u0022required\u0022: true,\n      \u0022visible_when\u0022: {\n        \u0022question_id\u0022: \u0022release_script_execution\u0022,\n        \u0022has_any_of\u0022: [\n          \u0022Other\u0022\n        ]\n      }\n    }\n  ]\n}\n:::endquestions",
+      "Attachments": []
+    },
+    {
+      "Id": "4a8c5a63-a716-4e9d-84e3-8b30e076a7b3",
+      "CreatedAt": "2026-09-14T13:33:40.9039885+00:00",
+      "Role": "User",
+      "Text": ":::answers\r\n{\u0022answers\u0022:[{\u0022id\u0022:\u0022release_script_execution\u0022,\u0022value\u0022:\u0022Manual GitHub Actions release workflow (recommended)\u0022,\u0022question\u0022:\u0022Where should the PowerShell release script create official releases?\u0022}]}\r\n:::endanswers",
+      "Attachments": []
+    },
+    {
+      "Id": "66b230cb-b99e-488f-ad2a-c46b2f5ca6d5",
+      "CreatedAt": "2026-09-14T13:34:05.4183273+00:00",
+      "Role": "Assistant",
+      "Text": "Damit ist der Release-Ablauf festgelegt:\n\n- Debug: unver\u00E4ndert lokal \u00FCber Visual Studio.\n- Release: nach Push nach GitHub manuell in GitHub Actions starten.\n- GitHub Actions f\u00FChrt das PowerShell-Release-Skript aus und vergibt die BuildRevision automatisch \u00FCber die Run-Nummer.\n- Bei ge\u00E4ndertem FOSS-Fingerprint wird kein offizieller Release erzeugt.\n\nOffen ist nur noch, wie die gepr\u00FCfte FOSS-Baseline verbindlich in Git \u00FCbernommen wird. Das beeinflusst Rechte, Nachvollziehbarkeit und den konkreten User-Ablauf.\n\n:::questions\n{\n  \u0022questions\u0022: [\n    {\n      \u0022id\u0022: \u0022foss_baseline_approval\u0022,\n      \u0022type\u0022: \u0022single_select\u0022,\n      \u0022text\u0022: \u0022How should an externally reviewed new FOSS state become the approved baseline in Git?\u0022,\n      \u0022options\u0022: [\n        \u0022Reviewer creates and merges a pull request with the new baseline (recommended)\u0022,\n        \u0022A separately started GitHub Actions approval workflow writes the baseline after manual approval\u0022,\n        \u0022Other\u0022\n      ],\n      \u0022required\u0022: true\n    },\n    {\n      \u0022id\u0022: \u0022foss_baseline_approval_other\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Describe the required baseline approval process.\u0022,\n      \u0022required\u0022: true,\n      \u0022visible_when\u0022: {\n        \u0022question_id\u0022: \u0022foss_baseline_approval\u0022,\n        \u0022has_any_of\u0022: [\n          \u0022Other\u0022\n        ]\n      }\n    }\n  ]\n}\n:::endquestions",
+      "Attachments": []
+    },
+    {
+      "Id": "57535291-7db1-418e-958f-f1c6bf7bff7a",
+      "CreatedAt": "2026-09-14T13:40:49.4432192+00:00",
+      "Role": "User",
+      "Text": ":::answers\r\n{\u0022answers\u0022:[{\u0022id\u0022:\u0022foss_baseline_approval\u0022,\u0022value\u0022:\u0022Reviewer creates and merges a pull request with the new baseline (recommended)\u0022,\u0022question\u0022:\u0022How should an externally reviewed new FOSS state become the approved baseline in Git?\u0022}]}\r\n:::endanswers",
+      "Attachments": []
+    },
+    {
+      "Id": "3b877f2c-2fb6-4271-9831-94bc27a92f2b",
+      "CreatedAt": "2026-09-14T13:41:21.0252087+00:00",
+      "Role": "Assistant",
+      "Text": "\u0060planning_ready\u0060 ist wieder auf \u0060true\u0060 gesetzt.\n\nDer endg\u00FCltige Ablauf:\n\n1. Entwickler bauen Debug weiterhin lokal in Visual Studio.\n2. \u00C4nderungen werden nach GitHub gepusht.\n3. Der Release-Verantwortliche startet den GitHub-Actions-Releaseworkflow manuell f\u00FCr den gew\u00FCnschten Commit.\n4. Der Workflow f\u00FChrt das PowerShell-Release-Skript auf Windows aus, pr\u00FCft den FOSS-Fingerprint und nutzt seine fortlaufende Run-Nummer als \u0060BuildRevision\u0060.\n5. Bei unver\u00E4ndertem FOSS-Stand erstellt er das offizielle Release-Artefakt mit etwa \u006026.09.00125\u0060.\n6. Bei \u00C4nderung bricht er ab und liefert Manifest/Diff.\n7. Nach externer FOSS-Pr\u00FCfung erstellt ein Reviewer einen Pull Request mit der neuen Baseline und f\u00FChrt ihn zusammen. Erst danach kann ein Release mit der neuen FOSS-Revision entstehen.\n\nDer Scope bleibt auf \u0060qbook\u0060 und \u0060qbookCsScript\u0060 beschr\u00E4nkt. Nicht enthalten bleiben Publisher, VS-Code-Plugin, automatische FOSS-Freigaben und \u00C4nderungen an Dependencies. Der Build wird gem\u00E4\u00DF Workspace-Regel mit \u0060dotnet build --no-restore\u0060 verifiziert; fehlende Restore-Artefakte bleiben ein Nutzer-/Host-Schritt.\n\nManuell gestartete GitHub-Workflows und Artefakte sind daf\u00FCr direkt vorgesehen. [GitHub Actions: Workflow starten](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow), [GitHub Actions: Artefakte](https://docs.github.com/en/actions/tutorials/store-and-share-data)",
+      "Attachments": []
+    },
+    {
+      "Id": "15a02335-7fbb-43ca-a9b8-30e571774d54",
+      "CreatedAt": "2026-09-14T13:41:30.8257547+00:00",
+      "Role": "User",
+      "Text": "Plan",
+      "Attachments": []
+    },
+    {
+      "Id": "52ae6a42-a06c-44db-893b-fa04d18a6bad",
+      "CreatedAt": "2026-09-14T13:42:28.9505612+00:00",
+      "Role": "Assistant",
+      "Text": "Kein neuer Handoff wurde erstellt.\n\nDer GitHub-Releaseworkflow ben\u00F6tigt auf einem frischen Runner einen Paket-Restore, weil \u0060packages/\u0060 nicht versioniert ist. Die aktuelle Repository-Regel verbietet jedoch autonome Restore-Schritte und verlangt bei fehlenden Paketen den Abbruch.\n\nDas widerspricht dem beschlossenen GitHub-Actions-Releaseablauf. Diese Ausnahme bzw. die Restore-Strategie muss zuerst in STRUCTURE verbindlich gekl\u00E4rt werden.",
+      "Attachments": []
+    },
+    {
+      "Id": "fe37761e-8b2c-4685-af96-bc6734f5400b",
+      "CreatedAt": "2026-09-14T13:46:09.5515237+00:00",
+      "Role": "User",
+      "Text": "Dann w\u00E4re mein Vorschlag Plan ohne Test. Der User \u00FCbernimmt den Test",
+      "Attachments": []
+    },
+    {
+      "Id": "35f4e419-ccc0-4854-ac98-3f66a8bf6e14",
+      "CreatedAt": "2026-09-14T13:46:46.0378066+00:00",
+      "Role": "Assistant",
+      "Text": "\u00DCbernommen: Der n\u00E4chste Plan enth\u00E4lt keine automatisierten Testf\u00E4lle und keine Testausf\u00FChrung; der User \u00FCbernimmt die funktionale Pr\u00FCfung des GitHub-Releaseworkflows.\n\nDie verpflichtende Workspace-Buildpr\u00FCfung bleibt davon unabh\u00E4ngig und kann nicht durch \u201Eohne Test\u201C entfallen.\n\nF\u00FCr den GitHub-Workflow bleibt eine technische Entscheidung offen: Ein frischer GitHub-Windows-Runner enth\u00E4lt die ignorierten NuGet-Pakete nicht. Damit der offizielle Release dort \u00FCberhaupt gebaut werden kann, muss der Workflow die Pakete wiederherstellen d\u00FCrfen. Ohne das wird er erwartungsgem\u00E4\u00DF vor dem FOSS-Check abbrechen.\n\n:::questions\n{\n  \u0022questions\u0022: [\n    {\n      \u0022id\u0022: \u0022github_restore_responsibility\u0022,\n      \u0022type\u0022: \u0022single_select\u0022,\n      \u0022text\u0022: \u0022How should the GitHub Actions release workflow obtain its required NuGet packages?\u0022,\n      \u0022options\u0022: [\n        \u0022The release workflow performs package restore before the FOSS check (recommended)\u0022,\n        \u0022The user provides a pre-restored package source for the runner\u0022,\n        \u0022Other\u0022\n      ],\n      \u0022required\u0022: true\n    },\n    {\n      \u0022id\u0022: \u0022github_restore_responsibility_other\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Describe the required package-availability approach for the GitHub Actions runner.\u0022,\n      \u0022required\u0022: true,\n      \u0022visible_when\u0022: {\n        \u0022question_id\u0022: \u0022github_restore_responsibility\u0022,\n        \u0022has_any_of\u0022: [\n          \u0022Other\u0022\n        ]\n      }\n    }\n  ]\n}\n:::endquestions",
+      "Attachments": []
+    },
+    {
+      "Id": "795f0f5e-e3d6-40dd-8c2b-f862c6101d20",
+      "CreatedAt": "2026-09-14T13:47:19.5529846+00:00",
+      "Role": "User",
+      "Text": ":::answers\r\n{\u0022answers\u0022:[{\u0022id\u0022:\u0022github_restore_responsibility\u0022,\u0022value\u0022:\u0022The release workflow performs package restore before the FOSS check (recommended)\u0022,\u0022question\u0022:\u0022How should the GitHub Actions release workflow obtain its required NuGet packages?\u0022}]}\r\n:::endanswers",
+      "Attachments": []
+    },
+    {
+      "Id": "66073f6c-8ed9-464e-b571-912a6812e215",
+      "CreatedAt": "2026-09-14T13:47:51.4257819+00:00",
+      "Role": "Assistant",
+      "Text": "\u0060planning_ready\u0060 ist wieder auf \u0060true\u0060 gesetzt.\n\nZiel bleibt ein FOSS-gesicherter qbook-Release mit Version \u0060yy.FossRevision.BuildRevision\u0060. Debug-Builds laufen weiterhin lokal in Visual Studio. Offizielle Releases werden manuell in GitHub Actions gestartet; der Windows-Runner stellt Pakete vor dem FOSS-Check wieder her, f\u00FChrt das Release-PowerShell-Skript aus und vergibt die BuildRevision automatisch \u00FCber die Run-Nummer.\n\nDer FOSS-Scope umfasst nur \u0060qbook\u0060 und \u0060qbookCsScript\u0060. Eine ge\u00E4nderte Abh\u00E4ngigkeitslage blockiert den Release; nach externer Pr\u00FCfung \u00FCbernimmt ein Reviewer die neue Baseline \u00FCber Pull Request und Merge. Publisher, VS-Code-Plugin, Lizenzautomatisierung und Dependency-\u00C4nderungen bleiben ausgeschlossen.\n\nDer Implementierungsplan enth\u00E4lt keine automatisierten Tests. Die funktionale Pr\u00FCfung des Releaseworkflows \u00FCbernimmt der User; die verpflichtende Workspace-Buildpr\u00FCfung bleibt davon unabh\u00E4ngig.",
+      "Attachments": []
+    },
+    {
+      "Id": "68ab9f25-9b53-4dbc-988c-506a22df2372",
+      "CreatedAt": "2026-09-14T13:54:01.3754269+00:00",
+      "Role": "User",
+      "Text": "Plan",
+      "Attachments": []
+    },
+    {
+      "Id": "ac16b070-bcde-4a3c-a8d4-6918f25b47f5",
+      "CreatedAt": "2026-09-14T13:55:19.0611884+00:00",
+      "Role": "Assistant",
+      "Text": "Der finale GitHub-Actions-Release-Handoff wurde geschrieben: manueller Windows-Releaseworkflow, Paket-Restore im Workflow, automatische BuildRevision \u00FCber die Run-Nummer, PowerShell-Release-Einstieg und PR-basierte FOSS-Freigabe. Automatisierte Tests sind nicht enthalten.\n\n[Open implementation handoff](aiflow-handoff:implementation)",
+      "Attachments": []
+    },
+    {
+      "Id": "b51c9249-bb8b-414c-a061-b4c40479ce73",
+      "CreatedAt": "2026-09-14T13:55:33.8490002+00:00",
+      "Role": "User",
+      "Text": "Implement with gpt-5.6-terra \u2022 Medium",
+      "Attachments": []
+    },
+    {
+      "Id": "1a673ce7-7796-4196-afc2-2384a6d86e5b",
+      "CreatedAt": "2026-09-14T13:58:25.4453104+00:00",
+      "Role": "Assistant",
+      "Text": "Umgesetzt:\n\n- Neue manuelle GitHub-Release-Workflow-Datei mit NuGet-Restore, Build-Run-Nummer und Artefakt-Upload.\n- Neuer \u0060qbook/release.ps1\u0060-Einstiegspunkt mit \u0060BuildRevision\u0060-Validierung und Visual-Studio-MSBuild-Aufruf.\n- FOSS-Validierung f\u00FCr fehlerhafte Baselines und Manifest-Fingerprints erweitert; Approval-Skript dokumentiert den PR-basierten Review-Schritt.\n- Release-Skript in das Projekt aufgenommen.\n- Workitem-Status auf \u0060failed\u0060 gesetzt und \u0060planning_ready\u0060 zur\u00FCckgesetzt.\n\nDie verpflichtende Pr\u00FCfung \u0060dotnet build qbookStudio.sln --no-restore\u0060 ist fehlgeschlagen. Ursache: \u0060qbookCsScript\u0060 wird mit \u0060PlatformTarget=AnyCPU\u0060 gebaut; CefSharp verlangt \u0060x86\u0060 oder \u0060x64\u0060. Der Fehler betrifft die bestehende L\u00F6sungs-Konfiguration und liegt au\u00DFerhalb des genehmigten Scopes. Es wurden keine Tests ausgef\u00FChrt.",
+      "Attachments": []
+    },
+    {
+      "Id": "62adef22-3837-47fa-b62a-1ea444151db0",
+      "CreatedAt": "2026-09-18T07:36:34.9277974+00:00",
+      "Role": "User",
+      "Text": "Debug with gpt-5.6-terra \u2022 Medium",
+      "Attachments": []
+    },
+    {
+      "Id": "8bc3d18b-28df-403a-ab5d-ebef37cd5b5a",
+      "CreatedAt": "2026-09-18T07:38:36.3639557+00:00",
+      "Role": "Assistant",
+      "Text": "## Ergebnis\n\nDer urspr\u00FCngliche Fehler \u0060MSB4126\u0060 ist behoben: \u0060AnyCPU\u0060 war keine g\u00FCltige L\u00F6sungskonfiguration. Das Release-Skript verwendet nun \u0060Release|x86\u0060.\n\nDie erforderlichen No-Restore-Buildpr\u00FCfungen erreichten anschlie\u00DFend die Projektbuilds ohne \u0060MSB4126\u0060, scheiterten aber beide an CefSharp:\n\n- \u0060qbookCsScript\u0060 liefert weiterhin \u0060PlatformTarget=AnyCPU\u0060.\n- CefSharp verlangt hierf\u00FCr \u0060x86\u0060 oder \u0060x64\u0060.\n\nDer Debug-Lauf ist daher als fehlgeschlagen abgeschlossen und im Workitem sowie Debug-Handoff dokumentiert. Es wurden keine Tests ausgef\u00FChrt. Annahme: Die erforderliche n\u00E4chste Korrektur liegt in der Projektkonfiguration von \u0060qbookCsScript\u0060, die au\u00DFerhalb der benannten \u00C4nderungsdatei liegt.",
+      "Attachments": []
+    },
+    {
+      "Id": "99286f22-e4bc-43ee-948a-abd8ac3b349a",
+      "CreatedAt": "2026-09-18T07:47:49.1176308+00:00",
+      "Role": "User",
+      "Text": "Debug with gpt-5.6-terra \u2022 Medium",
+      "Attachments": []
+    },
+    {
+      "Id": "16a003e2-c4a0-4d27-ba12-b35333a265b3",
+      "CreatedAt": "2026-09-18T07:50:45.8638283+00:00",
+      "Role": "Assistant",
+      "Text": "## Debug abgeschlossen \u2013 Status \u0060failed\u0060\n\nDie \u0060CS8370\u0060-Fehler wurden korrigiert:\n\n- \u0060qbook\u0060 verwendet in \u0060Release|x86\u0060 jetzt C# 9.0 statt 7.3.\n- \u0060qbookCsScript\u0060 erh\u00E4lt im Release explizit \u0060PlatformTarget=x86\u0060.\n- Die erforderliche Ressourcen-Serialisierung ist f\u00FCr Release aktiviert.\n\nDie zwei vorgeschriebenen \u0060dotnet build --no-restore\u0060-Verifikationen zeigten danach weder C#-7.3- noch CefSharp-\u0060AnyCPU\u0060-Fehler. Der letzte Lauf scheitert ausschlie\u00DFlich mit \u0060MSB4803\u0060: Das von \u0060dotnet build\u0060 verwendete .NET-Core-MSBuild unterst\u00FCtzt die Legacy-Lizenzcompiler-Task \u0060LC\u0060 nicht.\n\nDer Release-Einstieg nutzt laut Skript das .NET-Framework-MSBuild der Visual-Studio-Build-Tools; dessen Ausf\u00FChrung war nicht als Host-Validierung verf\u00FCgbar und wurde daher nicht durchgef\u00FChrt. Debug-Konfigurationen blieben unver\u00E4ndert.\n\nDer Debug-Handoff und \u0060workitem.md\u0060 sind aktualisiert; \u0060planning_ready\u0060 bleibt \u0060false\u0060.",
+      "Attachments": []
+    },
+    {
+      "Id": "b58c1f0c-f3fa-455f-b7ea-4905bbde9d6c",
+      "CreatedAt": "2026-09-18T07:56:51.0574921+00:00",
+      "Role": "User",
+      "Text": "Debug with gpt-5.6-terra \u2022 Medium",
+      "Attachments": []
+    },
+    {
+      "Id": "0e77a50e-ba9a-4eb2-9b78-10f958fa6c82",
+      "CreatedAt": "2026-09-18T07:58:02.942556+00:00",
+      "Role": "Assistant",
+      "Text": "Ja \u2014 die Build-Version ist bereits automatisiert:\n\n\u006026.1.9.0\u0060 bedeutet:\n\n- \u006026\u0060: UTC-Jahr 2026\n- \u00601\u0060: freigegebene FOSS-Revision\n- \u00609\u0060: GitHub-Actions-Run-Nummer (\u0060github.run_number\u0060)\n- \u00600\u0060: bewusst fest gesetzte vierte .NET-Assembly-Versionskomponente\n\nDie \u00600\u0060 wird in \u0060updateAssemblyInfo.cs.ps1\u0060 als Konstante erzeugt. Sie steht nicht f\u00FCr Datum, Commit oder lokalen Z\u00E4hler. Die Versionsformel f\u00FCr Release lautet:\n\n\u0060\u0060\u0060text\nyy.FossRevision.BuildRevision.0\n\u0060\u0060\u0060\n\nF\u00FCr den menschenlesbaren Informationswert wird zus\u00E4tzlich \u006026.01.00009\u002Bce179ff\u0060 erzeugt \u2014 einschlie\u00DFlich Git-Commit-Kurzkennung.\n\nDamit erh\u00E4lt jeder manuell gestartete GitHub-Release automatisch eine steigende Buildnummer. Die vierte Stelle aufzuinkrementieren w\u00E4re m\u00F6glich, br\u00E4uchte aber eine dauerhaft gespeicherte, nebenl\u00E4ufigkeitssichere Quelle und widerspr\u00E4che dem festgelegten Verzicht auf lokale Z\u00E4hler. Der konstante Wert ist daher sinnvoll.\n\nDer urspr\u00FCngliche Konfigurationsfehler ist laut deiner R\u00FCckmeldung behoben. In dieser Anfrage wurden keine Code\u00E4nderungen oder Builds ausgef\u00FChrt; die bekannte Einschr\u00E4nkung von \u0060dotnet build --no-restore\u0060 mit dem Legacy-\u0060LC\u0060-Task bleibt dokumentiert.",
+      "Attachments": []
+    },
+    {
+      "Id": "68ae7b0f-e35c-4b39-b46d-71f713261e1b",
+      "CreatedAt": "2026-09-18T08:01:37.5623265+00:00",
+      "Role": "User",
+      "Text": "Debug with gpt-5.6-terra \u2022 Medium",
+      "Attachments": []
+    },
+    {
+      "Id": "4e24e139-bab6-475e-a355-d5e74252eff9",
+      "CreatedAt": "2026-09-18T08:02:42.5849804+00:00",
+      "Role": "Assistant",
+      "Text": "Der Prompt ist korrekt: Bei lokalem Direktaufruf ist \u0060BuildRevision\u0060 ein Pflichtparameter. Lokal z. B.:\n\n\u0060\u0060\u0060powershell\n.\\qbook\\release.ps1 -BuildRevision 1\n\u0060\u0060\u0060\n\nIm offiziellen GitHub-Release wird nichts abgefragt: Der Workflow \u00FCbergibt automatisch \u0060${{ github.run_number }}\u0060.\n\nDie finale \u00600\u0060 kann nicht durch \u0060MMddHHmm\u0060 ersetzt werden:\n\n- Die freigegebene Regel ist \u0060yy.FossRevision.BuildRevision.0\u0060; lokale Zeitwerte sind ausdr\u00FCcklich ausgeschlossen.\n- \u0060MMddHHmm\u0060 \u00FCberschreitet h\u00E4ufig das .NET-Limit von \u006065535\u0060 je Versionskomponente.\n\nIch habe keine Produktdatei ge\u00E4ndert, da dies den freigegebenen Versionsvertrag verletzen w\u00FCrde. Den Befund habe ich im Debug-Handoff und Workitem dokumentiert. Keine Build-Validierung ausgef\u00FChrt; das bekannte \u0060LC\u0060-Limit bei \u0060dotnet build --no-restore\u0060 bleibt bestehen.",
+      "Attachments": []
+    },
+    {
+      "Id": "18556424-34b8-4013-aa75-c714aa746886",
+      "CreatedAt": "2026-09-18T08:06:20.6817266+00:00",
+      "Role": "User",
+      "Text": "Debug with gpt-5.6-terra \u2022 Medium",
+      "Attachments": []
+    },
+    {
+      "Id": "0baebed9-91bd-4a5f-9a68-9c2da66d0740",
+      "CreatedAt": "2026-09-18T08:07:26.4809965+00:00",
+      "Role": "Assistant",
+      "Text": "## Release mit Git/GitHub\n\n1. Den gew\u00FCnschten Quellstand nach \u0060main\u0060 mergen; bei FOSS-\u00C4nderungen vorher den gepr\u00FCften Baseline-PR mit \u0060compliance/foss\u0060 mergen.\n2. Optional auf diesem Commit einen Git-Tag erstellen.\n3. In GitHub: **Actions** \u2192 **Release qbook** \u2192 **Run workflow**.\n4. Den gew\u00FCnschten Branch oder Tag als Ref ausw\u00E4hlen und starten.\n5. Nach erfolgreichem Lauf das Artefakt \u0060qbook-release-\u003Crun_number\u003E\u0060 herunterladen.\n\nDer Workflow stellt Pakete wieder her, baut mit \u0060Release|x86\u0060 und verwendet \u0060github.run_number\u0060 automatisch als \u0060BuildRevision\u0060. Er erstellt derzeit ein Workflow-Artefakt, keinen GitHub-Release-Eintrag mit Release Notes.\n\nDie Version bleibt sinnvoll bei \u0060yy.FossRevision.BuildRevision.0\u0060, z. B. \u006026.1.9.0\u0060:\n\n- \u006026\u0060: Jahr\n- \u00601\u0060: genehmigte FOSS-Revision\n- \u00609\u0060: automatisch fortlaufende GitHub-Workflownummer\n- \u00600\u0060: feste vierte .NET-Versionskomponente\n\nEine zus\u00E4tzliche fortlaufende vierte Nummer bringt keinen Nutzen; \u0060github.run_number\u0060 ist bereits der automatische Buildz\u00E4hler. Weglassen sollte sie nicht: Das w\u00FCrde vom genehmigten Versionsformat abweichen.\n\nDer urspr\u00FCngliche Konfigurationsfehler \u0060Release|AnyCPU\u0060 ist durch den Release-Pfad \u0060Release|x86\u0060 behoben. F\u00FCr diese Erl\u00E4uterung wurden keine Code\u00E4nderungen oder Builds ausgef\u00FChrt. Bekannte Einschr\u00E4nkung bleibt, dass \u0060dotnet build --no-restore\u0060 den alten \u0060LC\u0060-Task nicht ausf\u00FChren kann; der offizielle Release nutzt deshalb MSBuild aus den Visual-Studio-Build-Tools.",
+      "Attachments": []
+    }
+  ]
+}
