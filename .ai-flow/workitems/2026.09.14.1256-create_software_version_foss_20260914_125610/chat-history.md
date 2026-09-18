@@ -2,7 +2,7 @@
 
 - Session Title: Create Software Version FOSS - 20260914-125610
 - Session Id: 4f9a045f-ade3-45d5-b11d-c2403ec5483f
-- Exported At: 2026-09-18T08:59:51.6341043+00:00
+- Exported At: 2026-09-18T09:49:00.0959460+00:00
 - WorkItem Path: .ai-flow/workitems/2026.09.14.1256-create_software_version_foss_20260914_125610
 
 ## 2026-09-14T10:56:11.0307502+00:00 | User | dac001ff-2b43-47a8-9667-16f5021d3ac1
@@ -1219,3 +1219,75 @@ Debug with claude-sonnet-5 • Medium
 - Der Fix wurde nicht auf einem echten GitHub-Actions-Windows-Runner verifiziert; das erfordert den nächsten manuellen Release-Workflow-Lauf.
 - Es bleibt die Annahme, dass die Runner-VS-Installation tatsächlich im "incomplete"-Zustand registriert ist und durch `-all` erfasst wird.
 - Die bekannte lokale Build-Einschränkung (`ResolveComReference` unter .NET-Core-MSBuild) besteht unverändert fort.
+
+
+## 2026-09-18T09:44:00.1529905+00:00 | User | 8894ee54-34d1-453d-bfeb-2212744f9c57
+
+Build wurde jetzt gestartet aber lief nicht ohne Fehler durch. Siehe log
+
+Attachments:
+- [5_Build qbook Release.txt](attachments/8894ee54-34d1-453d-bfeb-2212744f9c57/5_Build qbook Release.txt) (text/plain)
+
+## 2026-09-18T09:44:33.1229662+00:00 | Assistant | 6b864364-f6d9-4c48-8c8c-c18c01534190
+
+Der Release-Build erreicht jetzt MSBuild. Der neue Fehler ist unabhängig von Visual Studio und FOSS:
+
+`qbookCode` schreibt nach `B:\x86.qBookRoslyn\qbookCode\bin\Release\...`. Dieser lokale Pfad existiert auf dem GitHub-Runner nicht; dort liegt das Repository unter `D:\a\x86.qBookRoslyn\...`. Die 411 Kopierfehler sind Folgefehler dieses einen falschen Ausgabepfads.
+
+Damit der GitHub-Release überhaupt gebaut werden kann, muss die Projektkonfiguration von `qbookCode` einen repository-relativen bzw. normalen MSBuild-Ausgabepfad verwenden. Das ist eine kleine, aber zusätzliche Korrektur neben der FOSS-Versionierung.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "include_portable_output_path_fix",
+      "type": "confirm",
+      "text": "Soll die Korrektur des fest verdrahteten qbookCode-Ausgabepfads als notwendiger Bestandteil dieses Release-Workflows aufgenommen werden?",
+      "required": true
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-09-18T09:46:43.0239741+00:00 | User | c3be5c45-0695-416f-aa53-757646f89d33
+
+:::answers
+{"answers":[{"id":"include_portable_output_path_fix","value":true,"question":"Soll die Korrektur des fest verdrahteten qbookCode-Ausgabepfads als notwendiger Bestandteil dieses Release-Workflows aufgenommen werden?"}]}
+:::endanswers
+
+
+## 2026-09-18T09:47:12.9502818+00:00 | Assistant | 8c0c4743-97e8-44ce-8b56-85b3fbdd4caa
+
+Die Struktur ist wieder planungsbereit.
+
+- Ziel: offizieller, manuell gestarteter GitHub-Release für `qbook` und `qbookCsScript` mit FOSS-Fingerprint und Version `yy.FossRevision.BuildRevision`.
+- Ergänzter Scope: `qbookCode` erhält einen portablen MSBuild-Ausgabepfad; keine fest verdrahteten lokalen Laufwerks- oder Repositorypfade.
+- Release-Architektur: GitHub Actions stellt Pakete wieder her, übergibt die automatische `BuildRevision` und startet das Release-Skript mit Visual-Studio/MSBuild-Erkennung für den Hosted Runner.
+- FOSS-Freigabe bleibt ein expliziter PR-Review mit eingecheckter Baseline; eine geänderte Abhängigkeitslage blockiert den offiziellen Release.
+- Nicht enthalten: automatische Lizenzfreigabe, vollständige SBOM-Plattform oder Änderungen an Debug-Builds in Visual Studio.
+- Validierung: Der Nutzer startet den GitHub-Release-Workflow manuell und prüft dessen Ergebnis; keine zusätzlichen automatisierten Tests sind vorgesehen.
+
+Als Nächstes kann ein aktualisierter Implementierungsplan erstellt werden.
+
+
+## 2026-09-18T09:47:17.6752200+00:00 | User | e636d5d1-142d-4fcb-a4fe-9793387ff89e
+
+Plan
+
+
+## 2026-09-18T09:48:32.1108537+00:00 | Assistant | 2fec5515-7779-4eef-9b8f-6226e15b8a61
+
+Der aktualisierte Implementierungsplan wurde geschrieben. Er beschränkt die Änderung auf den portablen `qbookCode`-Ausgabepfad und bewahrt den bestehenden FOSS- und Release-Ablauf.
+
+[Open implementation handoff](aiflow-handoff:implementation)
+
+
+## 2026-09-18T09:48:38.1806098+00:00 | User | 7614a717-77b0-4cae-9ea7-3c92d85ccb61
+
+Implement with claude-sonnet-5 • Medium
+
+
+## 2026-09-18T09:48:59.8972414+00:00 | Assistant | 8c8f3000-95ab-4cc9-8891-bf8ca08bcf71
+
+`qbookCode.csproj` wurde angepasst: `BaseOutputPath` ist jetzt `bin\` (projektrelativ) statt des absoluten `B:`-Pfads. Der Post-Build-Schritt mit `$(TargetDir)`/`$(SolutionDir)` bleibt unverändert. Keine weiteren Dateien laut Handoff betroffen.

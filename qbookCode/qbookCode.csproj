@@ -9,7 +9,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <DisableMSBuildAssemblyCopyCheck>true</DisableMSBuildAssemblyCopyCheck>
     <ApplicationIcon>editor.main.ico</ApplicationIcon>
-    <BaseOutputPath>B:\x86.qBookRoslyn\qbookCode\bin\Release</BaseOutputPath>
+    <BaseOutputPath>bin\</BaseOutputPath>
     <GenerateAssemblyVersionAttribute>false</GenerateAssemblyVersionAttribute>
     <GenerateAssemblyFileVersionAttribute>false</GenerateAssemblyFileVersionAttribute>
     <GenerateAssemblyInformationalVersionAttribute>false</GenerateAssemblyInformationalVersionAttribute>
