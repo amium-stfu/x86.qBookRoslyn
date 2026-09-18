@@ -154,3 +154,25 @@ The user asked how to create a Release correctly in connection with Git and whet
 - An official Release remains blocked if the selected Git ref does not include a valid, merged FOSS baseline matching its dependencies.
 - GitHub Actions run numbers are repository-wide and can have gaps; they are still monotonically increasing and acceptable as build identifiers.
 - The existing `dotnet build --no-restore` limitation remains: the .NET Core MSBuild cannot execute the legacy `LC` task in `qbookCsScript`.
+
+## Debug Run 2026-09-18: GitHub Actions MSBuild Discovery
+
+### Current Issue / Debug Request
+
+The manually dispatched GitHub Actions Release workflow failed in `qbook/release.ps1` before the build started. The script reported `MSBuild.exe was not found in Visual Studio Build Tools.`
+
+### Correction Attempt And Outcome
+
+- Replaced the `vswhere` query that required `Microsoft.Component.MSBuild` and searched with a wildcard with a query for the selected Visual Studio installation path. The script now resolves `MSBuild.exe` from the stable `MSBuild\\Current\\Bin` path, with `MSBuild\\17.0\\Bin` as a compatibility fallback.
+- The correction remains limited to the approved Release entry script and continues to invoke Visual Studio's .NET Framework MSBuild. It does not alter FOSS validation, version generation, workflow permissions, or dependency restore behavior.
+
+### Validation
+
+- Ran the required `dotnet build qbookStudio.sln --no-restore --configuration Release -p:Platform=x86 -p:BuildRevision=1` verification.
+- The build reached the Release projects and generated the Release assembly version information, but failed with `MSB4803`: .NET Core MSBuild cannot run the legacy `ResolveComReference` task. This is not the Visual Studio MSBuild that the Release script selects on the GitHub Windows runner.
+- No external validation action was available, and no restore was run.
+
+### Remaining Problems And Assumptions
+
+- The corrected MSBuild discovery has not been executed on a GitHub-hosted Windows runner in this DEBUG run; the next manually dispatched workflow run is required to confirm it.
+- The local `dotnet build --no-restore` path remains unsuitable for validating this legacy .NET Framework Release build because it cannot execute `ResolveComReference`.

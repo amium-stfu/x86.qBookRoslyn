@@ -2,7 +2,7 @@
 
 - Session Title: Create Software Version FOSS - 20260914-125610
 - Session Id: 4f9a045f-ade3-45d5-b11d-c2403ec5483f
-- Exported At: 2026-09-18T08:07:26.5151186+00:00
+- Exported At: 2026-09-18T08:16:03.4072542+00:00
 - WorkItem Path: .ai-flow/workitems/2026.09.14.1256-create_software_version_foss_20260914_125610
 
 ## 2026-09-14T10:56:11.0307502+00:00 | User | dac001ff-2b43-47a8-9667-16f5021d3ac1
@@ -918,3 +918,27 @@ Die Version bleibt sinnvoll bei `yy.FossRevision.BuildRevision.0`, z. B. `26.1.9
 Eine zusätzliche fortlaufende vierte Nummer bringt keinen Nutzen; `github.run_number` ist bereits der automatische Buildzähler. Weglassen sollte sie nicht: Das würde vom genehmigten Versionsformat abweichen.
 
 Der ursprüngliche Konfigurationsfehler `Release|AnyCPU` ist durch den Release-Pfad `Release|x86` behoben. Für diese Erläuterung wurden keine Codeänderungen oder Builds ausgeführt. Bekannte Einschränkung bleibt, dass `dotnet build --no-restore` den alten `LC`-Task nicht ausführen kann; der offizielle Release nutzt deshalb MSBuild aus den Visual-Studio-Build-Tools.
+
+
+## 2026-09-18T08:14:18.4524296+00:00 | User | 6e02f8a0-48e4-47ae-bd6d-505af4e19675
+
+Debug with gpt-5.6-terra • Medium
+
+
+## 2026-09-18T08:16:03.3649059+00:00 | Assistant | 97e58a1d-2fae-4c68-9527-f2d97bf56ef0
+
+## Ergebnis
+
+Die MSBuild-Ermittlung in `qbook/release.ps1` wurde korrigiert. Statt einer restriktiven Komponenten-/Wildcard-Suche ermittelt das Skript nun die aktuelle Visual-Studio-Installation und verwendet dort `MSBuild\Current\Bin\MSBuild.exe` (mit `MSBuild\17.0\Bin` als Fallback).
+
+Der ursprüngliche GitHub-Fehler „MSBuild.exe was not found“ sollte damit auf `windows-latest` behoben sein.
+
+## Validierung
+
+Die vorgeschriebene lokale Prüfung mit `dotnet build --no-restore` wurde ausgeführt. Sie erreicht die Release-Projekte, scheitert jedoch an `MSB4803` für den Legacy-Task `ResolveComReference`: .NET-Core-MSBuild kann diesen nicht ausführen. Das ist unabhängig von der korrigierten Visual-Studio-MSBuild-Ermittlung.
+
+Ein externer Host-Build war nicht verfügbar; es wurde kein Restore ausgeführt.
+
+## Verbleibend
+
+Die endgültige Bestätigung erfordert einen erneuten manuellen GitHub-Actions-Lauf. Der Debug-Status wurde deshalb korrekt als `failed` dokumentiert, bis dieser Runner-Lauf die Ermittlung bestätigt.
