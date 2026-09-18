@@ -17,7 +17,7 @@ $vswherePath = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Insta
 if (-not (Test-Path -LiteralPath $solutionPath -PathType Leaf)) { throw "qbookStudio.sln was not found." }
 if (-not (Test-Path -LiteralPath $vswherePath -PathType Leaf)) { throw "Visual Studio Build Tools were not found." }
 
-$visualStudioPath = (& $vswherePath -latest -products * -property installationPath | Select-Object -First 1).Trim()
+$visualStudioPath = (& $vswherePath -latest -prerelease -products * -property installationPath | Select-Object -First 1).Trim()
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($visualStudioPath) -or -not (Test-Path -LiteralPath $visualStudioPath -PathType Container)) { throw "A Visual Studio installation was not found." }
 
 $msbuildCandidates = @(

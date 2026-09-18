@@ -2,7 +2,7 @@
 
 - Session Title: Create Software Version FOSS - 20260914-125610
 - Session Id: 4f9a045f-ade3-45d5-b11d-c2403ec5483f
-- Exported At: 2026-09-18T08:27:33.5594789+00:00
+- Exported At: 2026-09-18T08:50:31.7788917+00:00
 - WorkItem Path: .ai-flow/workitems/2026.09.14.1256-create_software_version_foss_20260914_125610
 
 ## 2026-09-14T10:56:11.0307502+00:00 | User | dac001ff-2b43-47a8-9667-16f5021d3ac1
@@ -970,3 +970,186 @@ Der Release brach vorher in `qbook/release.ps1` ab, weil das Skript `MSBuild.exe
 Der Log belegt jedoch, dass auf dem GitHub-Runner Visual Studio 18 Enterprise mit MSBuild vorhanden war. Das aktuelle Skript verwendet nun den von `vswhere` gelieferten Installationspfad und sucht dort unter `MSBuild\Current\Bin\MSBuild.exe` sowie als Fallback unter `MSBuild\17.0\Bin\MSBuild.exe`.
 
 Der nächste Schritt ist daher: den manuell ausgelösten GitHub-Releaseworkflow erneut starten. Erst dann zeigt sich, ob der eigentliche qbook-Release inklusive FOSS-Prüfung und Artefakt-Upload durchläuft.
+
+
+## 2026-09-18T08:31:47.9829569+00:00 | User | 27c2d0de-dad5-4809-8c2d-4e97b40c12cb
+
+akutell werde ich wieder gefragt:Ich habe vorher ein Git Sync ausgefühtCmdlet release.ps1 an der Befehlspipelineposition 1
+Geben Sie Werte für die folgenden Parameter an:
+BuildRevision:
+
+
+## 2026-09-18T08:32:12.7974407+00:00 | Assistant | ea22f5e2-2268-4394-b69b-684e265090cb
+
+Das ist kein Fehler von `Git Sync`. Git Sync lädt nur die neue Datei `qbook/release.ps1`; es führt sie nicht aus.
+
+Die Abfrage erscheint nur, wenn `release.ps1` direkt ohne Parameter gestartet wurde. Der Parameter ist absichtlich verpflichtend:
+
+```powershell
+.\qbook\release.ps1 -BuildRevision "<number>"
+```
+
+Sie sollten dort **keine lokale Zahl eingeben**, sondern mit `Ctrl+C` abbrechen. Nach dem beschlossenen Ablauf darf nur GitHub Actions dieses Skript starten und übergibt automatisch seine Run-Nummer als `BuildRevision`.
+
+Für lokale Arbeit weiterhin normal in Visual Studio **Debug** bauen. Ein lokaler Release-Build ohne `BuildRevision` ist absichtlich blockiert, damit keine inoffizielle Release-Version entsteht.
+
+
+## 2026-09-18T08:34:45.3664092+00:00 | User | d0bcd20b-465e-4e3a-af1b-784d9f150ce6
+
+Dann verstehe ich deine geplanten ablauf nicht.Bitte Schritt für Schritt erklären wie der Ablauf ist.
+
+
+## 2026-09-18T08:35:19.4055157+00:00 | Assistant | 3e357b6e-046c-4731-ac3f-0e4bd278d306
+
+Der Ablauf besteht aus drei getrennten Dingen. Der wichtige Punkt: Sie starten `release.ps1` lokal normalerweise nie.
+
+## 1. Normale Entwicklung
+
+1. Git Sync / Pull ausführen.
+2. Projekt in Visual Studio öffnen.
+3. Mit Konfiguration **Debug** bauen und testen.
+4. Änderungen committen und nach GitHub pushen.
+
+Dabei gibt es keine FOSS-Prüfung, keine offizielle Version und keine `BuildRevision`.
+
+Wenn nach Git Sync die PowerShell-Abfrage zu `BuildRevision` erscheint, wurde `release.ps1` direkt gestartet. Dann einfach mit `Ctrl+C` abbrechen.
+
+## 2. FOSS-Freigabe – nur bei neuer oder geänderter Abhängigkeit
+
+Dieser Teil ist nur nötig, wenn sich der FOSS-Zustand geändert hat – oder einmalig vor dem allerersten offiziellen Release.
+
+1. Änderungen inklusive Paket-/Drittanbieteränderung nach GitHub pushen.
+2. Den GitHub-Releaseworkflow starten; er erkennt die Abweichung und bricht vor dem offiziellen Release ab.
+3. Den ausgegebenen FOSS-Diff prüfen und die externe FOSS-/Lizenzprüfung durchführen.
+4. Nach Freigabe lokal auf dem geprüften Stand `approveFossState.ps1` ausführen.
+5. Die dadurch erzeugten Dateien unter `compliance/foss` committen.
+6. Einen Pull Request erstellen und durch einen Reviewer mergen lassen.
+
+Erst der Merge dieses Pull Requests macht den neuen FOSS-Fingerprint offiziell freigegeben und erhöht die `FossRevision`.
+
+## 3. Offiziellen Release erzeugen
+
+1. In GitHub zu **Actions** wechseln.
+2. Workflow **Release qbook** auswählen.
+3. **Run workflow** für den gewünschten Stand auf `main` starten.
+4. GitHub Actions führt automatisch aus:
+   - Checkout,
+   - NuGet-Restore,
+   - FOSS-Prüfung,
+   - Release-Build,
+   - Upload des Release-Artefakts.
+5. Das Artefakt nach erfolgreichem Workflow aus GitHub herunterladen.
+
+Die `BuildRevision` gibt GitHub dabei selbst vor: Die Run-Nummer des Releaseworkflows wird automatisch an `release.ps1` übergeben. Sie müssen dafür keinen Wert eingeben.
+
+Beispiel:
+
+| GitHub-Releaseworkflow | FOSS-Baseline | Version |
+|---|---:|---|
+| Run 123 | Revision 09 | `26.09.00123` |
+| Run 124 | Revision 09 | `26.09.00124` |
+| Run 125 nach neuer Freigabe | Revision 10 | `26.10.00125` |
+
+Kurz gesagt: Visual Studio für Debug, GitHub Actions für offizielle Releases, Pull Request für FOSS-Freigaben.
+
+
+## 2026-09-18T08:37:42.7016718+00:00 | User | bc7ba7bc-8653-44a1-a0ae-d1e18568f9cb
+
+Was beinst du mit Das Artefakt nach erfolgreichem Workflow aus GitHub herunterladen.Wenn du Releases meint hier steht noch nichts zur verfügung
+
+
+## 2026-09-18T08:38:03.3917132+00:00 | Assistant | b8c02da4-fc36-4b54-822d-5296528d0e91
+
+Genau: Ich meinte **nicht** die GitHub-Seite „Releases“.
+
+Aktuell lädt der Workflow nur ein **Actions-Artefakt** hoch. Dieses erscheint nach einem erfolgreichen Lauf auf der Detailseite des Workflow-Runs im Abschnitt **Artifacts** und ist zeitlich begrenzt verfügbar.
+
+Bei Ihrem Lauf gibt es kein Artefakt, weil der Build fehlgeschlagen ist und der Upload-Schritt nur bei Erfolg läuft. Die GitHub-Seite **Releases** bleibt damit leer.
+
+Ein veröffentlichtes GitHub Release mit dauerhaftem Download, Versions-Tag und Release Notes ist bisher nicht geplant und würde eine zusätzliche Workflow-Funktion benötigen.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "github_release_publication",
+      "type": "single_select",
+      "text": "Should a successful official qbook workflow also create a GitHub Release with a version tag and attached release artifact?",
+      "options": [
+        "Yes, create GitHub Releases",
+        "No, keep Actions artifacts only",
+        "Other"
+      ],
+      "required": true
+    },
+    {
+      "id": "github_release_publication_other",
+      "type": "text",
+      "text": "Describe the required release publication behavior.",
+      "required": true,
+      "visible_when": {
+        "question_id": "github_release_publication",
+        "has_any_of": [
+          "Other"
+        ]
+      }
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-09-18T08:43:09.4371504+00:00 | User | f9419338-1d16-485e-b561-c5a056946cf9
+
+Heisst also erst muss der Build Fehler bereinigt werden.
+
+
+## 2026-09-18T08:43:28.4868441+00:00 | Assistant | c87a735a-53cb-4f00-b856-aae93f2c9408
+
+Ja.
+
+Die Reihenfolge ist:
+
+1. Der GitHub-Releasebuild muss erfolgreich durchlaufen.
+2. Erst danach wird das Actions-Artefakt hochgeladen.
+3. Ein GitHub Release könnte erst danach zusätzlich erstellt werden.
+
+Der bisherige Fehler war die MSBuild-Erkennung im Release-Skript. Die aktuelle Skriptversion wurde dafür bereits angepasst; jetzt muss der Workflow erneut gestartet werden, um den erfolgreichen Build zu bestätigen. Erst bei einem grünen Workflow-Lauf lohnt sich die Entscheidung über veröffentlichte GitHub Releases.
+
+
+## 2026-09-18T08:46:55.9749113+00:00 | User | 9d930a52-5a39-4bec-999a-db746d4e07fa
+
+Beim neuen Versuch:Run .\qbook\release.ps1 -BuildRevision "2"
+Exception: D:\a\x86.qBookRoslyn\x86.qBookRoslyn\qbook\release.ps1:21
+Line |
+  21 |  … e Container)) { throw "A Visual Studio installation was not found." }
+     |                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | A Visual Studio installation was not found.
+Error: Process completed with exit code 1.
+
+
+## 2026-09-18T08:47:22.5867290+00:00 | Assistant | 6a88a1b8-ee55-4acd-9110-a7494b7b971f
+
+Der zweite Fehler ist präziser: `vswhere` findet auf dem GitHub-Runner keine passende Visual-Studio-Installation, obwohl MSBuild dort vorhanden ist.
+
+Die Ursache liegt in `release.ps1`:
+
+- Das Skript ruft `vswhere` ohne `-prerelease` auf.
+- Der Runner verwendet offenbar Visual Studio 18 Enterprise, das von dieser Abfrage nicht zurückgegeben wird.
+- Deshalb ist `$visualStudioPath` leer und das Skript bricht mit „A Visual Studio installation was not found.“ ab.
+
+Der Fix muss also die Visual-Studio-Erkennung in `release.ps1` erweitern, insbesondere um die Erkennung der auf dem Runner vorhandenen Vorab-/VS-18-Installation. Danach den Workflow erneut starten.
+
+Der Fehler tritt weiterhin **vor** NuGet-/FOSS-Prüfung, Versionsgenerierung und Artefakt-Upload auf.
+
+
+## 2026-09-18T08:49:09.1483853+00:00 | User | de6d63b6-c719-45ec-b901-7a55bce57b10
+
+Debug with gpt-5.6-sol • Medium
+
+
+## 2026-09-18T08:50:31.7388126+00:00 | Assistant | 57dd189f-bd17-4d54-9034-e7677bdebcff
+
+**Korrektur umgesetzt:** `qbook/release.ps1` ruft `vswhere` jetzt mit `-prerelease` auf, sodass die auf dem GitHub-Runner vorhandene Visual-Studio-18-Vorabinstallation erkannt werden kann. Die PowerShell-Syntaxprüfung war fehlerfrei.
+
+Die vorgeschriebene lokale Buildprüfung erreichte die Release-Projekte, scheiterte jedoch weiterhin an der bekannten Einschränkung `MSB4803`: .NET-Core-MSBuild unterstützt den Legacy-Task `ResolveComReference` nicht. Eine externe Runner-Validierung war nicht verfügbar. Daher ist der DEBUG-Lauf als `failed` dokumentiert; verbleibender Nachweis ist ein erneuter manueller GitHub-Actions-Workflow-Lauf. Voraussetzung ist, dass Visual Studio 18 beim Installer registriert und durch `vswhere -prerelease` auffindbar ist.

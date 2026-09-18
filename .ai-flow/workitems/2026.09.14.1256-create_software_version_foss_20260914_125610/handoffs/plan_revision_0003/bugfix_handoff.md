@@ -176,3 +176,28 @@ The manually dispatched GitHub Actions Release workflow failed in `qbook/release
 
 - The corrected MSBuild discovery has not been executed on a GitHub-hosted Windows runner in this DEBUG run; the next manually dispatched workflow run is required to confirm it.
 - The local `dotnet build --no-restore` path remains unsuitable for validating this legacy .NET Framework Release build because it cannot execute `ResolveComReference`.
+
+## Debug Run 2026-09-18: Visual Studio Prerelease Discovery
+
+### Current Issue / Debug Request
+
+The manually dispatched GitHub Actions Release workflow failed in `qbook/release.ps1` before the build started. The `vswhere` query returned no installation path for the Visual Studio 18 prerelease installation on the Windows runner, and the script reported `A Visual Studio installation was not found.`
+
+### Correction Attempt And Outcome
+
+- Added `-prerelease` to the existing `vswhere` query in `qbook/release.ps1`.
+- The query retains `-latest`, `-products *`, and the existing installation-path and MSBuild-path validation, while allowing the runner's prerelease Visual Studio installation to be selected.
+- PowerShell parsing reported no syntax errors.
+
+### Validation
+
+- Ran the required `dotnet build qbookStudio.sln --no-restore --configuration Release -p:Platform=x86 -p:BuildRevision=1` verification.
+- The build reached the Release projects and built `qbookCsScript`, but failed in `qbook` with `MSB4803`: .NET Core MSBuild cannot run the legacy `ResolveComReference` task.
+- The failure is the previously documented local validation limitation and does not exercise the Visual Studio discovery performed by `release.ps1`.
+- No trusted external validation action was available, and no restore was run.
+
+### Remaining Problems And Assumptions
+
+- The corrected prerelease discovery has not been executed on a GitHub-hosted Windows runner in this DEBUG run; the next manually dispatched workflow run is required to confirm that the installed Visual Studio 18 instance and its `MSBuild\Current\Bin\MSBuild.exe` are selected.
+- The correction assumes the runner installation is registered with Visual Studio Installer and therefore discoverable by `vswhere -prerelease`.
+- The local `dotnet build --no-restore` path remains unsuitable for validating this legacy .NET Framework Release build because it cannot execute `ResolveComReference`.
