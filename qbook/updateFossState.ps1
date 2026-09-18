@@ -18,7 +18,20 @@ function Get-RelativePath([string]$Path) {
 }
 
 function Get-FileHashValue([string]$Path) {
-    return (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash.ToLowerInvariant()
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        $stream = [IO.File]::OpenRead($Path)
+        try {
+            $hashBytes = $sha256.ComputeHash($stream)
+        }
+        finally {
+            $stream.Dispose()
+        }
+    }
+    finally {
+        $sha256.Dispose()
+    }
+    return (($hashBytes | ForEach-Object { $_.ToString("x2") }) -join "")
 }
 
 function Add-FileComponent([System.Collections.Generic.List[object]]$Components, [string]$SourcePath, [string]$LogicalPath, [string]$PackageId, [string]$PackageVersion) {

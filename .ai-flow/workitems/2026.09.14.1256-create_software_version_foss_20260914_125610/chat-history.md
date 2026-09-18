@@ -2,7 +2,7 @@
 
 - Session Title: Create Software Version FOSS - 20260914-125610
 - Session Id: 4f9a045f-ade3-45d5-b11d-c2403ec5483f
-- Exported At: 2026-09-18T09:49:00.0959460+00:00
+- Exported At: 2026-09-18T10:13:41.0183198+00:00
 - WorkItem Path: .ai-flow/workitems/2026.09.14.1256-create_software_version_foss_20260914_125610
 
 ## 2026-09-14T10:56:11.0307502+00:00 | User | dac001ff-2b43-47a8-9667-16f5021d3ac1
@@ -1291,3 +1291,79 @@ Implement with claude-sonnet-5 • Medium
 ## 2026-09-18T09:48:59.8972414+00:00 | Assistant | 8c8f3000-95ab-4cc9-8891-bf8ca08bcf71
 
 `qbookCode.csproj` wurde angepasst: `BaseOutputPath` ist jetzt `bin\` (projektrelativ) statt des absoluten `B:`-Pfads. Der Post-Build-Schritt mit `$(TargetDir)`/`$(SolutionDir)` bleibt unverändert. Keine weiteren Dateien laut Handoff betroffen.
+
+
+## 2026-09-18T10:09:43.4545379+00:00 | User | 5128f090-5119-4572-9a09-921df3d5b272
+
+Ein Schritt weiter aber noch immer ein Fehler beim Build.
+
+Attachments:
+- [5_Build qbook Release.txt](attachments/5128f090-5119-4572-9a09-921df3d5b272/5_Build qbook Release.txt) (text/plain)
+
+## 2026-09-18T10:10:25.1442784+00:00 | Assistant | 1138bb7a-a04d-43b0-87c0-91dad4ea96a5
+
+Die vorherige Pfadkorrektur wirkt: Der Build kommt bis zur FOSS-Validierung. Der neue Abbruch ist:
+
+`Get-FileHash is not recognized`
+
+Der FOSS-Check wird innerhalb des MSBuild-Targets mit `powershell.exe` gestartet. Auf dem GitHub-Runner steht das benötigte Cmdlet dort nicht zur Verfügung. Die bessere Lösung ist, den Hash im Skript direkt mit .NET-SHA-256 zu berechnen: dieselbe deterministische Berechnung, aber ohne Abhängigkeit von einem PowerShell-Cmdlet oder einer bestimmten Shell-Version.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "foss_hash_compatibility",
+      "type": "single_select",
+      "text": "Welche kompatible Hash-Strategie soll für den FOSS-Check verbindlich werden?",
+      "options": [
+        ".NET SHA-256 im Skript verwenden",
+        "MSBuild-Target auf pwsh umstellen"
+      ],
+      "required": true
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-09-18T10:10:49.3476742+00:00 | User | 578dd36b-10a5-4442-9937-f6e113795093
+
+:::answers
+{"answers":[{"id":"foss_hash_compatibility","value":".NET SHA-256 im Skript verwenden","question":"Welche kompatible Hash-Strategie soll f\u00FCr den FOSS-Check verbindlich werden?"}]}
+:::endanswers
+
+
+## 2026-09-18T10:11:15.9145378+00:00 | Assistant | 70d439d9-1b5c-45e7-a40c-0b0322095df6
+
+Die Struktur ist wieder planungsbereit.
+
+- Ziel: Der manuell gestartete GitHub-Release baut `qbook` und `qbookCsScript` mit kontrollierter FOSS-Versionierung.
+- Ergänzter Scope: Die Datei-Hashes des FOSS-Manifests werden direkt über die .NET-SHA-256-API erzeugt. Dadurch funktioniert die gleiche deterministische Berechnung unter dem von MSBuild gestarteten Windows PowerShell.
+- Bestehende Entscheidungen bleiben: FOSS-Baseline nur per geprüften PR freigeben, geänderte Abhängigkeiten blockieren Releases, Version `yy.FossRevision.BuildRevision`, Buildrevision aus der GitHub-Workflow-Nummer.
+- Ebenfalls enthalten: portabler `qbookCode`-Ausgabepfad; der GitHub-Runner darf keine lokalen `B:`-Pfade benötigen.
+- Nicht enthalten: automatische FOSS-Freigaben, neue Tests, SBOM-Plattform, GitHub-Release-Publishing oder Änderungen an regulären Debug-Builds.
+- Validierung: Der Nutzer startet den GitHub-Release-Workflow manuell und prüft Workflow-Ergebnis sowie Artefakt.
+
+Ein aktualisierter Plan kann nun die Hash-Kompatibilitätskorrektur aufnehmen.
+
+
+## 2026-09-18T10:11:26.5318896+00:00 | User | f9e9bc8d-7f5a-441a-9290-267810a44c07
+
+Plan
+
+
+## 2026-09-18T10:12:12.7957267+00:00 | Assistant | 0bc64ec5-25c0-48c9-865e-61005c1f183e
+
+Der neue Handoff wurde geschrieben. Er beschränkt die nächste Umsetzung auf die .NET-basierte SHA-256-Berechnung im FOSS-Check und lässt den bereits korrigierten Ausgabepfad unverändert.
+
+[Open implementation handoff](aiflow-handoff:implementation)
+
+
+## 2026-09-18T10:12:24.8464179+00:00 | User | c2041147-0759-449f-9401-463baaac099f
+
+Implement with claude-sonnet-5 • Medium
+
+
+## 2026-09-18T10:13:40.9134196+00:00 | Assistant | 888785f3-7a10-4780-8ecf-eade2c3deb82
+
+Validation passed against the approved baseline fingerprint — the new SHA-256 implementation produces identical hashes to `Get-FileHash`. Change is complete and verified.

@@ -4,7 +4,7 @@
     "Id": "4f9a045f-ade3-45d5-b11d-c2403ec5483f",
     "Title": "Create Software Version FOSS - 20260914-125610",
     "WorkItemPath": ".ai-flow/workitems/2026.09.14.1256-create_software_version_foss_20260914_125610",
-    "ExportedAt": "2026-09-18T09:49:00.095946+00:00",
+    "ExportedAt": "2026-09-18T10:13:41.0183198+00:00",
     "ApplicationVersion": "1.0.0"
   },
   "Messages": [
@@ -632,6 +632,68 @@
       "CreatedAt": "2026-09-18T09:48:59.8972414+00:00",
       "Role": "Assistant",
       "Text": "\u0060qbookCode.csproj\u0060 wurde angepasst: \u0060BaseOutputPath\u0060 ist jetzt \u0060bin\\\u0060 (projektrelativ) statt des absoluten \u0060B:\u0060-Pfads. Der Post-Build-Schritt mit \u0060$(TargetDir)\u0060/\u0060$(SolutionDir)\u0060 bleibt unver\u00E4ndert. Keine weiteren Dateien laut Handoff betroffen.",
+      "Attachments": []
+    },
+    {
+      "Id": "5128f090-5119-4572-9a09-921df3d5b272",
+      "CreatedAt": "2026-09-18T10:09:43.4545379+00:00",
+      "Role": "User",
+      "Text": "Ein Schritt weiter aber noch immer ein Fehler beim Build.",
+      "Attachments": [
+        {
+          "FileName": "5_Build qbook Release.txt",
+          "FileType": "text/plain",
+          "RelativePath": "attachments/5128f090-5119-4572-9a09-921df3d5b272/5_Build qbook Release.txt"
+        }
+      ]
+    },
+    {
+      "Id": "1138bb7a-a04d-43b0-87c0-91dad4ea96a5",
+      "CreatedAt": "2026-09-18T10:10:25.1442784+00:00",
+      "Role": "Assistant",
+      "Text": "Die vorherige Pfadkorrektur wirkt: Der Build kommt bis zur FOSS-Validierung. Der neue Abbruch ist:\n\n\u0060Get-FileHash is not recognized\u0060\n\nDer FOSS-Check wird innerhalb des MSBuild-Targets mit \u0060powershell.exe\u0060 gestartet. Auf dem GitHub-Runner steht das ben\u00F6tigte Cmdlet dort nicht zur Verf\u00FCgung. Die bessere L\u00F6sung ist, den Hash im Skript direkt mit .NET-SHA-256 zu berechnen: dieselbe deterministische Berechnung, aber ohne Abh\u00E4ngigkeit von einem PowerShell-Cmdlet oder einer bestimmten Shell-Version.\n\n:::questions\n{\n  \u0022questions\u0022: [\n    {\n      \u0022id\u0022: \u0022foss_hash_compatibility\u0022,\n      \u0022type\u0022: \u0022single_select\u0022,\n      \u0022text\u0022: \u0022Welche kompatible Hash-Strategie soll f\u00FCr den FOSS-Check verbindlich werden?\u0022,\n      \u0022options\u0022: [\n        \u0022.NET SHA-256 im Skript verwenden\u0022,\n        \u0022MSBuild-Target auf pwsh umstellen\u0022\n      ],\n      \u0022required\u0022: true\n    }\n  ]\n}\n:::endquestions",
+      "Attachments": []
+    },
+    {
+      "Id": "578dd36b-10a5-4442-9937-f6e113795093",
+      "CreatedAt": "2026-09-18T10:10:49.3476742+00:00",
+      "Role": "User",
+      "Text": ":::answers\r\n{\u0022answers\u0022:[{\u0022id\u0022:\u0022foss_hash_compatibility\u0022,\u0022value\u0022:\u0022.NET SHA-256 im Skript verwenden\u0022,\u0022question\u0022:\u0022Welche kompatible Hash-Strategie soll f\\u00FCr den FOSS-Check verbindlich werden?\u0022}]}\r\n:::endanswers",
+      "Attachments": []
+    },
+    {
+      "Id": "70d439d9-1b5c-45e7-a40c-0b0322095df6",
+      "CreatedAt": "2026-09-18T10:11:15.9145378+00:00",
+      "Role": "Assistant",
+      "Text": "Die Struktur ist wieder planungsbereit.\n\n- Ziel: Der manuell gestartete GitHub-Release baut \u0060qbook\u0060 und \u0060qbookCsScript\u0060 mit kontrollierter FOSS-Versionierung.\n- Erg\u00E4nzter Scope: Die Datei-Hashes des FOSS-Manifests werden direkt \u00FCber die .NET-SHA-256-API erzeugt. Dadurch funktioniert die gleiche deterministische Berechnung unter dem von MSBuild gestarteten Windows PowerShell.\n- Bestehende Entscheidungen bleiben: FOSS-Baseline nur per gepr\u00FCften PR freigeben, ge\u00E4nderte Abh\u00E4ngigkeiten blockieren Releases, Version \u0060yy.FossRevision.BuildRevision\u0060, Buildrevision aus der GitHub-Workflow-Nummer.\n- Ebenfalls enthalten: portabler \u0060qbookCode\u0060-Ausgabepfad; der GitHub-Runner darf keine lokalen \u0060B:\u0060-Pfade ben\u00F6tigen.\n- Nicht enthalten: automatische FOSS-Freigaben, neue Tests, SBOM-Plattform, GitHub-Release-Publishing oder \u00C4nderungen an regul\u00E4ren Debug-Builds.\n- Validierung: Der Nutzer startet den GitHub-Release-Workflow manuell und pr\u00FCft Workflow-Ergebnis sowie Artefakt.\n\nEin aktualisierter Plan kann nun die Hash-Kompatibilit\u00E4tskorrektur aufnehmen.",
+      "Attachments": []
+    },
+    {
+      "Id": "f9e9bc8d-7f5a-441a-9290-267810a44c07",
+      "CreatedAt": "2026-09-18T10:11:26.5318896+00:00",
+      "Role": "User",
+      "Text": "Plan",
+      "Attachments": []
+    },
+    {
+      "Id": "0bc64ec5-25c0-48c9-865e-61005c1f183e",
+      "CreatedAt": "2026-09-18T10:12:12.7957267+00:00",
+      "Role": "Assistant",
+      "Text": "Der neue Handoff wurde geschrieben. Er beschr\u00E4nkt die n\u00E4chste Umsetzung auf die .NET-basierte SHA-256-Berechnung im FOSS-Check und l\u00E4sst den bereits korrigierten Ausgabepfad unver\u00E4ndert.\n\n[Open implementation handoff](aiflow-handoff:implementation)",
+      "Attachments": []
+    },
+    {
+      "Id": "c2041147-0759-449f-9401-463baaac099f",
+      "CreatedAt": "2026-09-18T10:12:24.8464179+00:00",
+      "Role": "User",
+      "Text": "Implement with claude-sonnet-5 \u2022 Medium",
+      "Attachments": []
+    },
+    {
+      "Id": "888785f3-7a10-4780-8ecf-eade2c3deb82",
+      "CreatedAt": "2026-09-18T10:13:40.9134196+00:00",
+      "Role": "Assistant",
+      "Text": "Validation passed against the approved baseline fingerprint \u2014 the new SHA-256 implementation produces identical hashes to \u0060Get-FileHash\u0060. Change is complete and verified.",
       "Attachments": []
     }
   ]
