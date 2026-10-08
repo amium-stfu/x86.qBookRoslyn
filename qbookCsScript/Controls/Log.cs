@@ -10,6 +10,18 @@ namespace QB.Controls
         {
         }
 
+        internal override void DetachControl(Control control)
+        {
+            base.DetachControl(control);
+            Items.Detach(control);
+        }
+
+        internal override void ReleaseControl(List<System.Exception> errors)
+        {
+            Items.ClearReferences();
+            base.ReleaseControl(errors);
+        }
+
         public void Add(Item item)
         {
             Items[item.Name] = item;
@@ -42,6 +54,19 @@ namespace QB.Controls
         public class CItem
         {
             Dictionary<string, Item> Dict = new Dictionary<string, Item>();
+
+            internal void ClearReferences()
+            {
+                lock (Dict) Dict.Clear();
+            }
+
+
+            internal void Detach(Control control)
+            {
+                lock (Dict)
+                    foreach (var key in Dict.Where(pair => ReferenceEquals(pair.Value, control)).Select(pair => pair.Key).ToArray())
+                        Dict.Remove(key);
+            }
 
             public List<Item> Values
             {
@@ -137,6 +162,7 @@ namespace QB.Controls
 
         internal override void Render(Control parent)
         {
+            if (IsRemoved) return;
 
             base.Render(parent);
             try

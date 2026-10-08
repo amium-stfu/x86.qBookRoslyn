@@ -146,6 +146,13 @@ namespace QB.Controls
 
     public class Canvas : Control
     {
+        internal override void ReleaseControl(System.Collections.Generic.List<System.Exception> errors)
+        {
+            sketchItems.Clear();
+            base.ReleaseControl(errors);
+        }
+
+
         List<SketchItem> sketchItems = new List<SketchItem>();
 
         bool reverse = false;
@@ -336,6 +343,7 @@ namespace QB.Controls
         }
         internal override void Render(Control parent)
         {
+            if (IsRemoved) return;
             base.Render(parent);
             if (refresh)
             {

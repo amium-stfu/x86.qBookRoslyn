@@ -72,6 +72,14 @@ namespace QB.Controls
             Table = sourceTable;
         }
 
+        internal override void ReleaseControl(System.Collections.Generic.List<System.Exception> errors)
+        {
+            Table = null;
+            OnClick = null;
+            base.ReleaseControl(errors);
+        }
+
+
         public double ColWidth = 20.0;
         public double RowHeight = 5.0;
 
@@ -79,6 +87,7 @@ namespace QB.Controls
 
         internal override void Render(Control parent)
         {
+            if (IsRemoved) return;
             //base.Render(parent);
 
             try
@@ -349,6 +358,7 @@ namespace QB.Controls
 
         public void HandleClick(PointF point)
         {
+            if (IsRemoved) return;
             try
             {
                 double deltaX = point.X - Bounds.X;
@@ -452,14 +462,18 @@ namespace QB.Controls
                         var parentForm = System.Windows.Forms.Application.OpenForms[0];
                         dialog.Location = new System.Drawing.Point(parentForm.Left + (parentForm.Width - dialog.Width) / 2, parentForm.Top + (parentForm.Height - dialog.Height) / 2);
 
-                        var dr = dialog.ShowDialog();
-                        if (dr == System.Windows.Forms.DialogResult.OK)
+                        ActiveEditor = dialog;
+                        System.Windows.Forms.DialogResult dr;
+                        try { dr = dialog.ShowDialog(); }
+                        finally { ActiveEditor = null; }
+                        if (!IsRemoved && dr == System.Windows.Forms.DialogResult.OK)
                         {
                             if (double.TryParse(dialog.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double d))
                                 Table[rowId, colId].Value = d;
                             else
                                 Table[rowId, colId].Value = dialog.Value;
                         }
+                        dialog.Dispose();
                     }
                 }
                 else

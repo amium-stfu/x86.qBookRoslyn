@@ -68,18 +68,25 @@ namespace QB.Helpers
         public async Task Stop()
         {
             Running = false;
-            if (cts == null) return;
-            cts.Cancel();
-
-            if (loggingTask != null)
+            var errors = new List<Exception>();
+            if (cts != null)
             {
-                await loggingTask;
+                try { cts.Cancel(); }
+                catch (Exception error) { errors.Add(error); }
             }
-            if (writingTask != null)
+            foreach (var task in new[] { loggingTask, writingTask })
             {
-                await writingTask;
+                if (task == null) continue;
+                try { await task.ConfigureAwait(false); }
+                catch (OperationCanceledException) when (cts != null && cts.IsCancellationRequested) { }
+                catch (Exception error) { errors.Add(error); }
             }
-
+            loggingTask = writingTask = null;
+            var cancellation = cts;
+            cts = null;
+            try { cancellation?.Dispose(); }
+            catch (Exception error) { errors.Add(error); }
+            if (errors.Count != 0) throw new AggregateException("The signal logger could not be stopped.", errors);
         }
 
         void init(string filename = "default")
@@ -178,7 +185,7 @@ namespace QB.Helpers
                 lines.Enqueue(read());
 
                 // Wait for the next interval using Stopwatch
-                while (stopwatch.ElapsedMilliseconds < Interval)
+                while (!token.IsCancellationRequested && stopwatch.ElapsedMilliseconds < Interval)
                 {
                     System.Threading.Thread.SpinWait(1); // Busy-wait to avoid sleep inaccuracy
                 }
@@ -188,29 +195,31 @@ namespace QB.Helpers
 
         private async Task WriteLogsToFile(System.Threading.CancellationToken token)
         {
-            StreamWriter myWriter = new StreamWriter(Folder + "\\" + Filename, append: true, encoding: Encoding.UTF8);
-
-            while (!token.IsCancellationRequested)
+            using (var writer = new StreamWriter(Folder + "\\" + Filename, append: true, encoding: Encoding.UTF8))
             {
-                if (!lines.IsEmpty)
+                while (!token.IsCancellationRequested)
                 {
                     while (lines.TryDequeue(out string result))
-                    {
-                        await myWriter.WriteLineAsync(result);
-                    }
-                    await myWriter.FlushAsync();
+                        await writer.WriteLineAsync(result).ConfigureAwait(false);
+                    await writer.FlushAsync().ConfigureAwait(false);
+                    await Task.Delay(1000, token).ConfigureAwait(false);
                 }
-                await Task.Delay(1000, token); // Adjust delay for batch writing
             }
         }
 
-        public override void Destroy() 
+        public override void Destroy()
         {
-           if(cts != null)
-            cts.Cancel();
-            Running = false;
-
+            var errors = new List<Exception>();
+            try { Stop().GetAwaiter().GetResult(); }
+            catch (Exception error) { errors.Add(error); }
+            try { myWriter?.Dispose(); }
+            catch (Exception error) { errors.Add(error); }
+            myWriter = null;
+            logList.Clear();
+            while (lines.TryDequeue(out _)) { }
+            if (errors.Count != 0) throw new AggregateException("The signal logger could not be cleaned up.", errors);
         }
+
 
 
     }

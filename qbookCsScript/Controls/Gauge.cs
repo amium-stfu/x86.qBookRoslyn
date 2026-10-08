@@ -24,6 +24,13 @@ namespace QB.Controls
             Axis.MajorTicks = 10;
         }
 
+        internal override void ReleaseControl(System.Collections.Generic.List<System.Exception> errors)
+        {
+            _Signal = null;
+            base.ReleaseControl(errors);
+        }
+
+
         Signal _Signal = null;
         public Signal Signal
         {
@@ -43,6 +50,7 @@ namespace QB.Controls
 
         public override void Drag(System.Drawing.PointF point)
         {
+            if (IsRemoved) return;
                 double x = (point.X - (Bounds.X + Bounds.W)) / Bounds.W;
                 double y = -(point.Y - (Bounds.Y + Bounds.H)) / Bounds.H;
                 double _angle = (float)Math.Atan2(y, x);
@@ -68,6 +76,7 @@ namespace QB.Controls
 
         internal override void Render(Control parent)
         {
+            if (IsRemoved) return;
             base.Render(parent);
 
             if (Signal == null)

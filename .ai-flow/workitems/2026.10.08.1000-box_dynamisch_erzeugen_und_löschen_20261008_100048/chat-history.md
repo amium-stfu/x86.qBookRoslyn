@@ -2,7 +2,7 @@
 
 - Session Title: Box dynamisch erzeugen und löschen - 20261008-100048
 - Session Id: 556d4930-3f68-45cc-9f90-b5e3e3f3719d
-- Exported At: 2026-10-08T08:30:37.1054497+00:00
+- Exported At: 2026-10-08T09:07:40.7117536+00:00
 - WorkItem Path: .ai-flow/workitems/2026.10.08.1000-box_dynamisch_erzeugen_und_löschen_20261008_100048
 
 ## 2026-10-08T08:00:48.4297134+00:00 | User | d915fe14-4b30-4478-adaf-4593004abf51
@@ -191,3 +191,225 @@ Für eine Erweiterung schlage ich folgende Kriterien vor:
   ]
 }
 :::endquestions
+
+
+## 2026-10-08T08:32:40.1642613+00:00 | User | d173479c-673a-4cd5-ac88-9df632a7585f
+
+Welchen Umfang möchtest du auf Grundlage dieser Kriterien festlegen?: Control.Remove() für alle Controltypen einschließlich ihrer jeweiligen Containerinhalte
+
+
+## 2026-10-08T08:34:54.0968672+00:00 | Assistant | 49ce0c21-4dcc-41a3-8ea8-ee8fdb76e06c
+
+Der Umfang ist bestätigt. **Für Planungsreife fehlen noch die Regeln für Datenreferenzen und Ressourcen.** Bei allen Controltypen ist der Eingriff größer als bei Boxen allein: Charts, Logs, Views und Kamera-Controls benötigen unterschiedliche Bereinigung.
+
+Ich schlage folgende Semantik vor:
+
+- `Control.Remove()` entfernt das Control und seine eigenen UI-Inhalte rekursiv, einschließlich zugehöriger Untercontrols und Hilfsanzeigen.
+- Registrierung und Referenzen in UI-Containern werden bereinigt. Wiederholte Aufrufe bleiben ohne Fehler.
+- **Referenzierte Daten bleiben erhalten:** Signale, Tabellen und beobachtete Log-Objekte werden lediglich vom entfernten Control entkoppelt.
+- **Control-eigene Ressourcen werden beendet**, etwa eine eigene Kameraaufnahme oder ein eigener Logger. Bei gemeinsam genutzten Quellen werden nur die Verbindungen des Controls gelöst.
+- Aktive Eingabeeditoren werden geschlossen, ohne ausstehende Eingaben zu übernehmen.
+- Bei Bereinigungsfehlern wird die Entfernung der übrigen Elemente weiter versucht; Fehler werden als Ausnahme gemeldet.
+
+Die bereits bestätigten Grenzen gelten weiter: bestehendes `Root.RemoveControl(...)` unverändert, andere Elemente erhalten, kein zusätzliches Listenlayout. `validation: true`; die genaue automatische Build-Validierung bleibt an PLAN delegiert.
+
+`planning_ready` bleibt bis zur Klärung dieser Semantik `false`.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "removal_semantics",
+      "type": "single_select",
+      "text": "Soll Control.Remove() die oben beschriebene Semantik erhalten?",
+      "required": true,
+      "options": [
+        "Ja",
+        "Andere Regelung"
+      ]
+    },
+    {
+      "id": "removal_semantics_other",
+      "type": "text",
+      "text": "Welche Regeln sollen abweichend gelten?",
+      "required": true,
+      "visible_when": {
+        "question_id": "removal_semantics",
+        "has_any_of": [
+          "Andere Regelung"
+        ]
+      }
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-10-08T08:37:20.3895344+00:00 | User | f853fd21-5bb3-4695-8b2b-abb9ab87a587
+
+Remove()Ein Punkt wurde noch nicht geklärt.Kann ich überhaupt zur Laufzeit eine Box Hinzufügen/Entfernen.
+
+
+## 2026-10-08T08:38:47.3163033+00:00 | Assistant | 3adf3e36-4f49-4b08-8ebf-b1a41fbf6037
+
+**Ja, eine eigenständige Box kannst du bereits zur Laufzeit hinzufügen und entfernen.** Für Unterboxen einer vorhandenen Box fehlt jedoch eine öffentliche Hinzufügen-Funktion. Meine bisherige Aussage war hier zu pauschal.
+
+| Vorgang | Aktueller Stand |
+|---|---|
+| Neue eigenständige Box erzeugen | Über den Konstruktor möglich; automatische Registrierung |
+| Neue Box anzeigen | Beim nächsten Zeichnen, sofern `Directory` zur Seite passt |
+| Eigenständige Box entfernen | Über `Root.RemoveControl(...)` mit der registrierten Basisklassen-ID |
+| Unterbox nachträglich anhängen | Keine öffentliche Schnittstelle vorhanden |
+| Box samt Unterboxen vollständig entfernen | Durch das geplante `Control.Remove()` abzudecken |
+
+Der Renderer liest die registrierten Controls bei jedem Zeichnen erneut. Die Liste ist somit nicht auf den Zustand beim Seitenstart festgelegt. Das ist durch den Quellcode belegt; ein Laufzeittest wurde noch nicht durchgeführt.
+
+**Für eine dynamische Liste innerhalb einer bestehenden Box brauchen wir deshalb zusätzlich eine Hinzufügen-Funktion.** Planungsreife bleibt bis zur Klärung dieses Umfangs und der noch offenen Entfernungssemantik `false`.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "runtime_add_scope",
+      "type": "single_select",
+      "text": "Welche Form des Hinzufügens muss unterstützt werden?",
+      "required": true,
+      "options": [
+        "Auch Unterboxen zur Laufzeit anhängen, beispielsweise über parentBox.Add(childBox)",
+        "Eigenständige Boxen über den Konstruktor reichen aus",
+        "Andere Anforderung"
+      ]
+    },
+    {
+      "id": "runtime_add_scope_other",
+      "type": "text",
+      "text": "Welche andere Form des Hinzufügens benötigst du?",
+      "required": true,
+      "visible_when": {
+        "question_id": "runtime_add_scope",
+        "has_any_of": [
+          "Andere Anforderung"
+        ]
+      }
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-10-08T08:39:24.0708091+00:00 | User | 90bb6cae-33e3-41c8-89c9-8d452893243a
+
+Welche Form des Hinzufügens muss unterstützt werden?: Auch Unterboxen zur Laufzeit anhängen, beispielsweise über parentBox.Add(childBox)
+
+
+## 2026-10-08T08:40:47.7011985+00:00 | Assistant | 72f359a8-bf49-4590-972e-6a03a2ab706e
+
+**`Box.Add(childBox)` ist jetzt ebenfalls bestätigt.** Für die noch offenen Verhaltensregeln schlage ich vor:
+
+- **Hinzufügen:** Die Unterbox wird am Ende angehängt. Elternbeziehung, Seitenzuordnung und Layoutgrenzen werden aktualisiert; beim nächsten Zeichnen erscheint sie relativ zur Elternbox.
+- **Zuordnung:** Dieselbe Unterbox erneut hinzuzufügen bleibt ohne Wirkung. Eine bereits anderswo enthaltene Box wird nicht automatisch verschoben. Selbstzuordnung und zyklische Hierarchien werden mit einer Ausnahme abgewiesen.
+- **Entfernen:** `Control.Remove()` entfernt das Control samt eigenen UI-Inhalten rekursiv und bereinigt Registrierung und Containerreferenzen. Nach erfolgreicher Entfernung bleiben weitere Aufrufe ohne Wirkung.
+- **Daten und Ressourcen:** Referenzierte Signale, Tabellen und Log-Objekte bleiben erhalten. Eigene Ressourcen werden beendet; Verbindungen zu gemeinsam genutzten Quellen werden gelöst.
+- **Eingaben und Fehler:** Aktive Editoren werden ohne Übernahme ausstehender Eingaben geschlossen. Bereinigungsfehler verhindern die übrigen Bereinigungsversuche nicht und werden anschließend als Ausnahme gemeldet.
+- **Ausführungsrahmen:** Erzeugen, Hinzufügen und Entfernen erfolgen im UI-Thread. Entfernte Instanzen werden nicht wiederverwendet; dafür wird eine neue Instanz erzeugt.
+
+Bestehendes `Root.RemoveControl(...)` behält sein Verhalten. Zusätzliches Listenlayout und automatisches Nachrücken bleiben außerhalb des Umfangs. `validation: true`; die genaue automatische Build-Validierung wird an PLAN delegiert.
+
+`planning_ready` bleibt bis zur Bestätigung dieser Regeln `false`.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "add_remove_contract",
+      "type": "single_select",
+      "text": "Sollen diese Regeln für Box.Add(childBox) und Control.Remove() gelten?",
+      "required": true,
+      "options": [
+        "Ja",
+        "Andere Regelung"
+      ]
+    },
+    {
+      "id": "add_remove_contract_other",
+      "type": "text",
+      "text": "Welche Regeln sollen geändert werden?",
+      "required": true,
+      "visible_when": {
+        "question_id": "add_remove_contract",
+        "has_any_of": [
+          "Andere Regelung"
+        ]
+      }
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-10-08T08:40:57.5766802+00:00 | User | 1edcca51-9729-4b67-846d-f6baef0acb72
+
+Sollen diese Regeln für Box.Add(childBox) und Control.Remove() gelten?: Ja
+
+
+## 2026-10-08T08:42:16.7226033+00:00 | Assistant | c20b38b2-d370-4191-ba39-9332ae59b3d0
+
+**Planungsreife ist erreicht.** Im aktiven `workitem.md` stehen jetzt `status: ready` und `planning_ready: true`.
+
+Die bestätigte Lösung:
+
+- **Ziel und Umfang:** `Box.Add(childBox)` zum dynamischen Anhängen von Unterboxen; `Control.Remove()` für alle vorhandenen Controltypen samt eigenen UI-Inhalten.
+- **Hinzufügen:** Elternbeziehung, Seitenzuordnung und Layoutgrenzen aktualisieren. Doppeltes Anhängen bleibt ohne Wirkung; anderweitige Zuordnung und Zyklen werden abgewiesen.
+- **Entfernen:** Rekursiv Registrierung und Containerreferenzen bereinigen. Eigene Ressourcen beenden, gemeinsame Daten erhalten und deren Verbindungen lösen. Editoren ohne Eingabeübernahme schließen; Bereinigungsfehler nach den übrigen Versuchen melden. Wiederholtes Entfernen bleibt ohne Wirkung.
+- **Rahmen und Kompatibilität:** Ausführung im UI-Thread; neue Instanzen statt Wiederverwendung entfernter Controls. Bestehendes `Root.RemoveControl(...)` behält sein Verhalten.
+- **Nicht enthalten:** Zusätzliches Listenlayout und automatisches Nachrücken.
+- **Validierung:** `validation: true`. Die Kriterien oben bilden die Abnahmegrundlage. Automatische Build-Validierung und genaue Worker-Ausführung sind an PLAN delegiert. Visual-Studio-MSBuild für Release/x86 und `AiFlow Launch: qbook` sind konfiguriert.
+- **Offene materielle Punkte / verbleibende materielle PLAN-Entscheidungen:** Keine.
+
+Es wurde noch kein Programmcode geändert.
+
+
+## 2026-10-08T08:42:30.0502198+00:00 | User | fbef4ca5-45cf-4dcc-93c6-040a1e78062a
+
+Plan
+
+
+## 2026-10-08T08:48:22.1733156+00:00 | Assistant | e95b1463-994b-4ee7-ba1e-dcd42b811b4f
+
+Der [Implementierungsplan](.ai-flow/workitems/2026.10.08.1000-box_dynamisch_erzeugen_und_löschen_20261008_100048/handoffs/2026.10.08.1000-implementation-handoff.md) ist gespeichert.
+
+Er enthält Dateiumfang, Umsetzungsschritte, Akzeptanzkriterien und den vollständigen Release/x86-Build über RunWorker. Programmcode und Konfigurationen wurden nicht geändert; `planning_ready: true` bleibt erhalten.
+
+Nächster Schritt: **IMPLEMENT**.
+
+
+## 2026-10-08T08:48:33.6800273+00:00 | User | 619d898e-944a-4b61-a0ec-3c2ec5d62aac
+
+Implement with gpt-6.1-sol • Medium
+
+
+## 2026-10-08T08:56:45.4687218+00:00 | Assistant | 0f1ccdc4-6b11-4a72-9172-08a1a4781a3e
+
+Implement completed with errors. The Codex CLI exited with code 1.
+Reading prompt from stdin...
+Auch Controls, die durch bisherige Löschaufrufe aus dem Root-Dictionary verschwunden sind, werden über ihre eigene Destroy-Registrierung bei der Aliasbereinigung berücksichtigt. Die Eingabepfade prüfen den Entfernungszustand; modale Writebacks in `Input` und `TableView` werden danach unterdrückt. Ich starte jetzt den vollständigen Release/x86-Build über den registrierten Worker.
+
+
+## 2026-10-08T09:03:17.1911563+00:00 | User | 3740c252-c21b-4150-baae-9d7f047731f2
+
+Debug with claude-sonnet-5 • Medium
+
+
+## 2026-10-08T09:07:40.6860488+00:00 | Assistant | 8f9e4e8a-c0e5-48d2-82c9-53060af41f3d
+
+## Zusammenfassung
+
+**Ursprünglicher Fehler:** Die Implementierung war im Scope vollständig vorhanden, aber nicht kompilierbar (26 `CS1503`/`CS1660`/`CS0149`/`CS0428`-Fehler in `Control.cs`, `Object.cs`, `Box.cs`, `Chart.cs`, `CameraControl.cs`, `TLiteHCameraControl.cs`). Ursache: In `namespace QB` existiert eine eigene Klasse `QB.Action` (`Objects/System.cs`). In Dateien mit `namespace QB`/`QB.Controls` wurde das unqualifizierte `Action` dadurch nicht als `System.Action`-Delegate aufgelöst, sondern als diese Klasse – betraf `Control.TryCleanup(..., Action cleanup)` und das Feld `Object.destroyRegistration`.
+
+**Korrektur:** Beide Stellen auf `System.Action` qualifiziert (`qbookCsScript/Controls/Control.cs`, `qbookCsScript/Controls/Object.cs`). Keine weiteren Datei- oder Verhaltensänderungen nötig; alle übrigen 17 im Handoff genannten Dateien waren bereits korrekt.
+
+**Validierung:** `MSBuild.exe` (VS 18) ließ sich in dieser Session nicht direkt ausführen (Host blockiert Zugriff auf `C:\Program Files\Microsoft Visual Studio\...` mit „Permission denied – no interactive user response available"); das registrierte RunWorker-MCP-Tool steht in diesem CLI-Kontext ebenfalls nicht zur Verfügung. Als Ersatzdiagnose per `dotnet msbuild qbookStudio.sln /p:Configuration=Release /p:Platform=x86` geprüft: **0 C#-Compile-Fehler** in der gesamten Solution. Einziger verbleibender Fehler ist `MSB4803` (`ResolveComReference` wird vom .NET-Core-MSBuild nicht unterstützt, betrifft `qbook.csproj`) – ein reines Tooling-Limit von `dotnet msbuild`, kein Code-Defekt, und tritt vor jedem C#-Compile-Schritt von `qbook.csproj` auf.
+
+**Verbleibendes Problem:** Der formale, hostseitige Build-Beweis gemäß `BuildTask.md` (`WorkerResponse.Success`, `exitCode 0`, `report: .ai-flow/BuildReport.txt`) konnte in dieser Session nicht erzeugt werden, da weder das RunWorker-MCP-Tool noch ein direkter Aufruf des konfigurierten VS-MSBuild.exe in dieser nicht-interaktiven Umgebung verfügbar war. Der Build muss mit dem registrierten Worker in einer Umgebung mit Interaktionsfreigabe nachgeholt werden.
+
+**Annahmen:** Keine Scope-Erweiterung – nur die zwei bereits autorisierten Dateien geändert; keine `.vscode/`-, `References/**`- oder Workitem-Konfigurationsänderungen vorgenommen; temporäre Diagnose-Logs wurden entfernt.

@@ -14,8 +14,35 @@ namespace QB.Controls
     public class Chart : Control
     {
 
+        internal override void ReleaseControl(List<Exception> errors)
+        {
+            Signals.ClearReferences();
+            Axes.ClearReferences();
+            var logger = ownedLogger;
+            ownedLogger = null;
+            Log = null;
+            if (logger != null)
+            {
+                TryCleanup(errors, logger.Destroy);
+                TryCleanup(errors, logger.UnregisterObject);
+            }
+            base.ReleaseControl(errors);
+        }
+
         static bool USE_CLIP = true;
+        internal override IEnumerable<Control> OwnedControls()
+        {
+            return base.OwnedControls().Concat(Control.Values);
+        }
+
+        internal override void DetachControl(Control control)
+        {
+            base.DetachControl(control);
+            Control.Detach(control);
+        }
+
         public SignalCsvLogger Log;
+        private SignalCsvLogger ownedLogger;
 
         public class Layout
         {
@@ -31,7 +58,7 @@ namespace QB.Controls
             AxisX.MinorTicks = 5 * 1000;
             AxisX.MajorTicks = 10 * 1000;
             //@STFU 2024-11-12
-            Log = new SignalCsvLogger(name);
+            Log = ownedLogger = new SignalCsvLogger(name);
             
 
 
@@ -102,6 +129,12 @@ namespace QB.Controls
         {
             Dictionary<string, Drawing.Axis> Dict = new Dictionary<string, Drawing.Axis>();
 
+            internal void ClearReferences()
+            {
+                lock (Dict) Dict.Clear();
+            }
+
+
             public List<Drawing.Axis> Values
             {
                 get
@@ -149,6 +182,12 @@ namespace QB.Controls
         {
             Dictionary<string, Signal> Dict = new Dictionary<string, Signal>();
 
+            internal void ClearReferences()
+            {
+                lock (Dict) Dict.Clear();
+            }
+
+
             public List<Signal> Values
             {
                 get
@@ -194,6 +233,13 @@ namespace QB.Controls
         {
             Dictionary<string, Control> Dict = new Dictionary<string, Control>();
 
+
+            internal void Detach(Control control)
+            {
+                lock (Dict)
+                    foreach (var key in Dict.Where(pair => ReferenceEquals(pair.Value, control)).Select(pair => pair.Key).ToArray())
+                        Dict.Remove(key);
+            }
 
             public bool Contains(string name)
             {
@@ -295,6 +341,7 @@ namespace QB.Controls
          }*/
         internal override void Render(Control parent)
         {
+            if (IsRemoved) return;
 
             base.Render(parent);
             //  qbModules.Signal signal = null;

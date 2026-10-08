@@ -17,6 +17,54 @@ namespace QB.Controls
 {
     public class CameraControl : Panel
     {
+        private readonly object updateGate = new object();
+
+        private IEnumerable<UIBox> OwnedDisplays()
+        {
+            return (new UIBox[] { _btnTakeSnapshot, _btnMenu }.Concat(_devices)).Where(display => display != null).ToArray();
+        }
+
+        internal override IEnumerable<Control> OwnedControls()
+        {
+            return base.OwnedControls().Concat(OwnedDisplays().SelectMany(display => display.OwnedUIControls()));
+        }
+
+        internal override void DetachControl(Control control)
+        {
+            base.DetachControl(control);
+            foreach (var display in OwnedDisplays()) display.DetachUIControl(control);
+        }
+
+        internal override void ReleaseControl(List<Exception> errors)
+        {
+            foreach (var display in OwnedDisplays()) TryCleanup(errors, display.ReleaseOwnedUI);
+            _btnTakeSnapshot = _btnMenu = null;
+            _devices.Clear();
+            TryCleanup(errors, () => LastFrame?.Dispose());
+            LastFrame = null;
+            base.ReleaseControl(errors);
+        }
+
+        internal override void PrepareRemoval(List<Exception> errors)
+        {
+            lock (updateGate) OnUpdate = null;
+            _startRequested = false;
+            var source = videoSource;
+            videoSource = null;
+            if (source != null)
+            {
+                TryCleanup(errors, () => source.NewFrame -= VideoSource_NewFrame);
+                TryCleanup(errors, source.SignalToStop);
+                TryCleanup(errors, source.WaitForStop);
+                TryCleanup(errors, source.Stop);
+            }
+            var image = BackgroundImage;
+            BackgroundImage = null;
+            if (image != null) TryCleanup(errors, image.Dispose);
+            init = false;
+            base.PrepareRemoval(errors);
+        }
+
         public FilterInfoCollection VideoDevices;
         private VideoCaptureDevice videoSource;
 
@@ -108,10 +156,12 @@ namespace QB.Controls
 
         async Task switchDevice(int id)
         {
+            if (IsRemoved) return;
             ShowDeviceList(false);
             SelectedDeviceId = id;
             StopCamera();
             await Task.Delay(1000);
+            if (IsRemoved) return;
             StartCamera();
 
         }
@@ -124,6 +174,7 @@ namespace QB.Controls
 
         public void StartCamera()
         {
+            if (IsRemoved) return;
             _startRequested = true;
             if (init || !Visible) return;
 
@@ -180,6 +231,7 @@ namespace QB.Controls
         bool _deviceMenuVisible = false;
         void ShowDeviceList(bool visible)
         {
+            if (IsRemoved) return;
             double imageWidth = BackgroundImage.Width;
             double imageHeight = BackgroundImage.Height;
             double offsetX = (Bounds.W - imageWidth / Draw.mmToPx) / 2;
@@ -217,100 +269,108 @@ namespace QB.Controls
 
         private void VideoSource_NewFrame(object sender, NewFrameEventArgs eventArgs)
         {
-
-          
-            LastFrame?.Dispose();
-
-            _frameCounter++;
-
-            if (SnapshotCounter != 0)
+            lock (updateGate)
             {
-                _lastSnapshotCounter++;
-                if (_lastSnapshotCounter == _frameCounter) SaveFrames = true;
+                if (IsRemoved) return;
+                LastFrame?.Dispose();
+
+                _frameCounter++;
+
+                if (SnapshotCounter != 0)
+                {
+                    _lastSnapshotCounter++;
+                    if (_lastSnapshotCounter == _frameCounter) SaveFrames = true;
+                }
+
+
+                if (_frameCounter < FrameRate) return;
+
+                Bitmap frame = (Bitmap)eventArgs.Frame.Clone();
+
+                LastFrame = (Bitmap)eventArgs.Frame.Clone();
+
+                Bitmap smallFrame = ResizeBitmap(frame, frame.Width / 4, frame.Height / 4); // Zielgröße
+
+                OnUpdate?.Invoke(this, new UpdateEventArgs { Bitmap = smallFrame });
+
+
+
+                if (SaveFrames)
+                {
+                    string fileName = $"frame_{DateTime.Now:yyyyMMdd_HHmmssfff}.jpg";
+                    smallFrame.Save(System.IO.Path.Combine(QB.Book.DataDirectory,fileName), System.Drawing.Imaging.ImageFormat.Jpeg);
+                    SaveFrames = false;
+                    _lastSnapshotCounter = 0;
+                }
+
+                Image oldImage = null;
+                if (BackgroundImage != null)
+                {
+                    oldImage = BackgroundImage;
+                    BackgroundImage = null;  
+                }
+
+                BackgroundImage = smallFrame;
+
+                oldImage?.Dispose();
+                _frameCounter = 0;
+                frame.Dispose();
+
             }
-
-
-            if (_frameCounter < FrameRate) return;
-
-            Bitmap frame = (Bitmap)eventArgs.Frame.Clone();
-
-            LastFrame = (Bitmap)eventArgs.Frame.Clone();
-
-            Bitmap smallFrame = ResizeBitmap(frame, frame.Width / 4, frame.Height / 4); // Zielgröße
-
-            OnUpdate?.Invoke(this, new UpdateEventArgs { Bitmap = smallFrame });
-
-
-
-            if (SaveFrames)
-            {
-                string fileName = $"frame_{DateTime.Now:yyyyMMdd_HHmmssfff}.jpg";
-                smallFrame.Save(System.IO.Path.Combine(QB.Book.DataDirectory,fileName), System.Drawing.Imaging.ImageFormat.Jpeg);
-                SaveFrames = false;
-                _lastSnapshotCounter = 0;
-            }
-
-            Image oldImage = null;
-            if (BackgroundImage != null)
-            {
-                oldImage = BackgroundImage;
-                BackgroundImage = null;  
-            }
-
-            BackgroundImage = smallFrame;
-
-            oldImage?.Dispose();
-            _frameCounter = 0;
-            frame.Dispose();
         }
 
 
         public void CreateMenu(object sender, UpdateEventArgs e)
         {
-            if(BackgroundImage == null) return;
-            double imageWidth = BackgroundImage.Width;
-            double imageHeight = BackgroundImage.Height;
-            double offsetX = (Bounds.W - imageWidth / Draw.mmToPx) / 2 ;
-            double offsetY = (Bounds.H - (imageHeight / (imageWidth/Bounds.W))) / 2;
-
-            offsetX = offsetX + 1;
-
-            _btnTakeSnapshot = new BoxButton(name: "",
-               x: Bounds.X + Bounds.W - 17,
-               y: (Bounds.Y + Bounds.H - 17) - offsetY,
-               w: 20,
-               h: 20,
-               icon: "fa:camera:yellow",
-               onClick: (s) => SaveFrames = true)
-            { Page = this.Directory, Backcolor = System.Drawing.Color.Transparent };
-            _btnTakeSnapshot.Create();
-            _btnTakeSnapshot.Visible = Visible;
-
-            _btnMenu = new BoxButton(name: "",
-                x: Bounds.X + Bounds.W - 17,
-                y: Bounds.Y - 3 + + offsetY,
-                w: 20,
-                h: 20,
-                icon: "fa:bars:yellow",
-                onClick: (s) => ShowDeviceList(!_deviceMenuVisible))
-            { Page = this.Directory, Backcolor = System.Drawing.Color.Transparent };
-            _btnMenu.Create();
-            _btnMenu.Visible = Visible;
-
-            int c = 0;
-            foreach (BoxButton button in _devices)
+            lock (updateGate)
             {
-                button.X = Bounds.X + Bounds.W - button.W - 20;
-                button.Y = Bounds.Y + c * button.H;
-                button.Page = this.Directory;
-                button.Create();
-                button.Frame.BackgroundColorHover = System.Drawing.Color.Transparent;
-                button.Visible = false;
-                c++;
+                if (IsRemoved) return;
+                if(BackgroundImage == null) return;
+                double imageWidth = BackgroundImage.Width;
+                double imageHeight = BackgroundImage.Height;
+                double offsetX = (Bounds.W - imageWidth / Draw.mmToPx) / 2 ;
+                double offsetY = (Bounds.H - (imageHeight / (imageWidth/Bounds.W))) / 2;
+
+                offsetX = offsetX + 1;
+
+                _btnTakeSnapshot = new BoxButton(name: "",
+                   x: Bounds.X + Bounds.W - 17,
+                   y: (Bounds.Y + Bounds.H - 17) - offsetY,
+                   w: 20,
+                   h: 20,
+                   icon: "fa:camera:yellow",
+                   onClick: (s) => SaveFrames = true)
+                { Page = this.Directory, Backcolor = System.Drawing.Color.Transparent };
+                _btnTakeSnapshot.Create();
+                _btnTakeSnapshot.Visible = Visible;
+
+                _btnMenu = new BoxButton(name: "",
+                    x: Bounds.X + Bounds.W - 17,
+                    y: Bounds.Y - 3 + + offsetY,
+                    w: 20,
+                    h: 20,
+                    icon: "fa:bars:yellow",
+                    onClick: (s) => ShowDeviceList(!_deviceMenuVisible))
+                { Page = this.Directory, Backcolor = System.Drawing.Color.Transparent };
+                _btnMenu.Create();
+                _btnMenu.Visible = Visible;
+
+                int c = 0;
+                foreach (BoxButton button in _devices)
+                {
+                    button.X = Bounds.X + Bounds.W - button.W - 20;
+                    button.Y = Bounds.Y + c * button.H;
+                    button.Page = this.Directory;
+                    button.Create();
+                    button.Frame.BackgroundColorHover = System.Drawing.Color.Transparent;
+                    button.Visible = false;
+                    c++;
+
+                }
+
+                OnUpdate -= CreateMenu;
 
             }
-
-            OnUpdate -= CreateMenu;
         }
 
 

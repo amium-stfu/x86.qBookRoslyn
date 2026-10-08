@@ -16,9 +16,14 @@ namespace QB.Controls
             Destroyers.Add(destroyer);
         }
 
+        internal static void RemoveDestroyer(System.Action destroyer)
+        {
+            Destroyers.Remove(destroyer);
+        }
+
         public static void DestroyAll()
         {
-            foreach (System.Action dest in Destroyers)
+            foreach (System.Action dest in Destroyers.ToArray())
             {
                 try
                 {

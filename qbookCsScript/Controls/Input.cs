@@ -27,28 +27,43 @@ namespace QB.Controls
             this.Clickable = true;           
         }
 
+        internal override void ReleaseControl(System.Collections.Generic.List<System.Exception> errors)
+        {
+            Value = null;
+            base.ReleaseControl(errors);
+        }
+
+
         private void Input_OnClick(Control s)
         {
+            if (IsRemoved) return;
             InputDialog dialog = new InputDialog();
-            dialog.ShowDialog();
-            if (Value != null)
+            ActiveEditor = dialog;
+            try { dialog.ShowDialog(); }
+            finally { ActiveEditor = null; }
+            try
             {
-                Value.Clear();
-                Value.Append(dialog.Value);
+                if (!IsRemoved && Value != null)
+                {
+                    Value.Clear();
+                    Value.Append(dialog.Value);
+                }
             }
+            finally { dialog.Dispose(); }
            
          //   throw new System.NotImplementedException();
         }
 
         internal override void Render(Control parent)
         {
+            if (IsRemoved) return;
             if ((ParentPanel != null) && !ParentPanel.Visible)
                 return;
 
 
             Draw.Text(Text, Bounds.X+5, Bounds.Y + Bounds.H / 2, 0, Draw.fontHeader2, 
                 System.Drawing.Color.Black, System.Drawing.ContentAlignment.MiddleLeft);
-            if (Value != null)
+            if (!IsRemoved && Value != null)
             {
                 Draw.Text(Value.ToString(), Bounds.X + Bounds.W / 5 * 4, Bounds.Y + Bounds.H / 2, 0, Draw.fontHeader1,
                 System.Drawing.Color.Black, System.Drawing.ContentAlignment.MiddleRight);

@@ -1,0 +1,107 @@
+{
+  "FormatVersion": 1,
+  "Session": {
+    "Id": "003f1dc9-651f-4207-b220-312ab8d9aca9",
+    "Title": "Control Remove - 20261008-120828",
+    "WorkItemPath": ".ai-flow/workitems/2026.10.08.1208-control_remove_20261008_120828",
+    "ExportedAt": "2026-10-08T10:37:46.1796043+00:00",
+    "ApplicationVersion": "2026.10.05.2030"
+  },
+  "Messages": [
+    {
+      "Id": "02895939-64fb-4088-91d6-56553fe978a3",
+      "CreatedAt": "2026-10-08T10:08:28.2407996+00:00",
+      "Role": "User",
+      "Text": "# Title Control Remove\n\n## Current\nControl.Remove funktioniert grunds\u00E4tzlich.\u000B\n\n## Goal\nZu kl\u00E4ren ist wie wir das sauber beim BoxView System sauber l\u00F6sen.\u000BHier haben wir ja eine Klasse UIBox.\u000BPragmatisch w\u00E4re ein Wrapper\u000B.Remove() { Frame.Remove(), }\u000BZu kl\u00E4ren ist nur ob da nicht noch mehr aufgr\u00E4umt werden muss.\u000BEs gibt ja zwei F\u00E4lle:\u000B- UIBox eigenst\u00E4ndig\u000B- UIBox eingeh\u00E4ngt per BoxView\u000B\u000BIn jedem Fall muss doch auch das Item mit aufgr\u00E4umt werden bei einer UIBox\u000B\u000BWas auch gekl\u00E4rt werden muss:\u000B- Remove() ist zu generisch und wird nicht als Fehler in VS Code erkannt. Evtl. RemoveControl()\n\n## Acceptance Criteria\n\n\n## Out of Scope\n",
+      "Attachments": [
+        {
+          "FileName": "BoxView.cs",
+          "FileType": null,
+          "RelativePath": "attachments/02895939-64fb-4088-91d6-56553fe978a3/BoxView.cs"
+        },
+        {
+          "FileName": "BoxView.cs",
+          "FileType": null,
+          "RelativePath": "attachments/02895939-64fb-4088-91d6-56553fe978a3/BoxView_2.cs"
+        }
+      ]
+    },
+    {
+      "Id": "3fa1bbf1-6f50-4810-af61-4f7af54f9e28",
+      "CreatedAt": "2026-10-08T10:11:53.1282204+00:00",
+      "Role": "Assistant",
+      "Text": "## Analyse\r\n\r\n\u0060Control.Remove()\u0060 (inkl. \u0060PrepareRemoval\u0060/\u0060OwnedControls\u0060/\u0060ReleaseControl\u0060) ist bereits vorhanden und rekursiv funktionsf\u00E4hig. F\u00FCr \u0060UIBox\u0060 existiert bereits dieselbe Infrastruktur (\u0060OwnedUIControls()\u0060, \u0060DetachUIControl()\u0060, \u0060ReleaseOwnedUI()\u0060 \u2192 nullt \u0060Frame\u0060/\u0060Description\u0060/\u0060State\u0060/\u0060Read\u0060/\u0060Led\u0060 und ruft \u0060UnregisterObject()\u0060), wird aber nur von *besitzenden* \u0060Control\u0060-Typen genutzt (z. B. \u0060CameraControl\u0060, \u0060TLiteHCameraControl\u0060), nicht von \u0060UIBox\u0060 selbst.\r\n\r\n\u0060Description\u0060/\u0060State\u0060/\u0060Read\u0060/\u0060Led\u0060 werden immer \u00FCber \u0060boxes:\u0060 im \u0060Frame\u0060-Konstruktor erzeugt und damit per \u0060box.Parent = Frame\u0060 zu \u0060Frame.Children\u0060. Ein \u0060Frame.Remove()\u0060 entfernt diese UI-Boxen also bereits rekursiv aus \u0060Root.ControlDict\u0060. Die fehlende Schicht ist: (1) ein einheitlicher Einstiegspunkt auf \u0060UIBox\u0060, der \u0060Frame.Remove()\u0060 \u002B \u0060ReleaseOwnedUI()\u0060 kombiniert, und (2) die Bereinigung der **Besitzer-Sammlung**, wenn eine \u0060UIBox\u0060 per \u0060BoxView.Add(...)\u0060 eingeh\u00E4ngt wurde \u2014 aktuell landet eine \u0060UIBox\u0060 wahlweise in \u0060BoxView.Boxes\u0060 (List) oder in \u0060BoxList.Boxes\u0060/\u0060BoxTable.Boxes\u0060/\u0060BoxFlowPanel.Boxes\u0060 (Dictionary), aber keine dieser Klassen hat eine \u0060Remove\u0060-Methode, und \u0060UIBox\u0060 kennt ihren Besitzer nicht. Ohne Bereinigung bliebe nach einem Remove ein totes \u0060UIBox\u0060-Objekt (mit \u0060Frame == null\u0060) in dieser Liste/diesem Dictionary zur\u00FCck.\r\n\r\n## Offene materielle Punkte\r\n\r\n1. **Name des Wrappers** auf \u0060UIBox\u0060 (\u0060Remove()\u0060 w\u00FCrde mit List-/Dictionary-Remove-Semantik kollidieren, wie beim bestehenden \u0060Control.Remove()\u0060 bereits bem\u00E4ngelt).\r\n2. **Umfang der Besitzer-Bereinigung**: Soll der Wrapper die \u0060UIBox\u0060 automatisch aus ihrer Besitzer-Sammlung (\u0060BoxView.Boxes\u0060 bzw. \u0060BoxList/BoxTable/BoxFlowPanel.Boxes\u0060) entfernen (erfordert eine Owner-R\u00FCckreferenz, die beim \u0060Add(...)\u0060 gesetzt wird), oder bleibt das f\u00FCr diese Iteration bewusst au\u00DFerhalb des Umfangs (nur \u0060Frame\u0060-Baum \u002B \u0060UIBox\u0060-Felder werden bereinigt, die Besitzer-Sammlung beh\u00E4lt ggf. eine leere H\u00FClle)?\r\n\r\n:::questions\r\n{\r\n  \u0022questions\u0022: [\r\n    {\r\n      \u0022id\u0022: \u0022wrapper_name\u0022,\r\n      \u0022type\u0022: \u0022single_select\u0022,\r\n      \u0022text\u0022: \u0022Wie soll die neue UIBox-Methode hei\u00DFen, die Frame.Remove() und die Feldbereinigung kombiniert?\u0022,\r\n      \u0022options\u0022: [\u0022RemoveControl()\u0022, \u0022Destroy()\u0022, \u0022Other\u0022],\r\n      \u0022required\u0022: true\r\n    },\r\n    {\r\n      \u0022id\u0022: \u0022wrapper_name_other\u0022,\r\n      \u0022type\u0022: \u0022text\u0022,\r\n      \u0022text\u0022: \u0022Welcher andere Methodenname soll verwendet werden?\u0022,\r\n      \u0022required\u0022: true,\r\n      \u0022visible_when\u0022: { \u0022question_id\u0022: \u0022wrapper_name\u0022, \u0022has_any_of\u0022: [\u0022Other\u0022] }\r\n    },\r\n    {\r\n      \u0022id\u0022: \u0022owner_cleanup_scope\u0022,\r\n      \u0022type\u0022: \u0022single_select\u0022,\r\n      \u0022text\u0022: \u0022Soll die neue Methode die UIBox zus\u00E4tzlich automatisch aus ihrer Besitzer-Sammlung entfernen (BoxView.Boxes bzw. BoxList/BoxTable/BoxFlowPanel.Boxes), wof\u00FCr UIBox eine Owner-R\u00FCckreferenz erh\u00E4lt, die beim Add(...) gesetzt wird?\u0022,\r\n      \u0022options\u0022: [\r\n        \u0022Ja, automatische Bereinigung in allen vier F\u00E4llen (BoxView, BoxList, BoxTable, BoxFlowPanel)\u0022,\r\n        \u0022Ja, aber nur f\u00FCr direktes BoxView.Boxes (die drei Dictionary-F\u00E4lle bleiben au\u00DFerhalb des Umfangs)\u0022,\r\n        \u0022Nein, nur Frame-Baum und UIBox-Felder bereinigen; Besitzer-Sammlung bleibt unver\u00E4ndert\u0022,\r\n        \u0022Other\u0022\r\n      ],\r\n      \u0022required\u0022: true\r\n    },\r\n    {\r\n      \u0022id\u0022: \u0022owner_cleanup_scope_other\u0022,\r\n      \u0022type\u0022: \u0022text\u0022,\r\n      \u0022text\u0022: \u0022Welcher andere Umfang f\u00FCr die Besitzer-Bereinigung soll gelten?\u0022,\r\n      \u0022required\u0022: true,\r\n      \u0022visible_when\u0022: { \u0022question_id\u0022: \u0022owner_cleanup_scope\u0022, \u0022has_any_of\u0022: [\u0022Other\u0022] }\r\n    }\r\n  ]\r\n}\r\n:::endquestions",
+      "Attachments": []
+    },
+    {
+      "Id": "b3ee80af-d3b3-4f0f-ab36-e5a7aa656573",
+      "CreatedAt": "2026-10-08T10:13:08.1127816+00:00",
+      "Role": "User",
+      "Text": "Wie soll die neue UIBox-Methode hei\u00DFen, die Frame.Remove() und die Feldbereinigung kombiniert?: Destroy()\r\nSoll die neue Methode die UIBox zus\u00E4tzlich automatisch aus ihrer Besitzer-Sammlung entfernen (BoxView.Boxes bzw. BoxList/BoxTable/BoxFlowPanel.Boxes), wof\u00FCr UIBox eine Owner-R\u00FCckreferenz erh\u00E4lt, die beim Add(...) gesetzt wird?: Ja, automatische Bereinigung in allen vier F\u00E4llen (BoxView, BoxList, BoxTable, BoxFlowPanel)",
+      "Attachments": []
+    },
+    {
+      "Id": "70786b36-8b61-4fc3-a939-73ce13ba5148",
+      "CreatedAt": "2026-10-08T10:14:08.159913+00:00",
+      "Role": "Assistant",
+      "Text": "**Owner-Bereinigung best\u00E4tigt** (alle vier F\u00E4lle: \u0060BoxView\u0060, \u0060BoxList\u0060, \u0060BoxTable\u0060, \u0060BoxFlowPanel\u0060).\r\n\r\n**Namenskonflikt bei \u0060Destroy()\u0060:** \u0060Item.Destroy()\u0060 ist bereits eine etablierte, virtuelle, applikationsweite Lifecycle-Methode (\u0060Object.cs\u0060), die von \u0060Root.ResetObjectDict()\u0060, \u0060Root.ResetModuleDict()\u0060, \u0060Root.ResetSignalDict()\u0060, \u0060Root.ResetMessageDict()\u0060 und \u0060ItemDestroyHandler.DestroyAll()\u0060 f\u00FCr **Massen-Teardown** aufgerufen wird (z. B. \u0060CameraControl.Destroy()\u0060 stoppt dort nur die Kamera). Aktuell ist \u0060Destroy()\u0060 bei \u0060UIBox\u0060 ein No-Op; Controls werden beim globalen Reset separat \u00FCber \u0060Root.ResetWidgetDict()\u0060 (\u0060ControlDict.Clear()\u0060, kein \u0060Remove()\u0060) bereinigt.\r\n\r\nW\u00FCrden wir die neue Methode \u0060Destroy()\u0060 nennen, entst\u00FCnden zwei Probleme:\r\n- Ein gezieltes \u0060box.Destroy()\u0060 sieht identisch aus wie der globale Teardown-Hook, obwohl die Semantik eine andere ist (gezieltes Entfernen einer einzelnen Box vs. App-weiter Reset).\r\n- W\u00FCrde \u0060Destroy()\u0060 zus\u00E4tzlich \u0060Frame.Remove()\u0060 aufrufen, w\u00FCrde das bei jedem globalen \u0060ResetObjectDict()\u0060/\u0060DestroyAll()\u0060 f\u00FCr **jede** \u0060UIBox\u0060 ungewollt mitlaufen und mit dem bereits bestehenden separaten \u0060ControlDict\u0060-Cleanup kollidieren.\r\n\r\nDas ist ein materieller Konflikt mit bestehender Architektur, keine reine Namensfrage mehr.\r\n\r\n:::questions\r\n{\r\n  \u0022questions\u0022: [\r\n    {\r\n      \u0022id\u0022: \u0022wrapper_name_v2\u0022,\r\n      \u0022type\u0022: \u0022single_select\u0022,\r\n      \u0022text\u0022: \u0022Welcher kollisionsfreie Name soll f\u00FCr die neue UIBox-Methode (Frame.Remove() \u002B Feldbereinigung \u002B Owner-Bereinigung) verwendet werden?\u0022,\r\n      \u0022options\u0022: [\u0022RemoveControl()\u0022, \u0022DestroyUI()\u0022, \u0022Other\u0022],\r\n      \u0022required\u0022: true\r\n    },\r\n    {\r\n      \u0022id\u0022: \u0022wrapper_name_v2_other\u0022,\r\n      \u0022type\u0022: \u0022text\u0022,\r\n      \u0022text\u0022: \u0022Welcher andere Methodenname soll verwendet werden?\u0022,\r\n      \u0022required\u0022: true,\r\n      \u0022visible_when\u0022: { \u0022question_id\u0022: \u0022wrapper_name_v2\u0022, \u0022has_any_of\u0022: [\u0022Other\u0022] }\r\n    }\r\n  ]\r\n}\r\n:::endquestions",
+      "Attachments": []
+    },
+    {
+      "Id": "c3f87fec-9532-4abe-b343-cc303e6c6e9b",
+      "CreatedAt": "2026-10-08T10:30:05.6071514+00:00",
+      "Role": "User",
+      "Text": "Welcher kollisionsfreie Name soll f\u00FCr die neue UIBox-Methode (Frame.Remove() \u002B Feldbereinigung \u002B Owner-Bereinigung) verwendet werden?: RemoveControl()",
+      "Attachments": []
+    },
+    {
+      "Id": "513cff82-d5e4-439b-8bd6-0eda55dea4b5",
+      "CreatedAt": "2026-10-08T10:31:00.3156116+00:00",
+      "Role": "Assistant",
+      "Text": "**Planungsreife erreicht.** \u0060status: ready\u0060, \u0060planning_ready: true\u0060.\r\n\r\n## Zusammenfassung\r\n\r\n**Ziel:** Einheitliche, eindeutig benannte Methode \u0060UIBox.RemoveControl()\u0060, die eine \u0060UIBox\u0060 sowohl eigenst\u00E4ndig als auch per \u0060BoxView\u0060-System eingeh\u00E4ngt sauber entfernt.\r\n\r\n**Umfang:**\r\n- Neue \u0060public void RemoveControl()\u0060 auf \u0060UIBox\u0060: idempotent (analog zum bestehenden \u0060Control.Remove()\u0060-Muster, zweiter Aufruf no-op), ruft \u0060Frame?.Remove()\u0060 (entfernt rekursiv den kompletten \u0060Frame\u0060-Kindbaum inkl. \u0060Description\u0060/\u0060State\u0060/\u0060Read\u0060/\u0060Led\u0060, die bereits via \u0060boxes:\u0060-Konstruktorparameter \u0060Frame.Children\u0060 sind, aus \u0060Root.ControlDict\u0060), danach \u0060ReleaseOwnedUI()\u0060 (nullt \u0060Frame\u0060/\u0060Description\u0060/\u0060State\u0060/\u0060Read\u0060/\u0060Led\u0060, ruft \u0060UnregisterObject()\u0060 f\u00FCr \u0060Root.ObjectDict\u0060).\r\n- Owner-Bereinigung: \u0060UIBox\u0060 erh\u00E4lt eine interne Detach-R\u00FCckreferenz (z. B. \u0060Action\u0060-Delegat), die \u0060BoxView.Add(UIBox box, ...)\u0060 beim Einh\u00E4ngen setzt \u2014 f\u00FCr alle vier F\u00E4lle: \u0060BoxView.Boxes\u0060 (List), \u0060BoxList.Boxes\u0060, \u0060BoxTable.Boxes\u0060, \u0060BoxFlowPanel.Boxes\u0060 (je Dictionary, Key = \u0060Box.Name\u0060). F\u00FCr den \u0060BoxList\u0060-Fall wird aktuell **zus\u00E4tzlich** in \u0060BoxView.Boxes\u0060 eingetragen \u2013 \u0060RemoveControl()\u0060 muss daher aus beiden Collections entfernen. \u0060RemoveControl()\u0060 ruft die R\u00FCckreferenz vor/w\u00E4hrend der Bereinigung auf.\r\n- F\u00FCr eigenst\u00E4ndige \u0060UIBox\u0060 (kein \u0060BoxView.Add(...)\u0060) bleibt die R\u00FCckreferenz \u0060null\u0060; \u0060RemoveControl()\u0060 beschr\u00E4nkt sich auf Frame- und Feldbereinigung.\r\n\r\n**Non-Goals:** Keine \u00C4nderung an \u0060Control.Remove()\u0060 (funktioniert bereits), an \u0060Item.Destroy()\u0060/\u0060ItemDestroyHandler\u0060 (globaler Teardown bleibt unangetastet), an \u0060BoxView.Add(object box)\u0060 f\u00FCr \u0060BoxTable\u0060/\u0060BoxFlowPanel\u0060/\u0060BoxList\u0060/\u0060ChartExtended\u0060/\u0060BoxLogView\u0060/\u0060BoxProcessLogView\u0060 (eigene Objekttypen, nicht \u0060UIBox\u0060), kein automatisches Nachr\u00FCcken/Re-Layout nach Entfernen.\r\n\r\n**Entscheidungen:** Methodenname \u0060RemoveControl()\u0060 (Kollision mit \u0060Destroy()\u0060-Lifecycle ausgeschlossen); Owner-Bereinigung gilt f\u00FCr alle vier Collection-F\u00E4lle.\r\n\r\n**Validierung:** \u0060validation: true\u0060. Build gem\u00E4\u00DF \u0060.ai-flow/solution.md\u0060: \u0060msbuild qbookStudio.sln /t:Build /p:Configuration=Release /p:Platform=x86\u0060.\r\n\r\n**Offene materielle Punkte:** Keine. **Verbleibende materielle PLAN-Entscheidungen:** Keine.",
+      "Attachments": []
+    },
+    {
+      "Id": "04940c32-69d7-46f0-baae-8e238fb09514",
+      "CreatedAt": "2026-10-08T10:32:12.5187045+00:00",
+      "Role": "User",
+      "Text": "Plan",
+      "Attachments": []
+    },
+    {
+      "Id": "cd098fc8-29d1-4920-80e2-268dc4bec9dd",
+      "CreatedAt": "2026-10-08T10:34:17.3244177+00:00",
+      "Role": "Assistant",
+      "Text": "Implementation-Handoff erstellt: \u0060.ai-flow/workitems/2026.10.08.1208-control_remove_20261008_120828/handoffs/2026.10.08.1208-implementation-handoff.md\u0060\r\n\r\n**Umfang:** Einzige Datei \u0060qbookCsScript/Controls/BoxView.cs\u0060 \u2014 neue \u0060UIBox.RemoveControl()\u0060 (Frame-Removal \u002B ReleaseOwnedUI \u002B idempotent) plus \u0060DetachFromOwner\u0060-R\u00FCckreferenz, gesetzt in allen vier Zweigen von \u0060BoxView.Add(UIBox, ...)\u0060 (BoxView.Boxes, BoxList.Boxes, BoxTable.Boxes, BoxFlowPanel.Boxes). Keine \u00C4nderung an \u0060Control.Remove()\u0060, \u0060Item.Destroy()\u0060 oder bestehenden Overrides.\r\n\r\n**Validierung:** \u0060Worker Command: Build\u0060, \u0060Worker Target: qbookStudio.sln\u0060 (bestehender Task \u0060AiFlow Build: qbookStudio\u0060), kein Clean. Launch unver\u00E4ndert (\u0060AiFlow Launch: qbook\u0060 bereits vorhanden, nicht erforderlich f\u00FCr diese \u00C4nderung).\r\n\r\n\u0060planning_ready: true\u0060 bleibt erhalten; IMPLEMENT kann direkt gestartet werden.",
+      "Attachments": []
+    },
+    {
+      "Id": "ba739813-d772-4d12-b120-db75a96cb4c6",
+      "CreatedAt": "2026-10-08T10:35:05.0645676+00:00",
+      "Role": "User",
+      "Text": "Implement with gpt-6-astra \u2022 Medium",
+      "Attachments": []
+    },
+    {
+      "Id": "3f498ddf-8a27-4234-82c2-85a0b9ef58d1",
+      "CreatedAt": "2026-10-08T10:35:11.9868421+00:00",
+      "Role": "Assistant",
+      "Text": "Implement completed with errors. The Codex CLI exited with code 1.\r\nReading prompt from stdin...\r\nRaw Codex output:\r\n{\u0022type\u0022:\u0022thread.started\u0022,\u0022thread_id\u0022:\u002201a11b14-bf63-7133-9086-f55eac1688fe\u0022}\r\n{\u0022type\u0022:\u0022turn.started\u0022}\r\n{\u0022type\u0022:\u0022error\u0022,\u0022message\u0022:\u0022You\u2019ve hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again at 1:43 PM.\u0022}\r\n{\u0022type\u0022:\u0022turn.failed\u0022,\u0022error\u0022:{\u0022message\u0022:\u0022You\u2019ve hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again at 1:43 PM.\u0022}}",
+      "Attachments": []
+    },
+    {
+      "Id": "fcf89d67-3aaf-42fc-8ddd-418244d5c580",
+      "CreatedAt": "2026-10-08T10:36:08.207826+00:00",
+      "Role": "User",
+      "Text": "Debug with claude-sonnet-5 \u2022 Medium",
+      "Attachments": []
+    },
+    {
+      "Id": "48c49825-92af-4847-a28d-06c60bad880c",
+      "CreatedAt": "2026-10-08T10:37:46.1483204+00:00",
+      "Role": "Assistant",
+      "Text": "Build und Report sind vorhanden und erfolgreich (ExitCode 0, \u00220 Fehler\u0022).\r\n\r\n## Zusammenfassung\r\n\r\n**Urspr\u00FCnglicher Fehler:** Die IMPLEMENT-Arbeit wurde laut Debug-Handoff wegen TokenLimit nie gestartet \u2014 \u0060BoxView.cs\u0060 enthielt keine der geplanten \u00C4nderungen.\r\n\r\n**Korrekturma\u00DFnahmen:**\r\n1. \u0060UIBox\u0060: Felder \u0060DetachFromOwner\u0060 (als \u0060System.Action\u0060, da ein Namenskonflikt mit der projekteigenen Klasse \u0060QB.Action\u0060 besteht) und \u0060removed\u0060 sowie Methode \u0060RemoveControl()\u0060 erg\u00E4nzt (ruft \u0060DetachFromOwner\u0060, \u0060Frame?.Remove()\u0060, \u0060ReleaseOwnedUI()\u0060, idempotent).\r\n2. \u0060BoxView.Add(UIBox box, ...)\u0060: in allen vier Zweigen (\u0060boxList\u0060, \u0060boxTable\u0060, \u0060boxFlowPanel\u0060, Standardfall) die jeweilige \u0060box.DetachFromOwner\u0060-Zuweisung erg\u00E4nzt.\r\n\r\n**Validierung:** MSBuild Release/x86 auf \u0060qbookStudio.sln\u0060, exitCode 0, \u201E0 Fehler\u0022. Erster Durchlauf scheiterte mit CS1660 (Lambda\u2194Action-Konflikt durch gleichnamige Klasse \u0060QB.Action\u0060), behoben durch explizite Qualifikation \u0060System.Action\u0060. Zweiter Durchlauf erfolgreich, Report in \u0060.ai-flow\\BuildReport.txt\u0060 gesichert.\r\n\r\n**Verbleibende Probleme:** Keine. Bestehende Warnungen (449) sind unver\u00E4ndert vorbestehend und nicht durch diese \u00C4nderung verursacht.\r\n\r\n**Annahmen:** Keine \u00FCber den Handoff hinausgehenden; einzige Abweichung von der Spezifikation ist die notwendige Typqualifikation \u0060System.Action\u0060 statt \u0060Action\u0060, um der Projekt-Namenskollision Rechnung zu tragen.",
+      "Attachments": []
+    }
+  ]
+}

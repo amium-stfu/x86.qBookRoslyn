@@ -31,6 +31,71 @@ namespace QB.Controls
         //    //this.Format.ForeColor = System.Drawing.Color.Black;//.Gray; //.Silver?
         //}
 
+        private readonly List<TextBox> editors = new List<TextBox>();
+
+        /// <summary>Appends a child box without moving an existing container member.</summary>
+        public void Add(Box childBox)
+        {
+            if (childBox == null) throw new ArgumentNullException(nameof(childBox), "A child box is required.");
+            if (IsRemoved || childBox.IsRemoved) throw new InvalidOperationException("Removed controls cannot be reused.");
+            for (Control ancestor = this; ancestor != null; ancestor = ancestor.Parent)
+                if (ReferenceEquals(ancestor, childBox)) throw new InvalidOperationException("A box cannot contain itself or an ancestor.");
+            if (ReferenceEquals(childBox.Parent, this)) return;
+            if (childBox.Parent != null || childBox.ParentPanel != null)
+                throw new InvalidOperationException("The child box already belongs to another container.");
+            Control[] registered;
+            lock (Root.ControlDict) registered = Root.ControlDict.Values.ToArray();
+            var pending = new Queue<Control>(registered.Concat(ItemDestroyHandler.Destroyers.ToArray().Select(callback => callback.Target as Control)));
+            var visited = new List<Control>();
+            while (pending.Count != 0)
+            {
+                var container = pending.Dequeue();
+                if (container == null || visited.Any(c => ReferenceEquals(c, container))) continue;
+                visited.Add(container);
+                var owned = container.OwnedControls().ToArray();
+                if (owned.Any(c => ReferenceEquals(c, childBox)))
+                    throw new InvalidOperationException("The child box already belongs to a container.");
+                foreach (var child in owned) pending.Enqueue(child);
+            }
+            if (Boxes == null) Boxes = new List<Box>();
+            Boxes.Add(childBox);
+            childBox.Parent = this;
+            childBox.Directory = Directory;
+            childBox.IterateOverChildren(c => c.Directory = Directory);
+            childBox.InvalidateBounds();
+        }
+
+        internal override IEnumerable<Control> OwnedControls()
+        {
+            return base.OwnedControls().Concat(Boxes ?? Enumerable.Empty<Box>());
+        }
+
+        internal override void DetachControl(Control control)
+        {
+            base.DetachControl(control);
+            Boxes?.RemoveAll(box => ReferenceEquals(box, control));
+        }
+
+        internal override void ReleaseControl(List<Exception> errors)
+        {
+            OnBoxClick = null;
+            OnAccept = null;
+            OnCancel = null;
+            EditMask = null;
+            _Text = null;
+            foreach (var editor in editors.ToArray())
+                TryCleanup(errors, () =>
+                {
+                    editor.KeyPress -= EditBox_KeyPress;
+                    editor.LostFocus -= EditBox_LostFocus;
+                    editor.Tag = null;
+                    editor.Dispose();
+                });
+            editors.Clear();
+            Boxes?.Clear();
+            base.ReleaseControl(errors);
+        }
+
         bool BoundsValid = false;
 
         public void InvalidateBounds()
@@ -48,6 +113,7 @@ namespace QB.Controls
         public event ClickEventHandler OnBoxClick;
         internal override void RaiseOnClick(PointF point)
         {
+            if (IsRemoved) return;
             try
             {
                 ClickPosition = point;
@@ -55,10 +121,11 @@ namespace QB.Controls
                 {
                     OnBoxClick(this); //default handler
                 }
-                if (EditMask != null)
+                if (!IsRemoved && EditMask != null)
                 {
                     //in-place edit
                     TextBox editBox = new TextBox();
+                    editors.Add(editBox);
                     editBox.Font = Draw.GetFont(this._Font.FontFamily.Name, Math.Max(10, this._Font.Size * 0.30 * Draw.mmToPx), this._Font.Style);
                     var parentForm = System.Windows.Forms.Application.OpenForms[0];
                     System.Windows.Forms.Control pageControl = parentForm.Controls.OfType<System.Windows.Forms.Control>().FirstOrDefault(c => c.GetType().Name == "PageControl");
@@ -147,6 +214,7 @@ namespace QB.Controls
 
         private void EditBox_KeyPress(object sender, KeyPressEventArgs e)
         {
+            if (IsRemoved) return;
             if (e.KeyChar == 27) //ESC
             {
                 (sender as TextBox).Hide();
@@ -164,6 +232,7 @@ namespace QB.Controls
         }
         private void EditBox_LostFocus(object sender, EventArgs e)
         {
+            editors.Remove(sender as TextBox);
             (sender as TextBox).Hide();
             (sender as TextBox).Dispose();
         }
@@ -1178,6 +1247,7 @@ namespace QB.Controls
 
         internal override void Render(Control parent)
         {
+            if (IsRemoved) return;
 
             //base.Render(parent); //Control.Render(...)
 

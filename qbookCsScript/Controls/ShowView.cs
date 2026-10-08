@@ -1,5 +1,7 @@
 ﻿using QB.Amium.Controls;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Drawing;
 using System.Windows.Forms;
 //using static QB.Controls.Projects;
@@ -15,6 +17,21 @@ namespace QB.Controls
         public Panel JobPanel = new Panel("Jobs", 35, 10, 65, 155);
         public Panel StepPanel = new Panel("Steps", 105, 10, 65, 155);
         public Panel ActivityPanel = new Panel("Activity", 70, 10, 30, 155);
+
+        internal override IEnumerable<Control> OwnedControls()
+        {
+            return base.OwnedControls().Concat(new Control[] { ActivityTableView, ProjectPanel, JobPanel, StepPanel, ActivityPanel });
+        }
+
+        internal override void DetachControl(Control control)
+        {
+            base.DetachControl(control);
+            if (ReferenceEquals(ActivityTableView, control)) ActivityTableView = null;
+            if (ReferenceEquals(ProjectPanel, control)) ProjectPanel = null;
+            if (ReferenceEquals(JobPanel, control)) JobPanel = null;
+            if (ReferenceEquals(StepPanel, control)) StepPanel = null;
+            if (ReferenceEquals(ActivityPanel, control)) ActivityPanel = null;
+        }
 
         public ShowView(string name) : base(name)//, x:x, y:y, w:w, h:h)
         {
@@ -61,6 +78,7 @@ namespace QB.Controls
 
         internal override void Render(Control parent)
         {
+            if (IsRemoved) return;
             System.Drawing.Pen pen = Draw.GetPen2(System.Drawing.Color.DarkGray, 0.2);
             Draw.Rectangle(pen, Bounds.X, Bounds.Y, Bounds.W, Bounds.H);
             base.Render(parent);

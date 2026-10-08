@@ -192,6 +192,24 @@ namespace QB
             //System.Windows.Forms.MessageBox.Show("Destroy");
         }
 
+        private System.Action destroyRegistration;
+        internal void UnregisterDestroyer()
+        {
+            if (destroyRegistration == null) return;
+            ItemDestroyHandler.RemoveDestroyer(destroyRegistration);
+            destroyRegistration = null;
+        }
+
+        internal void UnregisterObject()
+        {
+            UnregisterDestroyer();
+            lock (Root.ObjectDict)
+            {
+                foreach (var key in Root.ObjectDict.Where(pair => ReferenceEquals(pair.Value, this)).Select(pair => pair.Key).ToArray())
+                    Root.ObjectDict.Remove(key);
+            }
+        }
+
         public Item(string name, string id = null)
         {
             if (QB.Logger.LibDebugLevel >= 2) QB.Logger.Debug($"::new Item({name})");
@@ -205,11 +223,8 @@ namespace QB
             tbl.Add("A1,B1,C1");
             tbl["A1"].Value = () => DateTime.Now.Second;
             */
-            ItemDestroyHandler.AddDestroyer(() =>
-            {
-                //System.Windows.Forms.MessageBox.Show("Destroying " + this.Name);
-                Destroy();
-            });
+            destroyRegistration = Destroy;
+            ItemDestroyHandler.AddDestroyer(destroyRegistration);
 
 
             Directory = GetDirectoryFromCaller();

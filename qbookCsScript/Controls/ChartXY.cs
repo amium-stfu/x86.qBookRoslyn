@@ -9,6 +9,13 @@ namespace QB.Controls
     {
 
 
+        internal override void ReleaseControl(System.Collections.Generic.List<System.Exception> errors)
+        {
+            SeriesDict.Clear();
+            base.ReleaseControl(errors);
+        }
+
+
         public ChartXY(string name, double x = 0, double y = 0, double w = 30, double h = 30) : base(name, x: x, y: y, w: w, h: h)
         {
             AxisX.Min = 0;
@@ -251,6 +258,7 @@ namespace QB.Controls
          }*/
         internal override void Render(Control parent)
         {
+            if (IsRemoved) return;
             base.Render(parent);
 
             try

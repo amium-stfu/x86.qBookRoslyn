@@ -19,6 +19,17 @@ namespace QB.Controls
             Clickable = false;
         }
 
+        internal override IEnumerable<Control> OwnedControls()
+        {
+            return base.OwnedControls().Concat(Controls.Values);
+        }
+
+        internal override void DetachControl(Control control)
+        {
+            base.DetachControl(control);
+            Controls.Detach(control);
+        }
+
         public string Header = null;
 
         // public Dictionary<string Control> Controls = new Dictionary<string, Control>();
@@ -60,6 +71,13 @@ namespace QB.Controls
         public class CControl
         {
             Dictionary<string, Control> Dict = new Dictionary<string, Control>();
+
+            internal void Detach(Control control)
+            {
+                lock (Dict)
+                    foreach (var key in Dict.Where(pair => ReferenceEquals(pair.Value, control)).Select(pair => pair.Key).ToArray())
+                        Dict.Remove(key);
+            }
 
             public void Clear()
             {
@@ -185,6 +203,7 @@ namespace QB.Controls
         Regex PosXYRegex = new Regex(@"\$pos=(x:(?<x>[\d\.\+]*);?)?(y:(?<y>[\d\.\+]*))?");
         internal override void Render(Control parent)
         {
+            if (IsRemoved) return;
             //System.Drawing.Pen pen = System.Drawing.Pens.DarkGray;
             //Draw.Rectangle(pen, Bounds.X, Bounds.Y, Bounds.W, Bounds.H);
 

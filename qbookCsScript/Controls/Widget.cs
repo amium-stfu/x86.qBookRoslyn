@@ -27,6 +27,7 @@ namespace QB.Controls
 
         public void HandleClick(PointF point)
         {
+            if (IsRemoved) return;
             try
             {
                 double deltaX = point.X - Bounds.X;
@@ -41,7 +42,10 @@ namespace QB.Controls
                     var parentForm = System.Windows.Forms.Application.OpenForms[0];
                     dialog.Location = new System.Drawing.Point(parentForm.Left + (parentForm.Width - dialog.Width) / 2, parentForm.Top + (parentForm.Height - dialog.Height) / 2);
 
-                    var dr = dialog.ShowDialog();
+                    ActiveEditor = dialog;
+                    System.Windows.Forms.DialogResult dr;
+                    try { dr = dialog.ShowDialog(); }
+                    finally { ActiveEditor = null; dialog.Dispose(); }
                     //    value = dialog.Value;
                 }
 
@@ -52,6 +56,13 @@ namespace QB.Controls
             }
         }
 
+        internal override void ReleaseControl(System.Collections.Generic.List<System.Exception> errors)
+        {
+            Signal = null;
+            base.ReleaseControl(errors);
+        }
+
+
         public string DisplayFormat = null; //HALE: temporary?!
 
         //     public Module Module = null;
@@ -59,6 +70,7 @@ namespace QB.Controls
 
         internal override void Render(Control parent)
         {
+            if (IsRemoved) return;
 
             if (Signal != null)
             {

@@ -116,6 +116,7 @@ namespace QB.Controls
                 boxList.Boxes.Add(Box.Name, Box);
                 boxList.Next += box.H + boxList.Gap * 2;
                 Boxes.Add(Box);
+                box.DetachFromOwner = () => { boxList.Boxes.Remove(box.Name); Boxes.Remove(box); };
                 return;
             }
 
@@ -129,6 +130,7 @@ namespace QB.Controls
 
                 Box.Create();
                 boxTable.Boxes.Add(Box.Name, Box);
+                box.DetachFromOwner = () => boxTable.Boxes.Remove(box.Name);
 
 
                 return;
@@ -154,6 +156,7 @@ namespace QB.Controls
 
                 Box.Create();
                 boxFlowPanel.Boxes.Add(Box.Name, Box);
+                box.DetachFromOwner = () => boxFlowPanel.Boxes.Remove(box.Name);
                 return;
             }
 
@@ -161,6 +164,7 @@ namespace QB.Controls
          //   Debug.WriteLine(Box.Name + " " + Page);
             Box.Create();
             Boxes.Add(Box);
+            box.DetachFromOwner = () => Boxes.Remove(box);
 
         }
 
@@ -254,6 +258,52 @@ namespace QB.Controls
                 zorder = value;
                 SetZOrder();
             }
+        }
+
+        internal virtual IEnumerable<Control> OwnedUIControls()
+        {
+            return new Control[] { Frame, Description, State, Read, Led };
+        }
+
+        internal virtual void DetachUIControl(Control control)
+        {
+            if (ReferenceEquals(Frame, control)) Frame = null;
+            if (ReferenceEquals(Description, control)) Description = null;
+            if (ReferenceEquals(State, control)) State = null;
+            if (ReferenceEquals(Read, control)) Read = null;
+            if (ReferenceEquals(Led, control)) Led = null;
+        }
+
+        internal virtual void ReleaseOwnedUI()
+        {
+            Frame = Description = State = Read = Led = null;
+            UnregisterObject();
+        }
+
+        /// <summary>
+        /// Callback set by the owning collection (<see cref="BoxView.Add(UIBox, BoxList, BoxTable, BoxFlowPanel, int, int, int, int, string)"/>)
+        /// that removes this box from its owner collection(s) when <see cref="RemoveControl"/> is called.
+        /// Remains <c>null</c> for a standalone <see cref="UIBox"/> that was never added to a <see cref="BoxView"/>.
+        /// </summary>
+        internal System.Action DetachFromOwner;
+
+        private bool removed;
+
+        /// <summary>
+        /// Removes the complete control tree of this box and cleans up its owned UI references and object registration.
+        /// If the box was added via <see cref="BoxView.Add(UIBox, BoxList, BoxTable, BoxFlowPanel, int, int, int, int, string)"/>,
+        /// it is also removed from its owner collection(s). Calling this method more than once has no effect.
+        /// </summary>
+        public void RemoveControl()
+        {
+            if (removed) return;
+            removed = true;
+
+            DetachFromOwner?.Invoke();
+            DetachFromOwner = null;
+
+            Frame?.Remove();
+            ReleaseOwnedUI();
         }
 
         public UIBox(string name) : base(name)
@@ -1156,6 +1206,24 @@ namespace QB.Controls
 
     public class BoxSignal : UIBox
     {
+        internal override IEnumerable<Control> OwnedUIControls()
+        {
+            return base.OwnedUIControls().Concat(new Control[] { Read });
+        }
+
+        internal override void DetachUIControl(Control control)
+        {
+            base.DetachUIControl(control);
+            if (ReferenceEquals(Read, control)) Read = null;
+        }
+
+        internal override void ReleaseOwnedUI()
+        {
+            Read = null;
+            Target = null;
+            base.ReleaseOwnedUI();
+        }
+
 
         QB.Controls.Box Read;
         string page;
@@ -1462,6 +1530,24 @@ namespace QB.Controls
     }
     public class BoxStringSignal : UIBox
     {
+        internal override IEnumerable<Control> OwnedUIControls()
+        {
+            return base.OwnedUIControls().Concat(new Control[] { Read });
+        }
+
+        internal override void DetachUIControl(Control control)
+        {
+            base.DetachUIControl(control);
+            if (ReferenceEquals(Read, control)) Read = null;
+        }
+
+        internal override void ReleaseOwnedUI()
+        {
+            Read = null;
+            Target = null;
+            base.ReleaseOwnedUI();
+        }
+
 
         QB.Controls.Box Read;
         string page;
@@ -1947,6 +2033,25 @@ namespace QB.Controls
     }
     public class BoxButton : UIBox
     {
+        internal override IEnumerable<Control> OwnedUIControls()
+        {
+            return base.OwnedUIControls().Concat(new Control[] { Read });
+        }
+
+        internal override void DetachUIControl(Control control)
+        {
+            base.DetachUIControl(control);
+            if (ReferenceEquals(Read, control)) Read = null;
+        }
+
+        internal override void ReleaseOwnedUI()
+        {
+            Read = null;
+            OnClick = null;
+            DescriptionText = null;
+            base.ReleaseOwnedUI();
+        }
+
 
         protected QB.Controls.Box Read;
 

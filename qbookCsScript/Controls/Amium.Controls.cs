@@ -1,6 +1,8 @@
 ﻿
 using QB.Controls;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace QB.Amium.Controls
 {
@@ -14,6 +16,30 @@ namespace QB.Amium.Controls
         public Panel TextPanel = null;
         public Log LogPanel = null;
         public Chart Chart = null;
+
+        internal override IEnumerable<Control> OwnedControls()
+        {
+            return base.OwnedControls().Concat(new Control[] { StatusPanel, DataPanel, ControlPanel, NavPanel, TextPanel, MediaPanel, LogPanel, Chart });
+        }
+
+        internal override void DetachControl(Control control)
+        {
+            base.DetachControl(control);
+            if (ReferenceEquals(StatusPanel, control)) StatusPanel = null;
+            if (ReferenceEquals(DataPanel, control)) DataPanel = null;
+            if (ReferenceEquals(ControlPanel, control)) ControlPanel = null;
+            if (ReferenceEquals(NavPanel, control)) NavPanel = null;
+            if (ReferenceEquals(TextPanel, control)) TextPanel = null;
+            if (ReferenceEquals(MediaPanel, control)) MediaPanel = null;
+            if (ReferenceEquals(LogPanel, control)) LogPanel = null;
+            if (ReferenceEquals(Chart, control)) Chart = null;
+        }
+
+        internal override void ReleaseControl(List<Exception> errors)
+        {
+            Buttons.luiView = null;
+            base.ReleaseControl(errors);
+        }
 
         public LuiView(string name) : base(name)
         {
