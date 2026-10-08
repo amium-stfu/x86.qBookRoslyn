@@ -12,6 +12,7 @@ using System.Windows.Input;
 using System.IO;
 using Svg;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 //using Npgsql.Internal;
 //using PdfSharp.Charting;
@@ -33,6 +34,13 @@ namespace QB.Controls
 
         private readonly List<TextBox> editors = new List<TextBox>();
 
+        private sealed class ControlReferenceComparer : IEqualityComparer<Control>
+        {
+            public bool Equals(Control x, Control y) => ReferenceEquals(x, y);
+
+            public int GetHashCode(Control control) => RuntimeHelpers.GetHashCode(control);
+        }
+
         /// <summary>Appends a child box without moving an existing container member.</summary>
         public void Add(Box childBox)
         {
@@ -46,12 +54,11 @@ namespace QB.Controls
             Control[] registered;
             lock (Root.ControlDict) registered = Root.ControlDict.Values.ToArray();
             var pending = new Queue<Control>(registered.Concat(ItemDestroyHandler.Destroyers.ToArray().Select(callback => callback.Target as Control)));
-            var visited = new List<Control>();
+            var visited = new HashSet<Control>(new ControlReferenceComparer());
             while (pending.Count != 0)
             {
                 var container = pending.Dequeue();
-                if (container == null || visited.Any(c => ReferenceEquals(c, container))) continue;
-                visited.Add(container);
+                if (container == null || !visited.Add(container)) continue;
                 var owned = container.OwnedControls().ToArray();
                 if (owned.Any(c => ReferenceEquals(c, childBox)))
                     throw new InvalidOperationException("The child box already belongs to a container.");

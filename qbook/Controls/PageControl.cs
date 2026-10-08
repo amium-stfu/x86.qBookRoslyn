@@ -32,6 +32,66 @@ namespace qbook
         }
 
         public oPage Page;
+        private QB.Controls.Control dialogMouseDown;
+
+        internal void ResetDialogInput()
+        {
+            selectedItem = null;
+            mouseDownControl = dialogMouseDown = null;
+            moveOrEdit = edit = resize = settings = selectOrNew = scratch = button = control = moved = false;
+            Capture = false;
+            Cursor = Cursors.Default;
+            ContextMenuStrip?.Close();
+            lock (QB.Root.ControlDict)
+                foreach (var widget in QB.Root.ControlDict.Values) widget.Hover = false;
+            Invalidate();
+        }
+
+        private bool HandleDialogMouse(MouseEventArgs e, string action)
+        {
+            var dialog = DialogBox.Active;
+            if (dialog == null) return false;
+            Invalidate();
+            Update();
+            var point = new PointF((float)(e.X / MmToPx + (RenderBounds?.X ?? 0)),
+                (float)(e.Y / MmToPx + (RenderBounds?.Y ?? 0)));
+            var target = dialog.HitTest(point);
+            if (action == "down")
+            {
+                dialogMouseDown = e.Button == MouseButtons.Left ? target : null;
+                Focus();
+            }
+            else if (action == "up")
+            {
+                var pressed = dialogMouseDown;
+                dialogMouseDown = null;
+                if (e.Button == MouseButtons.Left && pressed != null && ReferenceEquals(pressed, target))
+                    pressed.RaiseOnClick(point);
+            }
+            else if (action == "wheel") target?.RaiseOnWheel(e.Delta);
+            else if (action == "move")
+            {
+                Cursor = target == null ? Cursors.Default : Cursors.Hand;
+                target?.RaiseOnMove(point.X, point.Y);
+                if (ReferenceEquals(DialogBox.Active, dialog) && dialogMouseDown != null && e.Button == MouseButtons.Left)
+                    dialogMouseDown.Drag(point);
+            }
+            Invalidate();
+            return true;
+        }
+
+        protected override bool ProcessCmdKey(ref System.Windows.Forms.Message msg, Keys keyData)
+        {
+            if (DialogBox.Active != null) return true;
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        protected override void WndProc(ref System.Windows.Forms.Message m)
+        {
+            // Suppress native context menus while the modal layer owns input.
+            if (DialogBox.Active != null && m.Msg == 0x007B) return;
+            base.WndProc(ref m);
+        }
         bool _Popout = false;
         public bool Popout
         {
@@ -64,11 +124,13 @@ namespace qbook
 
         void Form1_DragEnter(object sender, DragEventArgs e)
         {
+            if (DialogBox.Active != null) { e.Effect = DragDropEffects.None; return; }
             if (e.Data.GetDataPresent(DataFormats.FileDrop)) e.Effect = DragDropEffects.Copy;
         }
 
         void Form1_DragDrop(object sender, DragEventArgs e)
         {
+            if (DialogBox.Active != null) return;
             if (!Core.ThisBook.DesignMode)
             {
                 QB.Book.DroppedItems.AddRange((string[])e.Data.GetData(DataFormats.FileDrop));
@@ -223,7 +285,9 @@ namespace qbook
             if (DialogPage != null)
                 Page = DialogPage;
 
-            if (Page == null) //HALE
+            var book = Core.ThisBook;
+            var page = Page;
+            if (page == null || book == null) //HALE
                 return;
 
             //@stfu 2025-06-07 pageFormat
@@ -301,12 +365,13 @@ namespace qbook
                 tag.Render();
             }
 
-            if (Core.ThisBook.Grid > 0)
+            int gridStep = book.Grid;
+            if (gridStep > 0)
             {
-                for (int x = 10; x <= Draw.Width - 7; x += Core.ThisBook.Grid)
+                for (int x = 10; x <= Draw.Width - 7; x += gridStep)
                     Draw.Line(gridLo, x, 20, x, Draw.Height - 10);
 
-                for (int y = 20; y <= Draw.Height - 10; y += Core.ThisBook.Grid)
+                for (int y = 20; y <= Draw.Height - 10; y += gridStep)
                     Draw.Line(gridLo, 10, y, Draw.Width - 7, y);
 
                 for (int x = 10; x <= Draw.Width - 7; x += 10)
@@ -362,9 +427,10 @@ namespace qbook
 
         double toGrid(double value)
         {
-            if (Core.ThisBook.Grid == 0)
+            int grid = Core.ThisBook?.Grid ?? 0;
+            if (grid == 0)
                 return value;
-            return ((int)(value / Core.ThisBook.Grid)) * Core.ThisBook.Grid;
+            return ((int)(value / grid)) * grid;
         }
 
         double MmToPx = 10.0;
@@ -373,7 +439,8 @@ namespace qbook
         
         protected override void OnPaint(PaintEventArgs e)
         {
-            if (Core.ThisBook == null)
+            var book = Core.ThisBook;
+            if (book == null || IsDisposed)
                 return;
 
             if (RenderBounds != null)
@@ -382,17 +449,21 @@ namespace qbook
                 MmToPx = Width / Draw.Width; //Draw.Width = PageA4.With;
 
             Draw.g = e.Graphics;
-            Draw.DesignMode = Core.ThisBook?.DesignMode ?? true;
+            Draw.DesignMode = book.DesignMode;
             base.OnPaint(e);
 
             if (DesignMode)
                 return;
 
             e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-            lock (Core.ThisBook)
+            lock (book)
             {
+                if (!ReferenceEquals(book, Core.ThisBook))
+                    return;
                 Draw.renderBounds = RenderBounds;
                 Render();
+                Draw.renderBounds = RenderBounds;
+                DialogBox.Active?.Render();
             }
         }
 
@@ -467,6 +538,7 @@ namespace qbook
 
         private void PageControl_MouseMove(object sender, MouseEventArgs e)
         {
+            if (HandleDialogMouse(e, "move")) return;
             if (!Popout)
                 Page = Core.SelectedPage;
 
@@ -607,6 +679,7 @@ namespace qbook
 
         private void PageControl_MouseWheel(object sender, System.Windows.Forms.MouseEventArgs e)
         {
+            if (HandleDialogMouse(e, "wheel")) return;
             if (Page != null)
             {
                 var controlUnderCursor = Page.GetControlUnderCursor(new PointF((float)x2, (float)y2), true);
@@ -627,6 +700,7 @@ namespace qbook
 
         private void PageControl_MouseUp(object sender, MouseEventArgs e)
         {
+            if (HandleDialogMouse(e, "up")) return;
             if (!Popout)
                 Page = Core.SelectedPage;
 
@@ -747,6 +821,7 @@ namespace qbook
         }
         private void Page_MouseDown(object sender, MouseEventArgs e)
         {
+            if (HandleDialogMouse(e, "down")) return;
             mouseDownControl = null;
 
             if (!Popout)
@@ -960,6 +1035,7 @@ namespace qbook
         }
         private void PageControl_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
         {
+            if (DialogBox.Active != null) return;
             if (e.Control)
             {
                 e.IsInputKey = true;
@@ -1001,6 +1077,7 @@ namespace qbook
         }
         private void PageControl_KeyDown(object sender, KeyEventArgs e)
         {
+            if (DialogBox.Active != null) { e.Handled = e.SuppressKeyPress = true; return; }
 
             //if (e.Control && e.Shift && e.KeyCode == Keys.S)
             //{

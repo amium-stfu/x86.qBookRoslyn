@@ -1,0 +1,13 @@
+{
+  "id": "2026.10.08.2344-optimize_dialogbox_control_attachment_performance_20261008_2",
+  "title": "Optimize DialogBox Control Attachment Performance - 20261008-234453",
+  "owner_user_id": "StefanFunk",
+  "status": "implemented",
+  "branch": "main",
+  "updated_at": "2026-10-08T23:58:14.4721885+02:00",
+  "progress": "Reference-identity visited set implemented. Worker Build passed. Runtime measurements and UI behavior checks were unavailable.",
+  "next_step": "Review runtime measurement and UI behavior limitations in REPORT or DEBUG.",
+  "planning_ready": false,
+  "ai_mode": false,
+  "validation": true
+}

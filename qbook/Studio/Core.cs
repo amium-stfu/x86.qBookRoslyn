@@ -333,6 +333,7 @@ namespace qbook
             }
             set
             {
+                if (QB.Controls.DialogBox.Active != null) return;
                 var oldPage = ActualMain.Objects.OfType<oPage>().FirstOrDefault(p => p.Selected);
                 foreach (oItem page in ActualMain.Objects.Where(item => item is oPage))
                     page.Selected = false;

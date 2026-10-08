@@ -4,7 +4,7 @@
     "Id": "003f1dc9-651f-4207-b220-312ab8d9aca9",
     "Title": "Control Remove - 20261008-120828",
     "WorkItemPath": ".ai-flow/workitems/2026.10.08.1208-control_remove_20261008_120828",
-    "ExportedAt": "2026-10-08T10:37:46.1796043+00:00",
+    "ExportedAt": "2026-10-08T18:08:10.2107866+00:00",
     "ApplicationVersion": "2026.10.05.2030"
   },
   "Messages": [
@@ -101,6 +101,90 @@
       "CreatedAt": "2026-10-08T10:37:46.1483204+00:00",
       "Role": "Assistant",
       "Text": "Build und Report sind vorhanden und erfolgreich (ExitCode 0, \u00220 Fehler\u0022).\r\n\r\n## Zusammenfassung\r\n\r\n**Urspr\u00FCnglicher Fehler:** Die IMPLEMENT-Arbeit wurde laut Debug-Handoff wegen TokenLimit nie gestartet \u2014 \u0060BoxView.cs\u0060 enthielt keine der geplanten \u00C4nderungen.\r\n\r\n**Korrekturma\u00DFnahmen:**\r\n1. \u0060UIBox\u0060: Felder \u0060DetachFromOwner\u0060 (als \u0060System.Action\u0060, da ein Namenskonflikt mit der projekteigenen Klasse \u0060QB.Action\u0060 besteht) und \u0060removed\u0060 sowie Methode \u0060RemoveControl()\u0060 erg\u00E4nzt (ruft \u0060DetachFromOwner\u0060, \u0060Frame?.Remove()\u0060, \u0060ReleaseOwnedUI()\u0060, idempotent).\r\n2. \u0060BoxView.Add(UIBox box, ...)\u0060: in allen vier Zweigen (\u0060boxList\u0060, \u0060boxTable\u0060, \u0060boxFlowPanel\u0060, Standardfall) die jeweilige \u0060box.DetachFromOwner\u0060-Zuweisung erg\u00E4nzt.\r\n\r\n**Validierung:** MSBuild Release/x86 auf \u0060qbookStudio.sln\u0060, exitCode 0, \u201E0 Fehler\u0022. Erster Durchlauf scheiterte mit CS1660 (Lambda\u2194Action-Konflikt durch gleichnamige Klasse \u0060QB.Action\u0060), behoben durch explizite Qualifikation \u0060System.Action\u0060. Zweiter Durchlauf erfolgreich, Report in \u0060.ai-flow\\BuildReport.txt\u0060 gesichert.\r\n\r\n**Verbleibende Probleme:** Keine. Bestehende Warnungen (449) sind unver\u00E4ndert vorbestehend und nicht durch diese \u00C4nderung verursacht.\r\n\r\n**Annahmen:** Keine \u00FCber den Handoff hinausgehenden; einzige Abweichung von der Spezifikation ist die notwendige Typqualifikation \u0060System.Action\u0060 statt \u0060Action\u0060, um der Projekt-Namenskollision Rechnung zu tragen.",
+      "Attachments": []
+    },
+    {
+      "Id": "c75e8bb4-7f0e-4a6a-85ca-059ad0196104",
+      "CreatedAt": "2026-10-08T17:46:03.6039999+00:00",
+      "Role": "User",
+      "Text": "Was jetzt noch fehlt ist:\u000B{BoxTable}.RemoveControl()\u000B\u000BAlso alle Container Klassen",
+      "Attachments": []
+    },
+    {
+      "Id": "8f959491-c2f3-4c55-b861-31e8ff938040",
+      "CreatedAt": "2026-10-08T17:48:50.4137132+00:00",
+      "Role": "Assistant",
+      "Text": "Die vorherige Umsetzung (\u0060UIBox.RemoveControl()\u0060 \u002B \u0060DetachFromOwner\u0060) ist bereits im Code. Ich sehe aber eine L\u00FCcke: \u0060BoxTable.Add(UIBox box, ...)\u0060 und \u0060BoxFlowPanel.Add(...)\u0060 (der direkte Weg, ohne \u0060BoxView.Add(box, boxTable: ...)\u0060) setzen \u0060DetachFromOwner\u0060 **nicht** \u2013 dort fehlt die Owner-R\u00FCckreferenz komplett. \u0060BoxList\u0060 hat gar keine eigene \u0060Add\u0060-Methode (wird nur \u00FCber \u0060BoxView.Add\u0060 bef\u00FCllt).\r\n\r\nVorschlag f\u00FCr den fehlenden Teil:\r\n\r\n1. **\u0060BoxTable.Add(...)\u0060** und **\u0060BoxFlowPanel.Add(...)\u0060** zus\u00E4tzlich \u0060box.DetachFromOwner = () =\u003E Boxes.Remove(box.Name);\u0060 setzen (analog zu \u0060BoxView.Add\u0060).\r\n2. Jede Container-Klasse (\u0060BoxView\u0060, \u0060BoxList\u0060, \u0060BoxTable\u0060, \u0060BoxFlowPanel\u0060) erh\u00E4lt eine eigene \u0060public void RemoveControl(UIBox box)\u0060, die **delegiert**: \u0060box.RemoveControl();\u0060 (nutzt die bereits vorhandene Infrastruktur \u2013 Frame-Entfernung \u002B Owner-Cleanup via \u0060DetachFromOwner\u0060). F\u00FCr \u0060BoxList\u0060 entsprechend, da \u0060Boxes\u0060 dort ein \u0060Dictionary\u003Cstring, UIBox\u003E\u0060 ist.\r\n\r\nDamit gibt es ein symmetrisches \u0060Add()\u0060/\u0060RemoveControl()\u0060-Paar auf jeder Container-Klasse, ohne die bestehende \u0060DetachFromOwner\u0060-Logik zu duplizieren.\r\n\r\n**Frage:** Passt dieser Ansatz (Container-\u0060RemoveControl(box)\u0060 als d\u00FCnner Delegations-Wrapper auf \u0060box.RemoveControl()\u0060, plus Nachr\u00FCsten von \u0060DetachFromOwner\u0060 in \u0060BoxTable.Add\u0060/\u0060BoxFlowPanel.Add\u0060), oder soll \u0060{Container}.RemoveControl(box)\u0060 stattdessen eigenst\u00E4ndig (ohne R\u00FCckruf auf \u0060box.RemoveControl()\u0060) nur die eigene Collection bereinigen?",
+      "Attachments": []
+    },
+    {
+      "Id": "10aa1a5f-d98a-46c5-9538-e087070b0b2f",
+      "CreatedAt": "2026-10-08T17:54:40.9284628+00:00",
+      "Role": "User",
+      "Text": "Hintergrund ist zb. die Klasse BoxDialogWithParameters, oder BoxDialog.\u000BHier m\u00F6chte ich mit den neuen M\u00F6glichkeiten schaffen dass ich immer nur tempor\u00E4re Dialoge \u00F6ffne.\u000Bentweder per using oder:\u000B   BoxDialogWithParameters edit;\n            Add(edit = new BoxDialogWithParameters(\u0022dialogWithParameters\u0022, position: \u0022center\u0022, w: 100, backColor: BackColor, page: Page, border: 1, borderColor: \u0022Black\u0022));\n...\u000Bedit.RemoveControl()",
+      "Attachments": []
+    },
+    {
+      "Id": "69189897-7dc4-4ccb-b71e-96a572493316",
+      "CreatedAt": "2026-10-08T17:56:00.664436+00:00",
+      "Role": "Assistant",
+      "Text": "Verstanden: \u0060BoxDialogWithParameters : BoxFlowPanel : BoxTable\u0060 ist **kein** \u0060UIBox\u0060 \u2013 deshalb hilft das bereits gebaute \u0060UIBox.RemoveControl()\u0060 hier nicht. \u0060BoxDialog : UIBox\u0060 funktioniert \u00FCber die bestehende L\u00F6sung bereits (\u0060edit.RemoveControl()\u0060 w\u00FCrde dort schon greifen).\r\n\r\n**Konkreter L\u00FCckenbefund f\u00FCr \u0060BoxTable\u0060/\u0060BoxFlowPanel\u0060/\u0060BoxList\u0060:**\r\n- \u0060BoxTable\u0060 hat ein eigenes \u0060Frame\u0060 und ein \u0060Boxes\u0060-Dictionary mit Kind-\u0060UIBox\u0060-Objekten, aber keine \u0060RemoveControl()\u0060 und keine Owner-R\u00FCckreferenz zu \u0060BoxView\u0060.\r\n- \u0060BoxView.Add(object box)\u0060 legt \u0060BoxTable\u0060/\u0060BoxFlowPanel\u0060/\u0060BoxList\u0060-Instanzen nur in eigene \u0060List\u003CT\u003E\u0060 ab (\u0060BoxTables\u0060, \u0060BoxFlowPanels\u0060, \u0060BoxLists\u0060) \u2013 ohne R\u00FCckverkn\u00FCpfung.\r\n\r\n**Vorschlag:**\r\n1. \u0060BoxTable\u0060 (geerbt von \u0060BoxFlowPanel\u0060, \u0060BoxDialogWithParameters\u0060) erh\u00E4lt \u0060internal Action DetachFromOwner\u0060, \u0060removed\u0060-Flag und \u0060public void RemoveControl()\u0060: ruft \u0060DetachFromOwner\u0060, dann f\u00FCr jede Box in \u0060Boxes.Values\u0060 \u0060box.RemoveControl()\u0060, leert \u0060Boxes\u0060, dann \u0060Frame?.Remove(); Frame = null;\u0060.\r\n2. \u0060BoxList\u0060 erh\u00E4lt dieselbe Struktur (ohne \u0060Frame\u0060-Schritt, da \u0060BoxList\u0060 kein eigenes \u0060Frame\u0060 besitzt).\r\n3. \u0060BoxView.Add(object box)\u0060 setzt in den Zweigen \u0060BoxTable\u0060/\u0060BoxFlowPanel\u0060/\u0060BoxList\u0060 die jeweilige \u0060DetachFromOwner\u0060-R\u00FCckreferenz (\u0060BoxTables.Remove(...)\u0060 usw.).\r\n4. Zus\u00E4tzlich: \u0060BoxTable.Add(UIBox,...)\u0060/\u0060BoxFlowPanel.Add(...)\u0060 setzen \u0060box.DetachFromOwner\u0060, damit auch direkt (ohne \u0060BoxView.Add(box, boxTable:...)\u0060) hinzugef\u00FCgte Kind-Boxen sauber sind (unabh\u00E4ngig davon aber bereits durch Schritt 1 abgedeckt, da der Container alle Kinder beim eigenen Entfernen mit entfernt).\r\n\r\n:::questions\r\n{\u0022questions\u0022:[{\u0022id\u0022:\u0022scope_confirm\u0022,\u0022type\u0022:\u0022single_select\u0022,\u0022text\u0022:\u0022Passt dieser Entwurf (RemoveControl() auf BoxTable/BoxFlowPanel/BoxList inkl. Owner-R\u00FCckreferenz aus BoxView.Add(object box)) f\u00FCr den aktuellen Anwendungsfall (tempor\u00E4re Dialoge wie BoxDialogWithParameters)?\u0022,\u0022options\u0022:[\u0022Ja, genau so umsetzen\u0022,\u0022Other\u0022],\u0022required\u0022:true},{\u0022id\u0022:\u0022scope_confirm_other\u0022,\u0022type\u0022:\u0022text\u0022,\u0022text\u0022:\u0022Was soll stattdessen anders umgesetzt werden?\u0022,\u0022required\u0022:true,\u0022visible_when\u0022:{\u0022question_id\u0022:\u0022scope_confirm\u0022,\u0022has_any_of\u0022:[\u0022Other\u0022]}},{\u0022id\u0022:\u0022chart_scope\u0022,\u0022type\u0022:\u0022single_select\u0022,\u0022text\u0022:\u0022Sollen ChartExtended/BoxLogView/BoxProcessLogView (ebenfalls in BoxView.Add(object box) verwaltet) in diesem Schritt dieselbe Owner-R\u00FCckreferenz/RemoveControl() erhalten, oder bleibt das au\u00DFerhalb des Umfangs?\u0022,\u0022options\u0022:[\u0022Au\u00DFerhalb des Umfangs (nur BoxTable/BoxFlowPanel/BoxList)\u0022,\u0022Ja, auch diese drei einbeziehen\u0022],\u0022required\u0022:true},{\u0022id\u0022:\u0022boxview_scope\u0022,\u0022type\u0022:\u0022single_select\u0022,\u0022text\u0022:\u0022Ben\u00F6tigt BoxView selbst (das Seiten-Top-Level-Objekt) ebenfalls eine RemoveControl()-Methode, oder bleibt BoxView au\u00DFerhalb des Umfangs (da es nicht in einen anderen Container eingeh\u00E4ngt wird)?\u0022,\u0022options\u0022:[\u0022BoxView bleibt au\u00DFerhalb des Umfangs\u0022,\u0022Ja, BoxView soll auch RemoveControl() erhalten\u0022],\u0022required\u0022:true}]}\r\n:::endquestions",
+      "Attachments": []
+    },
+    {
+      "Id": "e1d38008-f79f-4172-b379-9ba668bac9a5",
+      "CreatedAt": "2026-10-08T17:57:56.6519969+00:00",
+      "Role": "User",
+      "Text": "Passt dieser Entwurf (RemoveControl() auf BoxTable/BoxFlowPanel/BoxList inkl. Owner-R\u00FCckreferenz aus BoxView.Add(object box)) f\u00FCr den aktuellen Anwendungsfall (tempor\u00E4re Dialoge wie BoxDialogWithParameters)?: Ja, genau so umsetzen\r\nSollen ChartExtended/BoxLogView/BoxProcessLogView (ebenfalls in BoxView.Add(object box) verwaltet) in diesem Schritt dieselbe Owner-R\u00FCckreferenz/RemoveControl() erhalten, oder bleibt das au\u00DFerhalb des Umfangs?: Ja, auch diese drei einbeziehen\r\nBen\u00F6tigt BoxView selbst (das Seiten-Top-Level-Objekt) ebenfalls eine RemoveControl()-Methode, oder bleibt BoxView au\u00DFerhalb des Umfangs (da es nicht in einen anderen Container eingeh\u00E4ngt wird)?: BoxView bleibt au\u00DFerhalb des Umfangs",
+      "Attachments": []
+    },
+    {
+      "Id": "3a35de31-ebdf-4eff-9f64-c23cffdecb2e",
+      "CreatedAt": "2026-10-08T17:59:05.3390395+00:00",
+      "Role": "Assistant",
+      "Text": "Weitere Untersuchung zeigt: \u0060BoxLogView\u0060/\u0060BoxProcessLogView\u0060 und \u0060ChartExtended\u0060 passen nicht 1:1 in das einfache \u0060BoxTable\u0060-Muster \u2013 das \u00E4ndert den Umfang sp\u00FCrbar gegen\u00FCber der vorigen Antwort.\r\n\r\n**Befund:**\r\n- \u0060BoxLogView\u0060 und \u0060BoxProcessLogView\u0060 (beide \u0060: BoxFlowPanel\u0060) haben zus\u00E4tzlich ein eigenst\u00E4ndiges \u0060Navigation\u0060-Box-Objekt (mit \u0060Up\u0060/\u0060Down\u0060/\u0060Last\u0060-Kindern), das **nicht** Teil von \u0060Boxes\u0060 oder \u0060Frame.Children\u0060 ist \u2013 ein geerbtes \u0060BoxTable.RemoveControl()\u0060 w\u00FCrde es nicht entfernen. \u0060BoxProcessLogView\u0060 hat zus\u00E4tzlich Event-Abos (\u0060processLog.EntryAdded\u0060/\u0060DisplaySettingsChanged\u0060), die beim Entfernen abgemeldet werden m\u00FCssten (sonst Leak).\r\n- \u0060ChartExtended\u0060 erbt **nicht** von \u0060BoxTable\u0060/\u0060UIBox\u0060 und hat keine einzelne \u0060Frame\u0060/\u0060Boxes\u0060-Struktur, sondern ca. 20 einzelne \u0060Box\u0060/\u0060Control\u0060-Felder (\u0060yFrame\u0060, \u0060xControl\u0060, \u0060RecordControl\u0060, \u0060f1Hz..f1kHz\u0060, \u0060y1Control..y4Control\u0060, ein eigenes verschachteltes \u0060AxisControl\u0060 (\u0060BoxTable\u0060), \u0060Execute\u0060, \u0060yMin/yMax/yAuto\u0060, ein \u0060Chart\u0060-Objekt usw.). Eine symmetrische \u0060RemoveControl()\u0060 w\u00E4re hier eine eigenst\u00E4ndige, deutlich gr\u00F6\u00DFere Implementierung, kein einfaches Wiederverwenden des Containermusters.\r\n\r\n:::questions\r\n{\u0022questions\u0022:[{\u0022id\u0022:\u0022chart_scope_revised\u0022,\u0022type\u0022:\u0022single_select\u0022,\u0022text\u0022:\u0022Angesichts dieser Komplexit\u00E4t: Soll ChartExtended.RemoveControl() trotzdem in diesem Arbeitspaket bespoke implementiert werden (alle ~20 Felder einzeln entfernen), oder als separates Workitem ausgelagert werden?\u0022,\u0022options\u0022:[\u0022In diesem Arbeitspaket bespoke umsetzen\u0022,\u0022Als separates Workitem auslagern (aus diesem Umfang entfernen)\u0022],\u0022required\u0022:true},{\u0022id\u0022:\u0022logview_hook\u0022,\u0022type\u0022:\u0022single_select\u0022,\u0022text\u0022:\u0022F\u00FCr BoxLogView/BoxProcessLogView: soll RemoveControl() in BoxTable einen virtuellen Erweiterungspunkt bekommen (z.B. protected virtual void ReleaseAdditionalControls()), den beide Klassen \u00FCberschreiben, um Navigation\u002BKinder zu entfernen (und BoxProcessLogView zus\u00E4tzlich die Event-Abos abmeldet)?\u0022,\u0022options\u0022:[\u0022Ja, virtuellen Hook einf\u00FChren\u0022,\u0022Other\u0022],\u0022required\u0022:true},{\u0022id\u0022:\u0022logview_hook_other\u0022,\u0022type\u0022:\u0022text\u0022,\u0022text\u0022:\u0022Wie soll die Navigation-Bereinigung stattdessen gel\u00F6st werden?\u0022,\u0022required\u0022:true,\u0022visible_when\u0022:{\u0022question_id\u0022:\u0022logview_hook\u0022,\u0022has_any_of\u0022:[\u0022Other\u0022]}}]}\r\n:::endquestions",
+      "Attachments": []
+    },
+    {
+      "Id": "14e59c60-b307-42f0-acd9-0a07904f14a5",
+      "CreatedAt": "2026-10-08T18:02:10.9339001+00:00",
+      "Role": "User",
+      "Text": "Um Komplexit\u00E4t raus zu nehmen erstmal nur auf BoxTable beschr\u00E4nken.\u000BAlle relevanten Klassen sind Ableitungen",
+      "Attachments": []
+    },
+    {
+      "Id": "46b41bcf-16f9-43d0-9837-fe041c23e59d",
+      "CreatedAt": "2026-10-08T18:03:06.0846858+00:00",
+      "Role": "Assistant",
+      "Text": "**Scope reduziert \u2013 nur \u0060BoxTable\u0060 (Basisklasse), keine bespoke Behandlung von \u0060BoxList\u0060/\u0060ChartExtended\u0060/Navigation-Spezialf\u00E4llen in dieser Iteration.**\r\n\r\n## Finaler Umfang\r\n\r\n1. **\u0060BoxTable\u0060** (Datei \u0060qbookCsScript/Controls/BoxView.cs\u0060) erh\u00E4lt:\r\n   - \u0060internal System.Action DetachFromOwner;\u0060 (Owner-R\u00FCckreferenz, analog zu \u0060UIBox\u0060)\r\n   - \u0060private bool removed;\u0060 (Idempotenz-Flag)\r\n   - \u0060public void RemoveControl()\u0060: ruft \u0060DetachFromOwner\u0060 (einmalig, dann \u0060null\u0060), iteriert \u00FCber eine Kopie von \u0060Boxes.Values\u0060 und ruft f\u00FCr jede Box \u0060box.RemoveControl()\u0060, leert \u0060Boxes\u0060, ruft \u0060Frame?.Remove(); Frame = null;\u0060.\r\n   - Damit erben \u0060BoxFlowPanel\u0060, \u0060BoxDialogWithParameters\u0060, \u0060BoxLogView\u0060, \u0060BoxProcessLogView\u0060 die Methode automatisch (alle Ableitungen von \u0060BoxTable\u0060).\r\n\r\n2. **\u0060BoxView.Add(object box)\u0060**: In den vier \u0060BoxTable\u0060-abgeleiteten Zweigen (\u0060BoxTable\u0060, \u0060BoxFlowPanel\u0060, \u0060BoxLogView\u0060, \u0060BoxProcessLogView\u0060) wird nach dem jeweiligen \u0060List.Add(...)\u0060 die Owner-R\u00FCckreferenz gesetzt, z. B. \u0060((BoxTable)box).DetachFromOwner = () =\u003E BoxTables.Remove((BoxTable)box);\u0060 (entsprechend f\u00FCr \u0060BoxFlowPanels\u0060/\u0060boxLogViews\u0060/\u0060boxProcessLogViews\u0060). \u0060BoxList\u0060- und \u0060ChartExtended\u0060-Zweig bleiben unver\u00E4ndert (au\u00DFerhalb des Umfangs).\r\n\r\n3. **\u0060BoxTable.Add(UIBox box, ...)\u0060** und **\u0060BoxFlowPanel.Add(...)\u0060** (Override) setzen zus\u00E4tzlich \u0060box.DetachFromOwner = () =\u003E Boxes.Remove(box.Name);\u0060, damit auch direkt (ohne \u0060BoxView.Add(box, boxTable: ...)\u0060) hinzugef\u00FCgte Kind-\u0060UIBox\u0060-Instanzen bei eigenst\u00E4ndigem \u0060box.RemoveControl()\u0060 korrekt aus \u0060Boxes\u0060 entfernt werden.\r\n\r\n**Explizit au\u00DFerhalb des Umfangs (diese Iteration):** \u0060BoxList\u0060, \u0060ChartExtended\u0060, Navigation-Spezialbereinigung in \u0060BoxLogView\u0060/\u0060BoxProcessLogView\u0060 (werden beim Entfernen eines \u0060BoxLogView\u0060/\u0060BoxProcessLogView\u0060 nicht mitbereinigt \u2013 bekannte, akzeptierte L\u00FCcke), \u0060BoxView\u0060 selbst.\r\n\r\nDamit ist z. B. \u0060edit.RemoveControl()\u0060 f\u00FCr \u0060BoxDialogWithParameters edit = new BoxDialogWithParameters(...)\u0060 nach \u0060Add(edit)\u0060 vollst\u00E4ndig funktionsf\u00E4hig: Frame weg, alle Kind-Boxen bereinigt, Eintrag aus \u0060BoxView.BoxFlowPanels\u0060 entfernt.\r\n\r\nKeine offenen materiellen Punkte mehr. **Planungsreife erreicht** \u2013 \u0060PLAN\u0060 kann einen Implementation-Handoff mit Build-Validierung (\u0060msbuild qbookStudio.sln /t:Build /p:Configuration=Release /p:Platform=x86\u0060, bestehender Task \u0060AiFlow Build: qbookStudio\u0060) erstellen.",
+      "Attachments": []
+    },
+    {
+      "Id": "56c5067e-8831-4d83-a797-45bbec2a9131",
+      "CreatedAt": "2026-10-08T18:05:55.6691804+00:00",
+      "Role": "User",
+      "Text": "Wenn Planungsreife bitte die workitem.md schreiben.",
+      "Attachments": []
+    },
+    {
+      "Id": "60d91413-503c-40e7-86e1-176ed5fe727e",
+      "CreatedAt": "2026-10-08T18:06:50.5082093+00:00",
+      "Role": "Assistant",
+      "Text": "\u0060workitem.md\u0060, \u0060workitem.json\u0060 und \u0060status.md\u0060 sind aktualisiert: \u0060status: ready\u0060, \u0060planning_ready: true\u0060. Der Scope-Body in \u0060workitem.md\u0060 enth\u00E4lt jetzt Goal, Acceptance Criteria und Out-of-Scope f\u00FCr \u0060BoxTable.RemoveControl()\u0060. PLAN kann direkt gestartet werden.",
+      "Attachments": []
+    },
+    {
+      "Id": "930e9211-19aa-49d2-a95e-ed34dee18f1e",
+      "CreatedAt": "2026-10-08T18:06:57.2258317+00:00",
+      "Role": "User",
+      "Text": "Plan",
+      "Attachments": []
+    },
+    {
+      "Id": "a0c93ef0-5da7-4958-83a7-dac64fcf278a",
+      "CreatedAt": "2026-10-08T18:08:10.0379349+00:00",
+      "Role": "Assistant",
+      "Text": "Implementation-Handoff erstellt: \u0060.ai-flow/workitems/2026.10.08.1208-control_remove_20261008_120828/handoffs/2026.10.08.1208-implementation-handoff.md\u0060\r\n\r\n**Umfang:** Einzige Datei \u0060qbookCsScript/Controls/BoxView.cs\u0060 \u2014 neue \u0060BoxTable.RemoveControl()\u0060 (Frame-Removal \u002B Kind-Boxen-Cleanup \u002B Owner-Detach, idempotent), Owner-Wiring in \u0060BoxView.Add(object box)\u0060 f\u00FCr die vier \u0060BoxTable\u0060-Ableitungen (\u0060BoxTable\u0060, \u0060BoxFlowPanel\u0060, \u0060BoxLogView\u0060, \u0060BoxProcessLogView\u0060), sowie \u0060DetachFromOwner\u0060-Nachr\u00FCstung in \u0060BoxTable.Add(UIBox,...)\u0060/\u0060BoxFlowPanel.Add(...)\u0060 f\u00FCr direkt hinzugef\u00FCgte Kind-Boxen. \u0060BoxList\u0060, \u0060ChartExtended\u0060, \u0060BoxView\u0060 bewusst unver\u00E4ndert.\r\n\r\n**Validierung:** \u0060Worker Command: Build\u0060, \u0060Worker Target: qbookStudio.sln\u0060 (bestehender Task \u0060AiFlow Build: qbookStudio\u0060), kein Clean. \u0060planning_ready: true\u0060 bleibt erhalten; IMPLEMENT kann direkt gestartet werden.",
       "Attachments": []
     }
   ]

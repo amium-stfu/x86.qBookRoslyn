@@ -155,6 +155,7 @@ namespace QB
 
         public static void ResetObjectDict()
         {
+            Controls.DialogBox.ResetDialogs();
             //do some necessary cleanup (especially timers, callbacks, ...)
             foreach (Item o in ObjectDict.Values.ToList())
             {
@@ -195,6 +196,7 @@ namespace QB
         }
         public static void ResetWidgetDict()
         {
+            Controls.DialogBox.ResetDialogs();
             //do some necessary cleanup (especially timers, callbacks, ...)
             lock (ControlDict)
             {

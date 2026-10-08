@@ -73,6 +73,7 @@ namespace qbook
             _ProgramArgs = args;
             log.Info("qbook Main starting. args=" + string.Join(" ", args));
             InitializeComponent();
+            DialogBox.ActiveChanged += UpdateDialogModality;
             
             _staticStatusLabel = statusLabelStatus;
             _staticMainForm = this;
@@ -145,6 +146,8 @@ namespace qbook
 
         protected override void OnClosed(EventArgs e)
         {
+            DialogBox.ResetDialogs();
+            DialogBox.ActiveChanged -= UpdateDialogModality;
             base.OnClosed(e);
             if (Instance == this)
                 Instance = null;
@@ -153,6 +156,71 @@ namespace qbook
         public PageControl GetPageControl()
         {
             return pageControl;
+        }
+
+        private readonly Dictionary<System.Windows.Forms.Control, bool> dialogEnabledStates = new Dictionary<System.Windows.Forms.Control, bool>();
+        private readonly Dictionary<System.Windows.Forms.Control, bool> dialogVisibleStates = new Dictionary<System.Windows.Forms.Control, bool>();
+        private DialogBox displayedDialog;
+
+        private void UpdateDialogModality()
+        {
+            if (IsDisposed) return;
+            if (InvokeRequired) { Invoke((System.Action)UpdateDialogModality); return; }
+            pageControl.ResetDialogInput();
+            if (DialogBox.Active != null)
+            {
+                displayedDialog = DialogBox.Active;
+                DisableDialogBackground(this);
+                pageControl.Focus();
+            }
+            else
+            {
+                // In-place Box editors are hosted by the form, outside the painted tree.
+                foreach (var editor in Controls.Cast<System.Windows.Forms.Control>().Where(c =>
+                    c.Tag is QB.Controls.Control widget && displayedDialog != null && displayedDialog.Owns(widget)).ToArray())
+                    editor.Dispose();
+                displayedDialog = null;
+                foreach (var state in dialogEnabledStates)
+                    if (!state.Key.IsDisposed) state.Key.Enabled = state.Value;
+                foreach (var state in dialogVisibleStates)
+                    if (!state.Key.IsDisposed) state.Key.Visible = state.Value;
+                dialogEnabledStates.Clear();
+                dialogVisibleStates.Clear();
+            }
+            pageControl.Invalidate();
+        }
+
+        private void DisableDialogBackground(System.Windows.Forms.Control parent)
+        {
+            foreach (System.Windows.Forms.Control child in parent.Controls)
+            {
+                if (ReferenceEquals(child, pageControl) || child.Contains(pageControl))
+                {
+                    DisableDialogBackground(child);
+                    continue;
+                }
+                dialogEnabledStates[child] = child.Enabled;
+                child.Enabled = false;
+                if (ReferenceEquals(parent, pageControl) || child.Tag is QB.Controls.Control)
+                {
+                    dialogVisibleStates[child] = child.Visible;
+                    child.Visible = false;
+                }
+                if (child is ToolStrip strip)
+                    foreach (var item in strip.Items.OfType<ToolStripDropDownItem>()) item.HideDropDown();
+            }
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (DialogBox.Active != null)
+            {
+                // Keep native dialog editors usable without invoking main-window shortcuts.
+                if (ActiveControl?.Tag is QB.Controls.Control widget && DialogBox.Active.Owns(widget))
+                    return false;
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         void hideButtonText()
@@ -1168,6 +1236,7 @@ namespace qbook
 
         void PageSelect(object sender)
         {
+            if (DialogBox.Active != null) return;
             if (qbook.Core.SelectedPage == (sender as oIcon).Parent as oPage)
             {
                 (sender as oIcon).Parent.Selected = false;
@@ -1204,6 +1273,7 @@ namespace qbook
         }
         private void MainForm_MouseDown(object sender, MouseEventArgs e)
         {
+            if (DialogBox.Active != null) return;
             //if (e.Button == MouseButtons.Right)
             //{
 
@@ -1445,6 +1515,7 @@ namespace qbook
 
         private void MainForm_KeyDown(object sender, KeyEventArgs e)
         {
+            if (DialogBox.Active != null) return;
             if (e.KeyCode == Keys.F11)
             {
                 toggleFullScreen();
@@ -2268,6 +2339,7 @@ namespace qbook
         FullScreenMenu menuFullscreen;
         private void MainForm_MouseMove(object sender, MouseEventArgs e)
         {
+            if (DialogBox.Active != null) return;
 
             if (!isFullScreen) return;
 
@@ -2297,6 +2369,7 @@ namespace qbook
 
         private void pageControl_MouseMove(object sender, MouseEventArgs e)
         {
+            if (DialogBox.Active != null) return;
             if (menuFullscreen == null) return;
 
             if (e.Y > 60)

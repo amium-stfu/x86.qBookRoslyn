@@ -1,0 +1,13 @@
+{
+  "id": "2026.10.08.2132-dialogbox_20261008_213253",
+  "title": "DialogBox - 20261008-213253",
+  "owner_user_id": "StefanFunk",
+  "status": "failed",
+  "branch": "main",
+  "updated_at": "2026-10-08T19:52:13.2895500+00:00",
+  "progress": "DialogBox source changes applied; Worker Build failed in the existing PostBuild xcopy step (sharing violation).",
+  "next_step": "Resolve the PostBuild sharing violation through DEBUG or a new PLAN.",
+  "planning_ready": false,
+  "ai_mode": false,
+  "validation": true
+}

@@ -69,10 +69,12 @@ namespace QB.Controls
             else if (box is BoxTable)
             {
                 BoxTables.Add((BoxTable)box);
+                ((BoxTable)box).DetachFromOwner = () => BoxTables.Remove((BoxTable)box);
             }
             else if (box is BoxFlowPanel)
             {
                 BoxFlowPanels.Add((BoxFlowPanel)box);
+                ((BoxFlowPanel)box).DetachFromOwner = () => BoxFlowPanels.Remove((BoxFlowPanel)box);
             }
             else if (box is BoxList)
             {
@@ -85,11 +87,13 @@ namespace QB.Controls
             else if (box is BoxLogView)
             {
                 boxLogViews.Add((BoxLogView)box);
+                ((BoxLogView)box).DetachFromOwner = () => boxLogViews.Remove((BoxLogView)box);
 
             }
             else if (box is BoxProcessLogView)
             {
                 boxProcessLogViews.Add((BoxProcessLogView)box);
+                ((BoxProcessLogView)box).DetachFromOwner = () => boxProcessLogViews.Remove((BoxProcessLogView)box);
             }
         }
 
@@ -207,6 +211,205 @@ namespace QB.Controls
 
         }
     }
+    /// <summary>A reusable, page-independent modal container. Layout values use page units.</summary>
+    public sealed class DialogBox : Item
+    {
+        private static readonly List<DialogBox> dialogs = new List<DialogBox>();
+        private readonly List<UIBox> contents = new List<UIBox>();
+        private readonly Box frame;
+        private bool removed;
+        public static DialogBox Active { get; private set; }
+        public static event System.Action ActiveChanged;
+
+        public DialogBox(string name, double x = 40, double y = 30, double w = 180, double h = 100)
+            : base(name)
+        {
+            frame = new Box(name + ".dialog", x: x, y: y, w: w, h: h, style: "bg:White")
+            {
+                Directory = "$dialog/" + Guid.NewGuid().ToString("N"),
+                Visible = false
+            };
+            dialogs.Add(this);
+        }
+
+        private static void OnUIThread(System.Action action)
+        {
+            var host = Application.OpenForms.Cast<Form>().FirstOrDefault();
+            if (host != null && host.InvokeRequired) host.Invoke(action);
+            else action();
+        }
+
+        public void Add(UIBox box, double x = 0, double y = 0, double w = 50, double h = 15)
+        {
+          //  var sw = Stopwatch.StartNew();
+
+            OnUIThread(() =>
+            {
+                if (removed) throw new InvalidOperationException("The dialog has been removed.");
+                if (box == null) throw new ArgumentNullException(nameof(box));
+                if (box.DetachFromOwner != null || box.Frame != null)
+                    throw new InvalidOperationException("Dialog contents must be unattached UIBox instances without a page.");
+                box.Page = frame.Directory;
+                box.X = x;
+                box.Y = y;
+                box.W = w;
+                box.H = h;
+                box.Create();
+                //QB.Logger.Info($"DialogBox.Add Create [{box.Name}]: {sw.ElapsedMilliseconds} ms");
+                //sw.Restart();
+                if (box.Frame == null) throw new InvalidOperationException("The UIBox did not create a frame.");
+                frame.Add(box.Frame);
+              //  QB.Logger.Info($"DialogBox.Add Attach [{box.Name}]: {sw.ElapsedMilliseconds} ms");
+                
+                contents.Add(box);
+                box.DetachFromOwner = () => contents.Remove(box);
+              
+
+            });
+        }
+
+        public bool Show()
+        {
+            bool opened = false;
+            OnUIThread(() =>
+            {
+                if (removed || Active != null) return;
+                Active = this;
+                frame.Visible = true;
+                try { ActiveChanged?.Invoke(); opened = true; }
+                catch { Close(); throw; }
+            });
+            return opened;
+        }
+
+        internal void Configure(double x, double y, double w, double h, string header, object backColor, double border, object borderColor)
+        {
+            OnUIThread(() =>
+            {
+                if (removed) throw new InvalidOperationException("The dialog has been removed.");
+                frame.Left = x;
+                frame.Top = y;
+                frame.Width = w;
+                frame.Height = h;
+                frame.Text = header ?? string.Empty;
+                frame.TextAlignment = ContentAlignment.TopLeft;
+                frame.BackgroundColor = (backColor ?? "White").ToColor();
+                var color = (borderColor ?? "gray").ToColor();
+                frame.BorderBWidth = border;
+                frame.BorderTWidth = border;
+                frame.BorderLWidth = border;
+                frame.BorderRWidth = border;
+                frame.BorderBColor = color;
+                frame.BorderTColor = color;
+                frame.BorderLColor = color;
+                frame.BorderRColor = color;
+            });
+        }
+
+        public void Close()
+        {
+            OnUIThread(() =>
+            {
+                frame.Visible = false;
+                foreach (var control in Controls()) control.Hover = false;
+                if (!ReferenceEquals(Active, this)) return;
+                Active = null;
+                ActiveChanged?.Invoke();
+            });
+        }
+
+        private Control[] Controls()
+        {
+            var controls = new List<Control> { frame };
+            frame.IterateOverChildren(controls.Add);
+            return controls.Where(c => !c.IsRemoved).OrderBy(c => c.ZOrder).ToArray();
+        }
+
+        public bool Owns(Control control)
+        {
+            for (var current = control; current != null; current = current.Parent)
+                if (ReferenceEquals(current, frame)) return true;
+            return false;
+        }
+
+        // Render and hit-test the same ordered tree, including each child's visibility.
+        public void Render()
+        {
+            if (!ReferenceEquals(Active, this)) return;
+            frame.InvalidateBounds();
+            foreach (var box in Controls().OfType<Box>().Where(c => c.IsVisible()))
+            {
+                var children = box.Boxes;
+                try { box.Boxes = null; box.Render(null); }
+                finally { box.Boxes = children; }
+            }
+        }
+
+        public Control HitTest(System.Drawing.PointF point)
+        {
+            if (!ReferenceEquals(Active, this)) return null;
+            var controls = Controls();
+            foreach (var control in controls)
+            {
+                control.Hover = control.IsVisible() && control.Bounds.Contains(point.X, point.Y);
+            }
+            return controls.Reverse().FirstOrDefault(c => c.Hover && c.Clickable && c.Enabled);
+        }
+
+        public void RemoveControl()
+        {
+            OnUIThread(() =>
+            {
+                if (removed) return;
+                removed = true;
+                var errors = new List<Exception>();
+                var contentSnapshot = contents.ToArray();
+                try
+                {
+                    try { frame.Remove(); }
+                    catch (Exception error) { errors.Add(error); }
+
+                    foreach (var box in contentSnapshot)
+                    {
+                        try { box.RemoveControl(); }
+                        catch (Exception error)
+                        {
+                            errors.Add(error);
+                            try { box.ReleaseOwnedUI(); }
+                            catch (Exception releaseError) { errors.Add(releaseError); }
+                        }
+                    }
+                }
+                finally
+                {
+                    try { contents.Clear(); }
+                    catch (Exception error) { errors.Add(error); }
+                    try { dialogs.Remove(this); }
+                    catch (Exception error) { errors.Add(error); }
+                    try { UnregisterObject(); }
+                    catch (Exception error) { errors.Add(error); }
+                    try { Close(); }
+                    catch (Exception error) { errors.Add(error); }
+                }
+                if (errors.Count != 0) throw new AggregateException("Dialog cleanup failed.", errors);
+            });
+        }
+
+        public override void Destroy() { RemoveControl(); }
+
+        public static void ResetDialogs()
+        {
+            OnUIThread(() =>
+            {
+                foreach (var dialog in dialogs.ToArray())
+                {
+                    try { dialog.RemoveControl(); }
+                    catch (Exception error) { QB.Logger.Error("Dialog cleanup failed: " + error.Message); }
+                }
+            });
+        }
+    }
+
     public class UIBox : Item
     {
 
@@ -574,6 +777,32 @@ namespace QB.Controls
             BackColor = color.ToColor();
             Frame.BackgroundColor = BackColor;
         }
+        internal System.Action DetachFromOwner;
+        private bool removed;
+
+        /// <summary>
+        /// Removes the complete control tree of this container and all currently contained child boxes,
+        /// and detaches it from its owner collection if it was added via <see cref="BoxView.Add(object)"/>.
+        /// Calling this method more than once has no effect.
+        /// </summary>
+        public void RemoveControl()
+        {
+            if (removed) return;
+            removed = true;
+
+            DetachFromOwner?.Invoke();
+            DetachFromOwner = null;
+
+            foreach (UIBox box in Boxes.Values.ToList())
+            {
+                box.RemoveControl();
+            }
+            Boxes.Clear();
+
+            Frame?.Remove();
+            Frame = null;
+        }
+
         public virtual void Add(UIBox box, int column = 1, int row = 1, int columnSpan = 1, int rowSpan = 1)
         {
             box.Page = Page;
@@ -583,6 +812,7 @@ namespace QB.Controls
             box.H =cellH * rowSpan - 2 *Gap;
             box.Create();
             Boxes.Add(box.Name, box);
+            box.DetachFromOwner = () => Boxes.Remove(box.Name);
             box.Directory = Page;
         }
 
@@ -616,6 +846,7 @@ namespace QB.Controls
 
             Box.Create();
             Boxes.Add(Box.Name, Box);
+            Box.DetachFromOwner = () => Boxes.Remove(Box.Name);
 
         }
     }
@@ -1201,6 +1432,418 @@ namespace QB.Controls
             });
         }
 
+    }
+
+    /// <summary>A reusable parameter dialog that is independent of a page.</summary>
+    public class DialogWithParameters
+    {
+        private readonly DialogBox dialog;
+        private readonly double x;
+        private readonly double y;
+        private readonly string position;
+        private readonly double gap;
+        private readonly Color backColor;
+        private readonly double border;
+        private readonly Color borderColor;
+        private readonly int parameterCapacity;
+        private readonly List<BoxParameterObject> parameterBoxes = new List<BoxParameterObject>();
+        private readonly string header;
+        private readonly double rowHeight;
+        private readonly double width;
+        private BoxButton okButton;
+        private BoxButton cancelButton;
+        private bool contentsCreated;
+        private bool closed;
+        private bool showing;
+
+        public System.Action OkAction { get; set; }
+        public System.Action CancelAction { get; set; }
+        public bool UserDone { get; private set; }
+        public bool Cancel { get; private set; }
+        public Dictionary<object, BoxParameterStyle> Parameters { get; set; } = new Dictionary<object, BoxParameterStyle>();
+
+        public DialogWithParameters(string name, string header, double w, double rowHeight = 10, int rows = 20,
+            double x = double.NaN, double y = double.NaN, string position = null, double gap = 0.2,
+            object backColor = null, double border = 0, object borderColor = null,
+            System.Action okAction = null, System.Action cancelAction = null)
+        {
+            this.header = header;
+            this.rowHeight = rowHeight;
+            width = w;
+            this.x = double.IsNaN(x) ? 0 : x;
+            this.y = double.IsNaN(y) ? 0 : y;
+            this.position = position;
+            this.gap = gap;
+            this.backColor = (backColor ?? "transparent").ToColor();
+            this.border = border;
+            this.borderColor = (borderColor ?? "gray").ToColor();
+            parameterCapacity = Math.Max(0, rows - 2);
+            dialog = new DialogBox(name, x: this.x, y: this.y, w: w, h: rowHeight * 3 + 4);
+            OkAction = okAction;
+            CancelAction = cancelAction;
+        }
+
+        private void CreateContents()
+        {
+            if (contentsCreated) return;
+            int parameterCount = Math.Min(Parameters?.Count ?? 0, parameterCapacity);
+            for (int i = 0; i < parameterCount; i++)
+            {
+                var box = new BoxParameterObject("p" + i, locked: false, backColor: backColor.ChangeBrightness(-20));
+                dialog.Add(box);
+                box.Visible = false;
+                parameterBoxes.Add(box);
+            }
+            okButton = new BoxButton("ok", id:"", description: "    Apply", icon: "fa:check", backColor: "#9bcd9b",
+                onClick: _ => ClickOk());
+            dialog.Add(okButton);
+            cancelButton = new BoxButton("cancel",id:"", description: "    Cancel", icon: "fa:xmark", backColor: "tomato",
+                onClick: _ => ClickCancel());
+            dialog.Add(cancelButton);
+            contentsCreated = true;
+        }
+
+        private void ClickOk()
+        {
+            UserDone = true;
+            Cancel = false;
+            try { OkAction?.Invoke(); }
+            finally { Close(); }
+        }
+
+        private void ClickCancel()
+        {
+            UserDone = true;
+            Cancel = true;
+            try { CancelAction?.Invoke(); }
+            finally { Close(); }
+        }
+
+        private void UpdateLayout()
+        {
+          //  var sw = Stopwatch.StartNew();
+
+            CreateContents();
+            //QB.Logger.Info($"CreateContents: {sw.ElapsedMilliseconds} ms");
+            //sw.Restart();
+
+            int count = Parameters?.Count ?? 0;
+            int visibleCount = Math.Min(count, parameterBoxes.Count);
+            double h = rowHeight * (count + 3) + 4;
+            double left = x;
+            double top = y;
+            if (position != null)
+            {
+                switch (position.ToLowerInvariant())
+                {
+                    case "center": left = (300 - width) / 2; top = (200 - h) / 2; break;
+                    case "left": left = 0; break;
+                    case "right": left = 300 - width; break;
+                }
+            }
+            dialog.Configure(left, top, width, h, header, backColor, border, borderColor);
+            int i = 0;
+            //QB.Logger.Info($"Configure: {sw.ElapsedMilliseconds} ms");
+            //sw.Restart();
+
+            foreach (var parameter in Parameters ?? new Dictionary<object, BoxParameterStyle>())
+            {
+                float fontSize = (float)rowHeight;
+                Font font = new Font("Tahoma", fontSize, FontStyle.Regular);
+
+              
+
+                if (i >= visibleCount) break;
+                var box = parameterBoxes[i];
+                box.ParameterName.Font = font;
+                box.ParameterRead.Font = font;
+                box.ParameterText.Font = font;
+                box.ParameterUnit.Font = font;
+                box.ParameterLed.Top = rowHeight * 0.25;
+                box.ParameterLed.Height = rowHeight * 0.5;
+                box.ParameterLed.Width = rowHeight * 0.5;
+                box.ParameterText.Top = rowHeight * 0.25;
+                box.ParameterText.Height = rowHeight * 0.5;
+                box.SetParameter(parameter.Key, parameter.Value);
+                box.X = 2;
+                box.Y = rowHeight * (i + 2) + gap;
+                box.W = width - 4;
+                box.H = rowHeight - 2 * gap;
+                box.Frame.Left = box.X;
+                box.Frame.Top = box.Y;
+                box.Frame.Width = box.W;
+                box.Frame.Height = box.H;
+                box.Visible = true;
+                i++;
+            }
+            //QB.Logger.Info($"Parameters: {sw.ElapsedMilliseconds} ms");
+            //sw.Restart();
+
+            for (; i < parameterBoxes.Count; i++) parameterBoxes[i].Visible = false;
+            double buttonY = rowHeight * (count + 2) + gap + 2;
+            double buttonW = width / 2 - 4;
+            PositionButton(okButton, 2, buttonY, buttonW, rowHeight);
+            PositionButton(cancelButton, width / 2 + 2, buttonY, buttonW, rowHeight);
+            //QB.Logger.Info($"Buttons: {sw.ElapsedMilliseconds} ms");
+            //sw.Stop();
+        }
+
+        private static void PositionButton(BoxButton button, double left, double top, double w, double h)
+        {
+            button.X = left; button.Y = top; button.W = w; button.H = h;
+            button.Frame.Left = left; button.Frame.Top = top; button.Frame.Width = w; button.Frame.Height = h;
+            button.State.Height = h * 0.8; button.State.Width = h * 0.8; button.State.Top = h * 0.1;
+            button.Description.Height = h * 0.8; button.Description.Left = h * 0.8; button.Description.Top = h * 0.1;
+        }
+
+        public void Show()
+        {
+            if (closed || showing || DialogBox.Active != null) return;
+            UpdateLayout();
+            if (dialog.Show()) showing = true;
+        }
+
+        public void Close()
+        {
+            if (closed) return;
+            closed = true;
+            showing = false;
+            try { dialog.RemoveControl(); }
+            finally
+            {
+                parameterBoxes.Clear();
+                okButton = null;
+                cancelButton = null;
+                contentsCreated = false;
+                OkAction = null;
+                CancelAction = null;
+            }
+        }
+
+        public void RemoveControl() { Close(); }
+        public void Destroy() { RemoveControl(); }
+    }
+
+    public sealed class DialogWithText
+    {
+        private readonly DialogBox dialog;
+        private readonly double x;
+        private readonly double y;
+        private readonly string position;
+        private readonly Color backColor;
+        private readonly double border;
+        private readonly Color borderColor;
+        private readonly TextItem headerBox;
+        private readonly TextItem textBox;
+        private readonly BoxButton okButton;
+        private readonly BoxButton cancelButton;
+
+        private bool closed;
+        private bool showing;
+
+        public System.Action OkAction { get; set; }
+        public System.Action CancelAction { get; set; }
+        public bool UserDone { get; private set; }
+        public bool Cancel { get; private set; }
+        public bool? Result { get; private set; }
+        public bool Ok => Result == true;
+
+        public DialogWithText(
+            string name,
+            double x = double.NaN,
+            double y = double.NaN,
+            double w = double.NaN,
+            double h = double.NaN,
+            string position = null,
+            object backColor = null,
+            double border = 0,
+            object borderColor = null,
+            System.Action okAction = null,
+            System.Action cancelAction = null)
+        {
+            this.x = double.IsNaN(x) ? 0 : x;
+            this.y = double.IsNaN(y) ? 0 : y;
+            this.position = position;
+            this.backColor = (backColor ?? "transparent").ToColor();
+            this.border = border;
+            this.borderColor = (borderColor ?? "gray").ToColor();
+            OkAction = okAction;
+            CancelAction = cancelAction;
+
+            dialog = new DialogBox(
+                name,
+                x: this.x,
+                y: this.y,
+                w: double.IsNaN(w) ? 150 : w,
+                h: double.IsNaN(h) ? 80 : h);
+
+            headerBox = new TextItem("Header", bold: true);
+            textBox = new TextItem("Text", bold: false);
+            dialog.Add(headerBox);
+            dialog.Add(textBox);
+
+            okButton = new BoxButton(
+                "ok", id: "", description: "Ok", icon: "fa:check",
+                backColor: "#9bcd9b", onClick: _ => ClickOk());
+            cancelButton = new BoxButton(
+                "cancel", id: "", description: "Cancel", icon: "fa:xmark",
+                backColor: "tomato", onClick: _ => ClickCancel());
+            dialog.Add(okButton);
+            dialog.Add(cancelButton);
+        }
+
+        public void Show(
+            string header,
+            string text,
+            string okText = "Ok",
+            string cancelText = "Cancel",
+            double h = 80,
+            double w = 150,
+            double fontSize = 12)
+        {
+            if (closed || showing || DialogBox.Active != null)
+                return;
+
+            if (fontSize <= 0 || w <= 8)
+                throw new ArgumentOutOfRangeException(nameof(fontSize), "Font size and dialog width must be positive.");
+
+            // Match BoxDialog's line-based sizing; its h parameter is overridden by this layout.
+            double headerH = CountLines(header) * fontSize * 0.55;
+            double textH = CountLines(text) * fontSize * 0.55;
+            double buttonY = 2 + headerH + 4 + textH + 1;
+            double dialogH = buttonY + 15;
+
+            double left = x;
+            double top = y;
+            switch (position?.ToLowerInvariant())
+            {
+                case "center":
+                    left = (300 - w) / 2;
+                    top = (200 - dialogH) / 2;
+                    break;
+                case "left":
+                    left = 0;
+                    break;
+                case "right":
+                    left = 300 - w;
+                    break;
+            }
+
+            headerBox.SetText(header ?? string.Empty, (float)(fontSize * 1.2), FontStyle.Bold);
+            Position(headerBox, 2, 2, w - 4, headerH);
+            textBox.SetText(text ?? string.Empty, (float)fontSize, FontStyle.Regular);
+            Position(textBox, 2, headerH + 4, w - 4, textH);
+
+            // A missing cancel label means a one-button acknowledgement dialog.
+            bool hasCancel = cancelText != null;
+            okButton.Description.Text = okText ?? "Ok";
+            cancelButton.Description.Text = cancelText ?? string.Empty;
+            PositionButton(okButton, 2, buttonY, hasCancel ? w / 2 - 4 : w - 4, 12, (float)fontSize);
+            PositionButton(cancelButton, w / 2 + 2, buttonY, w / 2 - 4, 12, (float)fontSize);
+            cancelButton.Visible = hasCancel;
+            cancelButton.Frame.Clickable = hasCancel;
+            cancelButton.Description.Clickable = hasCancel;
+            cancelButton.State.Clickable = hasCancel;
+
+            // The header is drawn by headerBox, not by the DialogBox frame.
+            dialog.Configure(left, top, w, dialogH, string.Empty, backColor, border, borderColor);
+            UserDone = false;
+            Cancel = false;
+            Result = null;
+            if (dialog.Show())
+                showing = true;
+        }
+
+        private static int CountLines(string value)
+        {
+            return Math.Max(1, Regex.Matches(value ?? string.Empty, @"\r\n|\n|\r").Count + 1);
+        }
+
+        private static void Position(UIBox box, double left, double top, double width, double height)
+        {
+            box.X = left;
+            box.Y = top;
+            box.W = width;
+            box.H = height;
+            box.Frame.Left = left;
+            box.Frame.Top = top;
+            box.Frame.Width = width;
+            box.Frame.Height = height;
+        }
+
+        private static void PositionButton(BoxButton button, double left, double top, double width, double height, float fontSize)
+        {
+            Position(button, left, top, width, height);
+            double iconSize = height * 0.6;
+            button.State.Left = height * 0.2;
+            button.State.Top = (height - iconSize) / 2;
+            button.State.Width = iconSize;
+            button.State.Height = iconSize;
+            button.Description.Left = height * 0.9;
+            button.Description.Top = (height - iconSize) / 2;
+            button.Description.Width = width - height - 2;
+            button.Description.Height = height - (height - iconSize) / 2;
+            button.Description.Font = new Font("Tahoma", fontSize, FontStyle.Regular);
+            button.Description.TextAlignment = ContentAlignment.MiddleLeft;
+        }
+
+        private void ClickOk()
+        {
+            if (UserDone || closed) return;
+            UserDone = true;
+            Cancel = false;
+            Result = true;
+            try { OkAction?.Invoke(); }
+            finally { Close(); }
+        }
+
+        private void ClickCancel()
+        {
+            if (UserDone || closed) return;
+            UserDone = true;
+            Cancel = true;
+            Result = false;
+            try { CancelAction?.Invoke(); }
+            finally { Close(); }
+        }
+
+        public void Close()
+        {
+            if (closed) return;
+            closed = true;
+            showing = false;
+            dialog.RemoveControl();
+            OkAction = null;
+            CancelAction = null;
+        }
+
+        public void RemoveControl() { Close(); }
+        public void Destroy() { Close(); }
+
+        private sealed class TextItem : UIBox
+        {
+            private readonly bool bold;
+
+            public TextItem(string name, bool bold) : base(name)
+            {
+                this.bold = bold;
+            }
+
+            public override void Create()
+            {
+                Frame = new Box(Name, text: string.Empty, x: X, y: Y, w: W, h: H,
+                    style: bold ? "align:tl,bg:transparent" : "align:tl,bg:white");
+                Frame.Directory = Page;
+                Frame.Clickable = false;
+                Frame.TextAlignment = ContentAlignment.TopLeft;
+            }
+
+            public void SetText(string value, float fontSize, FontStyle style)
+            {
+                Frame.Text = value;
+                Frame.Font = new Font("Tahoma", fontSize, style);
+            }
+        }
     }
 
 
