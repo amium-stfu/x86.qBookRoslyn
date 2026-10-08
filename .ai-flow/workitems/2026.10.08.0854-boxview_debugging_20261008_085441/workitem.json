@@ -1,0 +1,13 @@
+{
+  "id": "2026.10.08.0854-boxview_debugging_20261008_085441",
+  "title": "BoxView Debugging - 20261008-085441",
+  "owner_user_id": "StefanFunk",
+  "status": "implemented",
+  "branch": "main",
+  "updated_at": "2026-10-08T08:20:57.0311331+00:00",
+  "progress": "Composed-control page assignments and BoxModule locking corrected; Worker Release-x86 Build passed.",
+  "next_step": "Runtime acceptance checks remain unexecuted; DEBUG or REPORT is available.",
+  "planning_ready": false,
+  "ai_mode": false,
+  "validation": true
+}

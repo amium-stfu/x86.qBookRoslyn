@@ -109,7 +109,7 @@ namespace qbook
 
             foreach (var control in controls)
             {
-                control.Hover = control.Bounds.Contains(point.X, point.Y);
+                control.Hover = control.IsVisible() && control.Bounds.Contains(point.X, point.Y);
                 //  if (control.Hover) //&& (c.type == ComponentType.Button))
                 //    return control;
             }

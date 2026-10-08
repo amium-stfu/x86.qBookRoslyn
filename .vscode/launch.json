@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "AiFlow Launch: qbook",
+      "type": "clr",
+      "request": "launch",
+      "program": "${workspaceFolder}/qbook/bin/x86/Release/qbookStudio.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/qbook/bin/x86/Release",
+      "_aiFlow": {
+        "owner": "AiFlow",
+        "path": "qbook/qbook.csproj",
+        "targetType": "Project",
+        "action": "Launch"
+      }
+    }
+  ]
+}

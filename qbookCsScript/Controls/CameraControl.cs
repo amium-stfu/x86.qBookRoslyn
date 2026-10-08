@@ -76,6 +76,15 @@ namespace QB.Controls
 
             OnVisibilityChanged += (s, e) =>
             {
+                if (Visible)
+                {
+                    if (_startRequested) StartCamera();
+                }
+                else if (init)
+                {
+                    StopCamera();
+                }
+
                 if(_btnMenu == null) return;
                 if (Visible)
                 {
@@ -111,9 +120,12 @@ namespace QB.Controls
         public void TakeSnapShoot() => SaveFrames = true;
 
         bool init = false;
+        bool _startRequested = false;
+
         public void StartCamera()
         {
-            if (init) return;
+            _startRequested = true;
+            if (init || !Visible) return;
 
             if (videoSource != null && videoSource.IsRunning)
             {

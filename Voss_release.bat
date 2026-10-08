@@ -1,1 +1,1 @@
-powershell.exe -NoExit -NoProfile -ExecutionPolicy Bypass -File .\qbook\release.ps1
+powershell.exe -NoExit -NoProfile -ExecutionPolicy Bypass -File .\build\release\release.ps1

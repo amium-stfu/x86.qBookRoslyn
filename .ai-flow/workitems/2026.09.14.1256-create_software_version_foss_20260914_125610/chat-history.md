@@ -2,7 +2,7 @@
 
 - Session Title: Create Software Version FOSS - 20260914-125610
 - Session Id: 4f9a045f-ade3-45d5-b11d-c2403ec5483f
-- Exported At: 2026-09-18T10:13:41.0183198+00:00
+- Exported At: 2026-09-23T12:11:16.6157804+00:00
 - WorkItem Path: .ai-flow/workitems/2026.09.14.1256-create_software_version_foss_20260914_125610
 
 ## 2026-09-14T10:56:11.0307502+00:00 | User | dac001ff-2b43-47a8-9667-16f5021d3ac1
@@ -1367,3 +1367,852 @@ Implement with claude-sonnet-5 • Medium
 ## 2026-09-18T10:13:40.9134196+00:00 | Assistant | 888785f3-7a10-4780-8ecf-eade2c3deb82
 
 Validation passed against the approved baseline fingerprint — the new SHA-256 implementation produces identical hashes to `Get-FileHash`. Change is complete and verified.
+
+
+## 2026-09-18T10:22:39.1617877+00:00 | User | 1c0f42c9-35a1-4047-ac8e-02db9d02499c
+
+(CoreCompile target) -> 
+         D:\a\x86.qBookRoslyn\x86.qBookRoslyn\qbook\Studio\BookBuilder.cs(2,17): error CS0234: The type or namespace name 'Office' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?) [D:\a\x86.qBookRoslyn\x86.qBookRoslyn\qbook\qbook.csproj]
+         D:\a\x86.qBookRoslyn\x86.qBookRoslyn\qbook\Studio\Core.cs(9,17): error CS0234: The type or namespace name 'Office' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?) [D:\a\x86.qBookRoslyn\x86.qBookRoslyn\qbook\qbook.csproj]
+
+
+## 2026-09-18T10:23:36.7830935+00:00 | Assistant | 5e7d3cb0-b9e5-4eb6-b1d4-43f3f7c86ab0
+
+Die FOSS-Prüfung ist nicht die Ursache. Der GitHub-Runner kann die Microsoft-Office-COM-Referenzen des Projekts nicht auflösen, weil dort keine Office-Typbibliotheken registriert sind. Deshalb fehlen `Microsoft.Office.Core` und `Microsoft.Office.Interop.Outlook` beim Kompilieren.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "office_interop_strategy",
+      "type": "single_select",
+      "text": "Wie soll der Release-Build die benötigten Office-Interop-Assemblys erhalten?",
+      "options": [
+        "Interop-Assemblys als repositoryverwaltete NuGet-Abhängigkeiten einbinden und als Drittanbieterstatus prüfen",
+        "GitHub-Workflow auf einen selbstgehosteten Windows-Runner mit installiertem Office umstellen"
+      ],
+      "required": true
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-09-18T10:35:13.0218254+00:00 | User | 28ebc68a-9ac4-44fb-a0a6-080b7cb3be08
+
+So langsam gewinne ich das Gefühl, das die Github Lösung nicht Zielführend ist. Wieder FehlerZiel sollte sein eine automatische Versionsnummer zu bauen{MainRevision}.{VossRevison}.{BuildRevsion}Vielleicht ist eine lokale Lösung doch Sinnvoller{Main} = Ist noch in klärung aktuell Jahr{Voss} = Hier wäre die Idee eine klein Json mit {Nuget,Version} evtl. noch erweitern URL,{Build} = yyMMddVoss = Wenn eine Nuget.json noch nicht erstellt wurde erzeugen VossRevision = 1 sonst eine temp.Json erzeugen und vergleichen. Wenn ungleich VossRevision +1 und temp.json wird zur Nurget.JsonWas sagst du zu dem Gedankekn
+
+
+## 2026-09-18T10:36:11.1647008+00:00 | Assistant | 02d9093e-42f1-42cf-9b08-b98d6fce320e
+
+Ja – eine lokale Release-Lösung passt deutlich besser zu diesem Projekt: Office-COM-Referenzen, Visual Studio und lokale Buildumgebung sind bereits Voraussetzungen. GitHub Actions erzeugt hier zusätzlichen Infrastrukturaufwand, ohne das Versionsziel zu verbessern.
+
+Dein Manifest-Ansatz ist richtig, mit einer wichtigen Sicherheitsgrenze:
+
+- Release erzeugt ein deterministisches aktuelles FOSS-Manifest.
+- Ist es identisch zur eingecheckten Baseline, bleibt `FossRevision` unverändert.
+- Ist es anders, wird ein `pending`-Manifest erzeugt und der Release abgebrochen.
+- Erst nach menschlicher FOSS-Prüfung übernimmt ein expliziter Freigabe-Befehl das Manifest als neue eingecheckte Baseline und erhöht `FossRevision`.
+
+Die Baseline darf bei einem Unterschied nicht automatisch überschrieben werden – sonst wäre die geforderte explizite FOSS-Freigabe ausgehebelt.
+
+Auch der Name sollte eher `foss-state.json` oder `foss-manifest.json` als `Nuget.json` sein: Die erste Version kann NuGet-Pakete mit `id`, `version` und optional `url` enthalten, bleibt aber für CEF, native DLLs, `PdfSharp.dll`, Lizenzdateien usw. erweiterbar.
+
+Wichtig: `yyMMdd` wie `260918` passt nicht direkt in `AssemblyVersion` oder `AssemblyFileVersion`; deren einzelne Zahlenteile dürfen maximal `65535` sein. Als Informationsversion ist das möglich, für die technische Assembly-Version braucht es eine kompatible Abbildung.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "local_release_entry",
+      "type": "single_select",
+      "text": "Wie soll ein offizieller lokaler Release ausgelöst werden?",
+      "options": [
+        "Manuell über ein lokales Release-PowerShell-Skript; Debug-Builds in Visual Studio bleiben unverändert",
+        "Direkt über einen Visual-Studio-Release-Build"
+      ],
+      "required": true
+    },
+    {
+      "id": "main_revision_source",
+      "type": "single_select",
+      "text": "Wofür soll MainRevision zunächst stehen?",
+      "options": [
+        "Aktuelles zweistelliges Jahr",
+        "Manuell gepflegte Hauptversion",
+        "Andere Regel"
+      ],
+      "required": true
+    },
+    {
+      "id": "build_revision_format",
+      "type": "single_select",
+      "text": "Wie soll BuildRevision mit dem gewünschten Datum umgehen?",
+      "options": [
+        "yyMMdd nur als Informationsversion; technische Assembly-Version erhält eine gültige fortlaufende Revision",
+        "Fortlaufende lokale BuildRevision; Datum zusätzlich nur als Metadatum",
+        "Andere Regel"
+      ],
+      "required": true
+    },
+    {
+      "id": "main_revision_other",
+      "type": "text",
+      "text": "Beschreibe die gewünschte Regel für MainRevision.",
+      "required": true,
+      "visible_when": {
+        "question_id": "main_revision_source",
+        "has_any_of": [
+          "Andere Regel"
+        ]
+      }
+    },
+    {
+      "id": "build_revision_other",
+      "type": "text",
+      "text": "Beschreibe die gewünschte Regel für BuildRevision.",
+      "required": true,
+      "visible_when": {
+        "question_id": "build_revision_format",
+        "has_any_of": [
+          "Andere Regel"
+        ]
+      }
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-09-18T10:39:29.4334876+00:00 | User | 2cee4530-0388-496c-9ff3-5972213a7683
+
+:::answers
+{"answers":[{"id":"local_release_entry","value":"Manuell \u00FCber ein lokales Release-PowerShell-Skript; Debug-Builds in Visual Studio bleiben unver\u00E4ndert","question":"Wie soll ein offizieller lokaler Release ausgel\u00F6st werden?"},{"id":"main_revision_source","value":"Manuell gepflegte Hauptversion","question":"Wof\u00FCr soll MainRevision zun\u00E4chst stehen?"},{"id":"build_revision_format","value":"Andere Regel","question":"Wie soll BuildRevision mit dem gew\u00FCnschten Datum umgehen?"},{"id":"build_revision_other","value":"Die Information ist f\u00FCr uns Mitarbeiter relevant da wir teilweise schnelle Zyklen haben. \u00FCber die Information erkennen wird dann schnell von wann das Build ist.\nzb:\n26.9.260918","question":"Beschreibe die gew\u00FCnschte Regel f\u00FCr BuildRevision."}]}
+:::endanswers
+
+
+## 2026-09-18T10:40:21.8399623+00:00 | Assistant | f40a1427-7bf4-4791-9b08-886aed9ca319
+
+`26.9.260918` kann als sichtbare Releaseversion verwendet werden, etwa über `AssemblyInformationalVersion`. Dort steht für Mitarbeitende direkt: Hauptversion 26, FOSS-Stand 9, Build vom 18.09.2026.
+
+Für `AssemblyVersion` und `AssemblyFileVersion` ist `260918` technisch nicht zulässig: Jeder Zahlenteil darf maximal `65535` sein. Die saubere Abbildung wäre beispielsweise technisch `26.9.261.0` – `261` ist der Tag im Jahr – bei gleichzeitig sichtbarer Informationsversion `26.9.260918`.
+
+Das lokale Konzept bleibt dabei nachvollziehbar: eine eingecheckte FOSS-Baseline, ein temporäres Vergleichsmanifest bei Release, und eine separate explizite Freigabe, die erst dann die FOSS-Revision erhöht.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "technical_version_mapping",
+      "type": "single_select",
+      "text": "Wie soll die sichtbare Version 26.9.260918 technisch als gültige Assembly-Version abgebildet werden?",
+      "options": [
+        "AssemblyVersion/Main.Foss.TagImJahr.0 und sichtbare Informationsversion Main.Foss.yyMMdd",
+        "Separaten fortlaufenden technischen Buildzähler verwenden und sichtbare Informationsversion Main.Foss.yyMMdd",
+        "Andere Regel"
+      ],
+      "required": true
+    },
+    {
+      "id": "main_revision_storage",
+      "type": "single_select",
+      "text": "Wo soll die manuell gepflegte MainRevision versioniert gespeichert werden?",
+      "options": [
+        "In einer eingecheckten Datei qbook/release-version.json",
+        "Als verpflichtender Parameter des lokalen Release-Skripts"
+      ],
+      "required": true
+    },
+    {
+      "id": "github_workflow_disposition",
+      "type": "single_select",
+      "text": "Wie soll mit dem bisherigen GitHub-Release-Workflow verfahren werden?",
+      "options": [
+        "Aus dem Repository entfernen",
+        "Im Repository belassen, aber nicht weiter verwenden"
+      ],
+      "required": true
+    },
+    {
+      "id": "technical_version_mapping_other",
+      "type": "text",
+      "text": "Beschreibe die gewünschte technische Abbildung.",
+      "required": true,
+      "visible_when": {
+        "question_id": "technical_version_mapping",
+        "has_any_of": [
+          "Andere Regel"
+        ]
+      }
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-09-18T10:46:01.9783165+00:00 | User | 5c7358de-feda-462a-b1fd-4670c2b2e295
+
+Zur kläerung die Voss Prüfung führen wir nicht selber durch. Daher kein Abbruch. Wir erstellen ein Release und übergeben die Version mit einen FOSS-Report.MainRevsion:  .\Revsion Wie darf ich das Verstehen:Für AssemblyVersion und AssemblyFileVersion ist 260918 technisch nicht zulässig: Jeder Zahlenteil darf maximal 65535 sein. Die saubere Abbildung wäre beispielsweise technisch 26.9.261.0 – 261 ist der Tag im Jahr – bei gleichzeitig sichtbarer Informationsversion 26.9.260918.
+
+Attachments:
+- [FOSS-Report.html](attachments/5c7358de-feda-462a-b1fd-4670c2b2e295/FOSS-Report.html) (unknown)
+
+## 2026-09-18T10:47:02.7612145+00:00 | Assistant | f26b9a09-d778-484a-a1d5-5e04c78e075d
+
+Die technische Trennung bedeutet konkret:
+
+- Sichtbar für Mitarbeitende: `26.9.260918`  
+  Diese Version steht in `AssemblyInformationalVersion` und kann in „Über“, Logs oder dem FOSS-Report angezeigt werden.
+
+- Technisch für .NET und Windows: `26.9.261.0`  
+  `261` ist der 261. Tag des Jahres 2026. Die vier Bestandteile von `AssemblyVersion` und `AssemblyFileVersion` sind jeweils auf `0` bis `65535` begrenzt; deshalb ist `260918` dort nicht möglich.
+
+Damit bleibt das verständliche Datum erhalten, während die Assembly technisch gültig bleibt.
+
+Der geänderte FOSS-Ablauf wäre dann: Bei unverändertem Manifest bleibt `FossRevision`; bei einem Unterschied wird sie automatisch erhöht, die neue Baseline gespeichert und der FOSS-Report erstellt. Der Release läuft weiter und der Report wird extern übergeben. Das ist kein Freigabeprozess mehr, sondern eine automatische Snapshot- und Reportrevision.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "version_mapping_confirmation",
+      "type": "confirm",
+      "text": "Soll die sichtbare Version Main.Foss.yyMMdd und die technische Assembly-Version Main.Foss.TagImJahr.0 verwendet werden?",
+      "required": true
+    },
+    {
+      "id": "automatic_foss_snapshot",
+      "type": "confirm",
+      "text": "Soll eine geänderte Abhängigkeitslage FossRevision automatisch erhöhen, die neue Baseline speichern, den FOSS-Report erzeugen und den lokalen Release dennoch fortsetzen?",
+      "required": true
+    },
+    {
+      "id": "main_revision_path",
+      "type": "text",
+      "text": "Welcher genaue repository-relative Pfad ist mit .\\Revsion für die manuell gepflegte MainRevision gemeint?",
+      "required": true
+    },
+    {
+      "id": "github_workflow_disposition",
+      "type": "single_select",
+      "text": "Wie soll mit dem bisherigen GitHub-Release-Workflow verfahren werden?",
+      "options": [
+        "Aus dem Repository entfernen",
+        "Im Repository belassen, aber nicht weiter verwenden"
+      ],
+      "required": true
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-09-18T10:50:00.9721735+00:00 | User | 68391694-1920-4a91-bb62-1f60f029d00e
+
+:::answers
+{"answers":[{"id":"version_mapping_confirmation","value":true,"question":"Soll die sichtbare Version Main.Foss.yyMMdd und die technische Assembly-Version Main.Foss.TagImJahr.0 verwendet werden?"},{"id":"automatic_foss_snapshot","value":true,"question":"Soll eine ge\u00E4nderte Abh\u00E4ngigkeitslage FossRevision automatisch erh\u00F6hen, die neue Baseline speichern, den FOSS-Report erzeugen und den lokalen Release dennoch fortsetzen?"},{"id":"main_revision_path","value":"Im Root der Solution","question":"Welcher genaue repository-relative Pfad ist mit .\\Revsion f\u00FCr die manuell gepflegte MainRevision gemeint?"},{"id":"github_workflow_disposition","value":"Aus dem Repository entfernen","question":"Wie soll mit dem bisherigen GitHub-Release-Workflow verfahren werden?"}]}
+:::endanswers
+
+
+## 2026-09-18T10:50:58.0755551+00:00 | Assistant | e20a4cef-dab8-4c36-b145-33ef09f55e80
+
+The Codex run was stopped.
+
+
+## 2026-09-18T10:52:17.2632837+00:00 | User | aa6b6d55-2b7f-488f-81df-c6191c82b0bb
+
+:::answers
+{"answers":[{"id":"version_mapping_confirmation","value":true,"question":"Soll die sichtbare Version Main.Foss.yyMMdd und die technische Assembly-Version Main.Foss.TagImJahr.0 verwendet werden?"},{"id":"automatic_foss_snapshot","value":true,"question":"Soll eine ge\u00E4nderte Abh\u00E4ngigkeitslage FossRevision automatisch erh\u00F6hen, die neue Baseline speichern, den FOSS-Report erzeugen und den lokalen Release dennoch fortsetzen?"},{"id":"main_revision_path","value":"Im Root der Solution.\n\n!Voss-Report.html Erzeugung ist nicht Bestandteil dieser Session","question":"Welcher genaue repository-relative Pfad ist mit .\\Revsion f\u00FCr die manuell gepflegte MainRevision gemeint?"},{"id":"github_workflow_disposition","value":"Aus dem Repository entfernen","question":"Wie soll mit dem bisherigen GitHub-Release-Workflow verfahren werden?"}]}
+:::endanswers
+
+
+## 2026-09-18T10:52:48.6075515+00:00 | Assistant | 068b2eff-d6b2-4623-bc34-fa6a25cdaa81
+
+Verstanden: Die HTML-Erzeugung des FOSS-Reports ist nicht Teil dieser Session. Der lokale Release erzeugt bzw. aktualisiert nur den FOSS-Snapshot und die Versionsinformationen; der externe Reportprozess bleibt getrennt.
+
+Für die Nachvollziehbarkeit muss der automatisch aktualisierte FOSS-Snapshot anschließend im Git versioniert werden. Andernfalls wäre die nächste `FossRevision` nur auf einem einzelnen Rechner bekannt.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "revision_file_name",
+      "type": "text",
+      "text": "Wie soll die Datei im Solution-Root exakt heißen, die MainRevision und FossRevision speichert? Beispiel: Revision.json",
+      "required": true
+    },
+    {
+      "id": "foss_state_persistence",
+      "type": "single_select",
+      "text": "Wie soll der automatisch aktualisierte FOSS-Snapshot in Git nachvollziehbar werden?",
+      "options": [
+        "Release-Skript ändert die eingecheckte Datei; der Nutzer prüft und committet sie anschließend",
+        "Release-Skript erstellt selbst einen lokalen Git-Commit",
+        "Keine Git-Persistenz erforderlich"
+      ],
+      "required": true
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-09-18T10:54:05.9204410+00:00 | User | bc72efff-0d9e-4545-b72a-314f69d4cafd
+
+:::answers
+{"answers":[{"id":"revision_file_name","value":"NugetRevision.json","question":"Wie soll die Datei im Solution-Root exakt hei\u00DFen, die MainRevision und FossRevision speichert? Beispiel: Revision.json"},{"id":"foss_state_persistence","value":"Release-Skript \u00E4ndert die eingecheckte Datei; der Nutzer pr\u00FCft und committet sie anschlie\u00DFend","question":"Wie soll der automatisch aktualisierte FOSS-Snapshot in Git nachvollziehbar werden?"}]}
+:::endanswers
+
+
+## 2026-09-18T10:54:50.3994970+00:00 | Assistant | d6ec36cb-fde7-4913-b8af-766f709134eb
+
+Die Struktur ist planungsbereit.
+
+- Ziel: Eine lokale, manuell gestartete Release-PowerShell erzeugt die Version automatisch; Visual-Studio-Debug-Builds bleiben unverändert.
+- Version: Sichtbar `MainRevision.FossRevision.yyMMdd`, beispielsweise `26.9.260918`. Technisch verwendet die Assembly `MainRevision.FossRevision.TagImJahr.0`, beispielsweise `26.9.261.0`.
+- Persistenz: Die eingecheckte Datei `NugetRevision.json` liegt im Solution-Root. Sie enthält die manuell gepflegte `MainRevision`, die automatische `FossRevision` und den FOSS-Snapshot.
+- FOSS-Ablauf: Der Release vergleicht den effektiven Drittanbieterstatus. Bei Änderung erhöht er `FossRevision`, aktualisiert den Snapshot und setzt den Release fort. Der Nutzer prüft die geänderte Datei und committet sie anschließend selbst.
+- Scope: Der Snapshot bleibt für weitere Komponenten erweiterbar und umfasst nicht nur NuGet-Pakete. HTML-Erzeugung eines FOSS-Reports ist ausdrücklich nicht Teil dieser Session.
+- Nicht enthalten: GitHub-Release-Workflow, automatische Git-Commits, FOSS-Freigabelogik, externe Report-Erstellung und neue Tests.
+- Validierung: Der Nutzer führt den lokalen Release aus und prüft Version, aktualisierte `NugetRevision.json` und Release-Ausgabe.
+
+
+## 2026-09-23T07:31:50.5607819+00:00 | User | 2bf6e6d5-053f-4dce-a84f-30d98b372047
+
+Wäre auch möglich:{MainRevision}.{VossRevision}.{Year}.{Day}zb. 1.1.26.261
+
+
+## 2026-09-23T07:32:29.1552963+00:00 | Assistant | 4b0ed3ea-6b4b-4243-8d0f-109cdb6afaf4
+
+Ja. `1.1.26.261` ist die sauberere Lösung.
+
+- `1` = manuell gepflegte `MainRevision`
+- `1` = automatische `FossRevision`
+- `26` = zweistelliges Jahr
+- `261` = Tag im Jahr, hier der 18. September 2026
+
+Alle vier Teile passen in die technischen Grenzen von `AssemblyVersion` und `AssemblyFileVersion` (`0` bis `65535`). Die sichtbare und technische Version sind damit identisch; eine zusätzliche Informationsversions-Abbildung ist nicht mehr nötig.
+
+Der einzige bewusste Nachteil: Zwei offizielle Releases am selben Kalendertag hätten dieselbe Versionsnummer. Für die von dir gewünschte Datumsinformation ist das ansonsten die klarste Variante.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "four_part_version_format",
+      "type": "confirm",
+      "text": "Soll MainRevision.FossRevision.yy.TagImJahr die bisherige getrennte technische und sichtbare Versionsabbildung vollständig ersetzen?",
+      "required": true
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-09-23T07:33:04.2208863+00:00 | User | f98ea83e-c2db-470f-b4f8-893f5b04d707
+
+:::answers
+{"answers":[{"id":"four_part_version_format","value":true,"question":"Soll MainRevision.FossRevision.yy.TagImJahr die bisherige getrennte technische und sichtbare Versionsabbildung vollst\u00E4ndig ersetzen?"}]}
+:::endanswers
+
+
+## 2026-09-23T07:33:29.4373191+00:00 | Assistant | 61d3a22e-86b6-4688-b3da-969c1b722244
+
+Die Struktur ist planungsbereit.
+
+- Ziel: Lokaler, manuell gestarteter Release; Visual-Studio-Debug-Builds bleiben unverändert.
+- Versionsformat: `MainRevision.FossRevision.yy.TagImJahr`, z. B. `1.1.26.261`. Es ist zugleich die sichtbare sowie technische Assembly- und Dateiversion.
+- Persistenz: `NugetRevision.json` im Solution-Root speichert die manuelle `MainRevision`, automatische `FossRevision` und den ermittelten Drittanbieter-Snapshot.
+- FOSS-Ablauf: Bei geändertem Snapshot erhöht der Release automatisch `FossRevision` und aktualisiert die Datei, ohne den Release zu blockieren. Der Nutzer prüft und committet die Änderung anschließend.
+- Scope: Drittanbieterstatus bleibt über NuGet hinaus erweiterbar. Der GitHub-Release-Workflow wird entfernt. HTML-FOSS-Report-Erzeugung ist nicht Bestandteil dieser Session.
+- Nicht enthalten: Automatische Git-Commits, FOSS-Freigabeprozess, externe Report-Erstellung und neue Tests.
+- Validierung: Der Nutzer prüft nach einem lokalen Release die Versionsnummer, `NugetRevision.json` und die Release-Ausgabe.
+
+
+## 2026-09-23T07:33:35.7464725+00:00 | User | d6be6f36-0c44-4292-8b8f-827d85849119
+
+Plan
+
+
+## 2026-09-23T07:35:49.9399494+00:00 | Assistant | edbcbd7a-204d-4272-9c60-fdd89cf651d2
+
+Der Implementierungsplan für den lokalen Releaseprozess wurde geschrieben: einheitliche vierteilige Versionsnummer, automatische FOSS-Snapshot-Revision und Entfernung des GitHub-Workflows.
+
+[Open implementation handoff](aiflow-handoff:implementation)
+
+
+## 2026-09-23T07:36:36.4780810+00:00 | User | 7c06369b-6daf-4460-b64c-a01beca16e39
+
+Implement with gpt-5.6-terra • Medium
+
+
+## 2026-09-23T07:40:55.2325080+00:00 | Assistant | fac42063-d32d-4bc5-a148-103652dd5a8b
+
+Die lokale Release-Versionierung wurde umgesetzt:
+
+- `NugetRevision.json` angelegt: `mainRevision: 1`, `fossRevision: 1`, Fingerprint und 1.113 Komponenten.
+- Lokales `release.ps1` aktualisiert den Snapshot ohne `BuildRevision`.
+- Beide Release-Assemblies erhalten `MainRevision.FossRevision.yy.DayOfYear`.
+- Freigabe-Baseline, Approval-Skript und GitHub-Release-Workflow entfernt.
+- Debug-Version von `qbookCsScript` bleibt `1.0.0.0`.
+
+Buildprüfung: `dotnet build qbookStudio.sln --no-restore` schlug fehl, weil `qbookCsScript` als `AnyCPU` gebaut wird, CefSharp jedoch `x86` oder `x64` verlangt. Keine Release-spezifische Generierung wurde dabei ausgeführt. Weitere Validierungen waren nicht vorgesehen.
+
+Der Workitem-Status wurde auf `failed` gesetzt und `planning_ready` auf `false` zurückgesetzt.
+
+
+## 2026-09-23T07:45:44.2476883+00:00 | User | b6691094-b1b1-4cfd-bb49-9577dabc9e5b
+
+Wie löse ich das ganze jetzt aus
+
+
+## 2026-09-23T07:46:35.3816703+00:00 | Assistant | a7ca240a-aae3-44f3-ab61-b9ed72372249
+
+Den offiziellen lokalen Release startest du im Solution-Root:
+
+```powershell
+cd B:\x86.qBookRoslyn
+.\qbook\release.ps1
+```
+
+Keine Parameter mehr nötig.
+
+Ablauf:
+
+1. Bei Bedarf `mainRevision` in `NugetRevision.json` manuell ändern.
+2. `release.ps1` starten.
+3. Das Skript aktualisiert bei geänderten Abhängigkeiten automatisch `fossRevision` und den Snapshot in `NugetRevision.json`.
+4. Es erstellt anschließend den lokalen Release-Build.
+5. Prüfe danach die Release-Ausgabe und `NugetRevision.json`; bei Änderungen diese Datei committen.
+
+Debug-Builds laufen weiterhin normal über Visual Studio. GitHub Actions wird dafür nicht mehr verwendet.
+
+
+## 2026-09-23T09:13:18.7746784+00:00 | User | 16524d20-6a4c-4e4e-8b38-3aa29399459d
+
+Es gibt nochmal eine kleine Änderung{Major}.{Feature}.{Voss}.{Build}Major => Manuell Feature =>ManuellVoss => wie bisherBuild => Immer 5 Stellen {yy}{Tag} zb: 26001 erster Tag im Jahr 2026Featrue ist Gedacht, das der User hochzählt wenn wirklich eine Funktionerweiterung existiert. Bugfixes sind nur an der Build zu erkennen.Was sast du?
+
+
+## 2026-09-23T09:13:51.4620877+00:00 | Assistant | d1bf113b-8c5f-40ed-9a39-59c470c91545
+
+Das ist ein gutes, verständliches Schema:
+
+`Major.Feature.Voss.Build`  
+Beispiel am ersten Tag 2026: `1.3.1.26001`
+
+- `Major`: manuell bei größeren Produktständen
+- `Feature`: manuell bei funktionalen Erweiterungen
+- `Voss`: automatisch bei geändertem Drittanbieter-Snapshot
+- `Build`: automatisch `yy` + dreistelliger Tag im Jahr, also `26001` bis `26365`
+
+Alle vier Teile sind aktuell als .NET-Assembly-Version gültig. Zwei Grenzen bleiben bewusst:
+
+- Mehrere Releases am selben Tag erhalten dieselbe `Build`-Nummer.
+- Das Format bleibt bis einschließlich 2065 innerhalb des technischen Maximums `65535` gültig.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "major_feature_voss_build_format",
+      "type": "confirm",
+      "text": "Soll Major.Feature.Voss.yyTagImJahr das bisherige Format MainRevision.FossRevision.yy.TagImJahr vollständig ersetzen?",
+      "required": true
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-09-23T09:16:25.0789503+00:00 | User | d4d6e2ca-3ca2-45cc-af96-5cfe3f4f9e37
+
+Oder siehst du noch eine Sinnvolle Möglichkeit auch Builds vom selben Tag zu diffrenzieren?
+
+
+## 2026-09-23T09:17:06.3227589+00:00 | Assistant | d1eb2a5a-4e14-409d-9f3f-8efd69afe975
+
+Ja. Die robuste Lösung ist ein zusätzlicher fortlaufender technischer Zähler, der in `NugetRevision.json` gespeichert wird.
+
+Beispiel für den zweiten Release am ersten Tag 2026:
+
+- Technische Assembly-/Dateiversion: `1.3.2.42`
+- Sichtbar für Mitarbeitende: `1.3.2.26001-02`
+
+Dabei ist `42` ein global eindeutiger Buildzähler und `02` der zweite Release dieses Tages. Das Datum bleibt sofort erkennbar, und jede Assembly erhält eine eindeutige Version.
+
+Mit reinem `yyDDD` wie `26001` ist ein zweiter Release am gleichen Tag technisch nicht unterscheidbar, weil kein freier Zahlenbereich mehr vorhanden ist.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "same_day_build_strategy",
+      "type": "single_select",
+      "text": "Wie sollen mehrere Releases am selben Tag versioniert werden?",
+      "options": [
+        "Eindeutigen technischen Buildzähler speichern; sichtbare Version Major.Feature.Voss.yyDDD-TagBuild verwenden",
+        "Bei Major.Feature.Voss.yyDDD bleiben; mehrere Releases am selben Tag teilen dieselbe Versionsnummer"
+      ],
+      "required": true
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-09-23T09:19:35.1244141+00:00 | User | 852d0dc9-4a92-4cf7-88b1-7bf708904649
+
+Ziel soll ein System sein dass nicht Windows only gültig ist. Also ein Versionssystem dass auch für ESP,... geeignet ist
+
+
+## 2026-09-23T09:20:23.9011347+00:00 | Assistant | 6a6cb3e3-f28b-4f7c-ae61-ad86c7492224
+
+Für ein plattformneutrales System sollte die kanonische Version unabhängig von .NET gespeichert werden. .NET, ESP und andere Ziele lesen dieselbe Versionsquelle; jedes Ziel verwendet sie in seiner passenden Metadatenform.
+
+Meine Empfehlung:
+
+`Major.Feature.Voss.yyDDDnn`
+
+Beispiel für den zweiten Release am ersten Tag 2026:
+
+`1.3.2.2600102`
+
+`26001` ist Jahr plus Tag im Jahr, `02` ist der zweite Build dieses Tages. Damit bleiben vier numerische Komponenten erhalten und bis zu 99 Builds pro Tag unterscheidbar.
+
+Für .NET wäre das die kanonische Informationsversion; die technische `AssemblyVersion` braucht weiterhin eine zulässige .NET-Abbildung. ESP kann die kanonische Version direkt als String oder als getrennte Zahlenfelder verwenden.
+
+Der Name `NugetRevision.json` wäre für ESP und andere Ziele missverständlich. Ein generischer Name wie `Revision.json` passt besser.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "cross_platform_build_format",
+      "type": "single_select",
+      "text": "Welches plattformneutrale Buildformat soll verwendet werden?",
+      "options": [
+        "yyDDDnn als siebenstellige Zahl, zum Beispiel 2600102",
+        "yyDDD-Run als lesbarer Text, zum Beispiel 26001-02"
+      ],
+      "required": true
+    },
+    {
+      "id": "revision_file_cross_platform_name",
+      "type": "single_select",
+      "text": "Soll NugetRevision.json wegen der plattformneutralen Nutzung umbenannt werden?",
+      "options": [
+        "In Revision.json umbenennen",
+        "Bei NugetRevision.json bleiben"
+      ],
+      "required": true
+    },
+    {
+      "id": "cross_platform_scope",
+      "type": "single_select",
+      "text": "Soll diese Session nur das plattformneutrale Versionsschema in qbook etablieren oder bereits einen gemeinsam nutzbaren Generator für ESP und weitere Ziele erstellen?",
+      "options": [
+        "Schema und qbook-Integration jetzt; ESP-Anbindung später",
+        "Gemeinsamen plattformübergreifenden Generator jetzt erstellen"
+      ],
+      "required": true
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-09-23T09:23:25.8819906+00:00 | User | 50bd4c5e-f957-4673-b6d3-62b47fe0f977
+
+Dein Vorschlag yyDDDnn.Übesteigt der nicht das Limit 65535
+
+
+## 2026-09-23T09:23:54.5190450+00:00 | Assistant | d72a010b-ca4a-4d0f-8850-33726fe2c19d
+
+Ja – du hast recht. `2600102` ist größer als `65535` und daher **nicht** als .NET-`AssemblyVersion` oder `AssemblyFileVersion` zulässig. Meine vorherige Formulierung war an dieser Stelle falsch.
+
+Es gibt deshalb nur zwei saubere Wege:
+
+1. Plattformneutrale kanonische Version: `1.3.2.2600102`  
+   Für ESP direkt nutzbar. .NET erhält zusätzlich eine gültige technische Abbildung, z. B. mit einem fortlaufenden Buildzähler.
+
+2. Überall exakt dieselbe .NET-kompatible Vierer-Version  
+   Dann bleibt für das Datum nur `yyDDD`, z. B. `26001`; mehrere Builds am selben Tag können darin nicht zusätzlich codiert werden.
+
+Datum, Jahr und Tageszähler gleichzeitig in einem einzigen .NET-Zahlenteil unter `65535` sind mathematisch nicht möglich.
+
+
+## 2026-09-23T09:43:15.8008883+00:00 | User | 9d3930a5-0a79-4e8e-a863-f4bb4df8fe49
+
+Belassen wir es erstmal dabei{Major}.{Feature}.{Voss}.{Build}1.1.1.26001 wie zuvor geplant.Zusätzlich solle im Zielverzeichnis eine BuildInfo.md erzeugt werden mit Detaildaten : exakten UTC-Zeitpunkt, Source-Revision/Commit, VOSS-Stand und eine fortlaufende CI-/Build-ID.
+
+
+## 2026-09-23T09:43:58.1920648+00:00 | Assistant | d69ade65-c258-4952-aefc-af60d6e652e4
+
+Das passt gut: Die kurze Versionsnummer bleibt stabil und .NET-kompatibel:
+
+`1.1.1.26001`
+
+`BuildInfo.md` ergänzt sie um die Details, die nicht sinnvoll in vier Zahlenfelder passen:
+
+- vollständige Releaseversion
+- UTC-Zeitpunkt im ISO-8601-Format
+- vollständiger Git-Commit
+- `VossRevision` und Fingerprint des Snapshot-Stands
+- fortlaufende Build-ID
+
+Damit ist auch ein zweiter Build am selben Tag über die Build-ID eindeutig nachvollziehbar, ohne die Assembly-Version zu ändern.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "build_id_source",
+      "type": "single_select",
+      "text": "Woher soll die fortlaufende Build-ID kommen?",
+      "options": [
+        "In NugetRevision.json speichern und bei jedem lokalen Release automatisch erhöhen",
+        "Als verpflichteten Parameter an das Release-Skript übergeben",
+        "Aus einer späteren CI-Umgebungsvariable übernehmen"
+      ],
+      "required": true
+    },
+    {
+      "id": "build_info_output_coverage",
+      "type": "single_select",
+      "text": "Wo soll BuildInfo.md erzeugt werden?",
+      "options": [
+        "Nur im finalen qbook-Release-Zielverzeichnis",
+        "In den Zielverzeichnissen von qbook und qbookCsScript"
+      ],
+      "required": true
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-09-23T09:46:19.6878775+00:00 | User | 017573b1-e743-4a18-9366-6ffbb5eac18a
+
+:::answers
+{"answers":[{"id":"build_id_source","value":"In NugetRevision.json speichern und bei jedem lokalen Release automatisch erh\u00F6hen","question":"Woher soll die fortlaufende Build-ID kommen?"},{"id":"build_info_output_coverage","value":"Nur im finalen qbook-Release-Zielverzeichnis","question":"Wo soll BuildInfo.md erzeugt werden?"}]}
+:::endanswers
+
+
+## 2026-09-23T09:46:55.2280356+00:00 | Assistant | f9452f51-6d4e-4e47-b718-a4cad8f87afb
+
+Die Struktur ist planungsbereit.
+
+- Version: `Major.Feature.Voss.Build`, z. B. `1.1.1.26001`.
+  - Major und Feature: manuell in `NugetRevision.json`.
+  - Voss: automatisch bei geändertem Drittanbieter-Snapshot.
+  - Build: `yyDDD`, fünfstellig, z. B. `26001`.
+- Build-ID: wird in `NugetRevision.json` bei jedem lokalen Release automatisch erhöht.
+- Traceability: Im finalen Zielverzeichnis von `qbook` entsteht `BuildInfo.md` mit Version, UTC-Zeitpunkt, Git-Commit, VOSS-Stand samt Fingerprint und Build-ID.
+- Persistenz: `NugetRevision.json` muss nach jedem offiziellen Release geprüft und eingecheckt werden, damit die Build-ID fortlaufend bleibt.
+- Scope: lokale qbook-Release-Integration; Debug-Builds bleiben unverändert. Die Versionsdaten bleiben plattformneutral nutzbar, eine ESP-Anbindung ist nicht Teil dieser Session.
+- Nicht enthalten: GitHub-Workflow, HTML-FOSS-Report, automatische Git-Commits oder externe FOSS-Freigabe.
+- Validierung: Nutzer startet den lokalen Release und prüft Release-Ausgabe, `BuildInfo.md` und `NugetRevision.json`.
+
+
+## 2026-09-23T09:47:02.5523233+00:00 | User | beceb41e-2ac6-480e-8a80-1b91df0011c6
+
+Plan
+
+
+## 2026-09-23T09:48:10.3447127+00:00 | Assistant | 0812975e-67c0-4f11-a122-2768d096613f
+
+Der aktualisierte Plan wurde geschrieben. Er ergänzt Major/Feature, die fortlaufende Build-ID und `BuildInfo.md` im finalen qbook-Release-Verzeichnis.
+
+[Open implementation handoff](aiflow-handoff:implementation)
+
+
+## 2026-09-23T09:48:48.6465392+00:00 | User | dbfc8791-d817-46ed-b791-97376b7ff04f
+
+Implement with gpt-5.6-terra • Medium
+
+
+## 2026-09-23T09:52:32.1573273+00:00 | Assistant | 22ee2352-238a-4ce3-8e26-d5f4bcc8a977
+
+Implementiert:
+
+- Revisionsschema auf `majorRevision`, `featureRevision`, `fossRevision`, `buildId` migriert.
+- FOSS-Status erhöht `buildId` bei jedem Release und `fossRevision` nur bei Snapshot-Änderung.
+- Release-Version erzeugt `Major.Feature.Foss.yyDDD`.
+- `updateBuildInfo.ps1` erstellt nach erfolgreichem Release `BuildInfo.md`.
+- Release-Skript und Projektdatei integriert.
+- Workitem auf `status: failed`, `planning_ready: false` gesetzt.
+
+Build-Prüfung `dotnet build qbookStudio.sln --no-restore` wurde ausgeführt und schlug fehl: `qbookCsScript` wird als `AnyCPU` gebaut, während `CefSharp.Common` `x86` oder `x64` verlangt. Keine Tests ausgeführt; sie sind im Handoff nicht gefordert.
+
+
+## 2026-09-23T10:13:07.6715961+00:00 | User | 2aa1c6da-b037-4e59-a431-facd0ce0c86e
+
+Debug with gpt-5.6-terra • Medium
+
+
+## 2026-09-23T10:17:06.3201866+00:00 | Assistant | baac992c-7e6a-490f-8740-a111415b167e
+
+## DEBUG abgeschlossen
+
+Der Release-Abbruch ist behoben.
+
+- Ursache 1: Die Paketpfadzerlegung erkannte `AForge.2.2.5` nicht korrekt. Der Paketabgleich wurde auf beide Windows-Pfadseparatoren korrigiert.
+- Ursache 2: `release.ps1` prüfte nach PowerShell-Skripten `$LASTEXITCODE`; dieser Wert ist dort nicht verlässlich. Die Prüfung verwendet nun `$?`.
+
+Validierung:
+
+- Visual-Studio-MSBuild `Release|x86` zweimal erfolgreich: jeweils 0 Fehler, 575 bestehende Warnungen.
+- Vollständiger `qbook/release.ps1`-Lauf erfolgreich, Exitcode 0.
+- Release-Version in qbook und qbookCsScript: `1.1.2.26266`.
+- `BuildInfo.md` wurde erzeugt.
+- `NugetRevision.json` steht nun auf `fossRevision: 2`, `buildId: 4`.
+
+Keine verbleibenden Fehler aus den durchgeführten Prüfungen. Der Build-ID-Wert 4 berücksichtigt auch den zuvor fehlgeschlagenen Release-Versuch, dessen Zustandsupdate bereits erfolgreich gespeichert worden war.
+
+
+## 2026-09-23T10:31:52.3349164+00:00 | User | bcee07e3-18f3-4feb-81fd-1006b1ad5832
+
+Debug with gpt-5.6-terra • Medium
+
+
+## 2026-09-23T10:32:53.5243461+00:00 | Assistant | a10a126c-f987-4219-960f-a76c3b00c101
+
+Ja. `release.ps1` ruft vor jedem Release-Build `updateFossState.ps1` auf.
+
+Dabei wird jedes Mal der FOSS-Komponenten-Snapshot neu ermittelt und gehasht:
+
+- unveränderter Fingerprint → `FossRevision` bleibt gleich;
+- veränderter Fingerprint → `FossRevision` wird erhöht;
+- unabhängig davon → `BuildId` wird bei jedem Aufruf erhöht.
+
+Eine separate „VOSS-Prüfung“ existiert im aktuellen Code nicht; gemeint ist offenbar die FOSS-Prüfung. Sie ist keine externe Freigabeprüfung und blockiert nur bei technischen Fehlern, etwa fehlenden Paketdateien.
+
+Der ursprüngliche Fehler war die falsche Auswertung von `$LASTEXITCODE`; korrigiert wurde sie auf `$?`. Der dokumentierte vollständige Release-Lauf war erfolgreich. Keine verbleibenden Probleme aus dieser Prüfung; Annahme: Mit „VOSS“ war die FOSS-Statusprüfung gemeint.
+
+
+## 2026-09-23T11:35:12.0700073+00:00 | User | 65a75593-8d26-438e-b727-3357af07bdb5
+
+Debug with gpt-5.6-terra • Medium
+
+
+## 2026-09-23T11:38:40.3323659+00:00 | Assistant | ffa169e4-ed17-4480-8f0a-e0a9d85431dc
+
+Umgesetzt:
+
+- `NugetRevision.json` wird formatiert mit Zeilenumbrüchen gespeichert.
+- Neues `qbook/packageRelease.ps1` erstellt `Setup\qbook_<Releaseversion>.zip`.
+- `NugetRevision.json` und `BuildInfo.md` werden nach `Setup` kopiert.
+- Die Paketierung läuft nach erfolgreicher BuildInfo-Erzeugung in `release.ps1`.
+- `7z.exe` und `7z.dll` im Repository-Root werden geprüft und verwendet.
+
+Der ursprüngliche Fehler war die falsche Auswertung einer PowerShell-Skript-Ausführung über `$LASTEXITCODE`; die vorhandene Korrektur mit `$?` bleibt erhalten.
+
+Validierung: Visual-Studio-MSBuild für `Release|x86` erfolgreich mit 0 Fehlern (575 bestehende Warnungen). PowerShell-Syntax und JSON-Formatierung erfolgreich geprüft. Ein kompletter Release-Lauf wurde nicht gestartet, da dieser `BuildId` erhöht.
+
+Annahme: Das ZIP enthält den Inhalt von `Setup\Release\bin\qbook` einschließlich `BuildInfo.md`; die zusätzlichen Metadatendateien liegen direkt unter `Setup`.
+
+
+## 2026-09-23T11:55:45.1280673+00:00 | User | b52b5ff7-293c-4bad-83db-8a4c03d31abc
+
+Es funktioniert jetzt soweit alles. Aktuell ist alles allerdings sehr fragmentiert.  Ich meine damit n ps1 Scripte und Konfig fileWie kann man das sauber bereinigen.- kleines Projekt ?- oder .\CreateSetupSkript Verzeichnis dass alles relevante enthält
+
+
+## 2026-09-23T11:56:28.8493482+00:00 | Assistant | b297c28f-4b90-4968-a76e-5011ddeab229
+
+Ich würde dafür kein separates Projekt anlegen. Die Logik ist Build-Orchestrierung, keine Anwendungslogik; ein neues Projekt erzeugt nur weitere Projektdateien, Restore- und Release-Abhängigkeiten.
+
+Sauberer wäre ein gemeinsames Verzeichnis, zum Beispiel:
+
+```text
+build/release/
+  Release.ps1
+  UpdateFossState.ps1
+  UpdateAssemblyInfo.ps1
+  UpdateBuildInfo.ps1
+  PackageRelease.ps1
+NugetRevision.json
+```
+
+`NugetRevision.json` bleibt im Solution-Root, weil es die eingecheckte, projektübergreifende Versions- und Snapshotquelle ist. Die Projektdateien rufen die gemeinsamen Skripte aus `build/release` auf; der Nutzer startet nur `Release.ps1`.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "release_tool_organization",
+      "type": "single_select",
+      "text": "Welche Bereinigung soll geplant werden?",
+      "options": [
+        "Release-Skripte in build/release bündeln und NugetRevision.json im Solution-Root behalten",
+        "Release-Skripte in CreateSetupScript bündeln und NugetRevision.json im Solution-Root behalten",
+        "Ein separates kleines Release-Tool-Projekt erstellen"
+      ],
+      "required": true
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-09-23T11:58:42.9382255+00:00 | User | 76dbf388-cb6e-432d-8363-a537676ecd71
+
+:::answers
+{"answers":[{"id":"release_tool_organization","value":"Release-Skripte in build/release b\u00FCndeln und NugetRevision.json im Solution-Root behalten","question":"Welche Bereinigung soll geplant werden?"}]}
+:::endanswers
+
+
+## 2026-09-23T11:59:06.6471772+00:00 | Assistant | cd6be20f-eae8-4e6a-a8fc-9adb041042f6
+
+Die Struktur ist planungsbereit.
+
+- Release-Skripte werden nach `build/release` verschoben und dort gebündelt.
+- `NugetRevision.json` bleibt im Solution-Root als eingecheckte gemeinsame Versions- und Snapshotquelle.
+- Die lokalen Projekte verweisen anschließend auf die zentralen Skripte.
+- Kein neues Release-Tool-Projekt, keine Änderung an Debug-Builds.
+- Der bestehende lokale Releaseablauf, die Versionslogik, Build-ID und `BuildInfo.md` bleiben erhalten.
+- Validierung: Nutzer startet den lokalen Release und prüft Release-Ausgabe, `BuildInfo.md` und `NugetRevision.json`.
+
+
+## 2026-09-23T12:04:30.7800613+00:00 | User | a00bdd29-1e9f-4bcc-9bcb-3a8f63dac502
+
+Können wir das release skript noch erweitern.Abfrage Major ändern Ja / Nein wenn Ja eingabeAbfrage Feature ändern Ja / Nein wenn Ja eingabeAbfragetexte in englisch
+
+
+## 2026-09-23T12:06:17.9737380+00:00 | Assistant | 6d9aaaa5-ea43-413f-a539-49047fa4ccd0
+
+Ja, aufgenommen und wieder planungsbereit gesetzt.
+
+Der lokale Release-Einstieg fragt künftig auf Englisch:
+
+- `Change major revision? (y/n)` → bei `y`: neue numerische Major-Version eingeben
+- `Change feature revision? (y/n)` → bei `y`: neue numerische Feature-Version eingeben
+
+Bei `n` bleibt der jeweilige Wert aus `NugetRevision.json` unverändert. Eingaben werden auf gültige technische Versionswerte geprüft.
+
+Der restliche Ablauf bleibt: `Major.Feature.Voss.yyDDD`, automatische Voss-Erhöhung bei geändertem Snapshot, fortlaufende Build-ID und `BuildInfo.md`. Die Release-Skripte werden nach `build/release` gebündelt; `NugetRevision.json` bleibt im Solution-Root und wird anschließend vom Nutzer geprüft und committed.
+
+
+## 2026-09-23T12:06:31.5614651+00:00 | User | 14598cf4-62b4-4fb2-805b-216ace7c182b
+
+Plan
+
+
+## 2026-09-23T12:08:07.9164803+00:00 | Assistant | 2d2b5f71-a788-4a45-9176-63af32132328
+
+Der umsetzungsreife Plan wurde geschrieben: Release-Skripte nach `build/release`, englische Major-/Feature-Abfragen sowie alle nötigen Projekt- und Batch-Verweise.
+
+[Open implementation handoff](aiflow-handoff:implementation)
+
+
+## 2026-09-23T12:08:14.6691046+00:00 | User | 67d9651e-7a2c-42b1-b484-301be2284eb4
+
+Implement with gpt-5.6-terra • Medium
+
+
+## 2026-09-23T12:11:16.4267336+00:00 | Assistant | 0818f76e-4e26-4e90-aaba-2d19dc18cdcb
+
+Release-Tooling nach `build/release` verlagert und Referenzen in `NewRelease.bat`, `qbook.csproj` und `qbookCsScript.csproj` angepasst. Die Release-Eingabe fragt Major und Feature jeweils auf Englisch ab und validiert Werte von `0` bis `65535`; `updateFossState.ps1` schreibt beide Werte zusammen mit FOSS-Fingerprint und inkrementierter Build-ID in `NugetRevision.json`.
+
+Die alte Skriptkopien unter `qbook` wurden entfernt. Die Referenzprüfung fand keine verbliebenen Verweise auf diese alten fünf Skripte.
+
+Die vorgeschriebene Build-Prüfung konnte nicht starten: `msbuild` ist in der aktuellen PowerShell-Umgebung nicht verfügbar. Es wurden keine Tests ausgeführt, da keine automatisierte Validierung registriert ist. Der Workitem-Status wurde deshalb auf `failed` gesetzt; `planning_ready` ist `false`.

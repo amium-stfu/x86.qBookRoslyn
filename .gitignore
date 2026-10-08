@@ -59,6 +59,11 @@ setup/
 /ASAP2Lib/ASAP2/obj
 /ASAP2Lib/ASAP2If/obj/Debug
 /ASAP2Lib
+DebugProject/
+
+bin/
+obj/
+TestResults/
 
 # AiFlow shared workflow profile
 .ai-flow/*

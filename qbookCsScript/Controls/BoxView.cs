@@ -1203,9 +1203,9 @@ namespace QB.Controls
 
                 Read = new QB.Controls.Box("read", textFunction:() => Target.Value.ToString(Format), y:"32%", w:"64%", h:"40%",
                     onClick:(e) => Target.ShowEditDialog(),
-                    style:$"font::{H*1}:b,align:mr,bg:Transparent"),
-                new QB.Controls.Box("unit", textFunction:() => Target.Unit, x:"65%", y:"35%", w:"35%", h:"40%", style:$"font::{H*0.8}:i,align:ml,bg:Transparent"),
-                new QB.Controls.Box(Name, textFunction:() => Target.Text, x:0, y:0, h:"100%", style:$"font::{H*0.6}:,align:tl,bg:Transparent"),
+                    style:$"font::{H*1}:b,align:mr,bg:Transparent") { Directory = Page },
+                new QB.Controls.Box("unit", textFunction:() => Target.Unit, x:"65%", y:"35%", w:"35%", h:"40%", style:$"font::{H*0.8}:i,align:ml,bg:Transparent") { Directory = Page },
+                new QB.Controls.Box(Name, textFunction:() => Target.Text, x:0, y:0, h:"100%", style:$"font::{H*0.6}:,align:tl,bg:Transparent") { Directory = Page },
                     }
                 );
                 Frame.Directory = Page;
@@ -1218,13 +1218,13 @@ namespace QB.Controls
 
                 Frame = new Box(Name, text: "", x: X, y: Y, w: W, h: H
                     , boxes: new[] {
-                new QB.Controls.Box(Name, textFunction:() => Target.Text, x:1.5, y:"10%", w:"30%", h:"80%", style:$"font::{H}:,align:ml,bg:Transparent"),
+                new QB.Controls.Box(Name, textFunction:() => Target.Text, x:1.5, y:"10%", w:"30%", h:"80%", style:$"font::{H}:,align:ml,bg:Transparent") { Directory = Page },
                 Read = new QB.Controls.Box("read", textFunction:() => Target.Value.ToString(Format), x:"30%", y:"10%", w:"50%", h:"80%",
                     onClick:(e) => Target.ShowEditDialog(),
                     style:$"font::{H*1}:b,align:mr,bg:Transparent") {Directory = Page},
                 
               
-                new QB.Controls.Box("unit", textFunction:() => Target.Unit, x:"72%", y : "10%", w : "27%", h : "80%", style:$"font::{H}:i,align:ml,bg:Transparent")
+                new QB.Controls.Box("unit", textFunction:() => Target.Unit, x:"72%", y : "10%", w : "27%", h : "80%", style:$"font::{H}:i,align:ml,bg:Transparent") { Directory = Page }
                     }
                 );
                 Frame.Directory = Page;
@@ -1313,21 +1313,21 @@ namespace QB.Controls
 
                 Read = new QB.Controls.Box("read", textFunction:() => Target.Value.ToString(Format), y:"32%", w:"64%", h:"40%",
                     onClick:(e) => Target.Set.ShowEditDialog(),
-                    style:$"font::{H*1.1},align:mr,bg:Transparent"),
-                 new QB.Controls.Box("unit", textFunction:() => Target.Unit, x:"65%", y:"32%", w:"35%", h:"40%", style:$"font::{H}:i,align:ml,bg:Transparent"),
-                 new QB.Controls.Box(Name, textFunction:() => Target.Text, x:0, y:0, h:"100%", style:$"font::{H*0.8}:b:,align:tl,bg:Transparent"),
+                    style:$"font::{H*1.1},align:mr,bg:Transparent") { Directory = Page },
+                 new QB.Controls.Box("unit", textFunction:() => Target.Unit, x:"65%", y:"32%", w:"35%", h:"40%", style:$"font::{H}:i,align:ml,bg:Transparent") { Directory = Page },
+                 new QB.Controls.Box(Name, textFunction:() => Target.Text, x:0, y:0, h:"100%", style:$"font::{H*0.8}:b:,align:tl,bg:Transparent") { Directory = Page },
                 // new QB.Controls.Box(Name, text:"Set: ", x:"66%", y:"58%", w:"15%", h:"40%", style:$"font::{H*0.5}:i:,align:bl,bg:Transparent"),
 				// Set = new QB.Controls.Box(Name, text:() => Target.Set.Value.ToString(Format), editMask:"", x:"76%", y:"59%", w:"23%", h:"40%", onAccept:(e) => saveSet(), style:$"font::{H*0.5}:i:,align:bl,bg:Transparent"),
-					Set = new QB.Controls.Box(Name, textFunction:() =>"Set: " + Target.Set.Value.ToString(Format), x:"50%", y:"75%", w:"50%", h:"25%", onClick:(e) => Target.Set.ShowEditDialog(min:Min, max:Max), style:$"font::{H*0.5}:i:,align:bl,bg:Transparent"),
+					Set = new QB.Controls.Box(Name, textFunction:() =>"Set: " + Target.Set.Value.ToString(Format), x:"50%", y:"75%", w:"50%", h:"25%", onClick:(e) => Target.Set.ShowEditDialog(min:Min, max:Max), style:$"font::{H*0.5}:i:,align:bl,bg:Transparent") { Directory = Page },
               //   new QB.Controls.Box(Name, text:"Out: ", x:"0%", y:"58%", w:"10%", h:"40%", style:$"font::{H*0.5}:i:,align:bl"),
-                 Out = new QB.Controls.Box(Name, textFunction:() =>"Out: " + Target.Out.Value.ToString("0.00"), x:"0%", y:"73%", w:"50%", h:"25%", style:$"font::{H*0.5}:i:,align:bl,bg:Transparent", onClick:(e) => Target.Out.ShowEditDialog()),
+                 Out = new QB.Controls.Box(Name, textFunction:() =>"Out: " + Target.Out.Value.ToString("0.00"), x:"0%", y:"73%", w:"50%", h:"25%", style:$"font::{H*0.5}:i:,align:bl,bg:Transparent", onClick:(e) => Target.Out.ShowEditDialog()) { Directory = Page },
                 }
             );
 
             Frame.Directory = Page;
 
-            if (Locked) Read.Clickable = false;
             SetBackColor(Backcolor);
+            SetVisible();
             //Read.EditMask = null;
         }
 
@@ -1361,8 +1361,17 @@ namespace QB.Controls
 
         public override void SetVisible()
         {
-            Read.Clickable = Visible;
-
+            if (Frame != null)
+            {
+                Frame.Visible = Visible;
+                Frame.Clickable = false;
+            }
+            if (Read != null)
+                Read.Clickable = Visible && !Locked;
+            if (Set != null)
+                Set.Clickable = Visible && !Locked;
+            if (Out != null)
+                Out.Clickable = Visible && !Locked;
         }
     }
 
@@ -1406,6 +1415,7 @@ namespace QB.Controls
                 , boxes: new[] {
                 new QB.Controls.Box(Name, textFunction: () => Label, x:0, y:0, w:"100%", h:"100%", format: $"bg:#e6e6e6,align:ml", style:$"font::{FontSize}:,align:tl,bg-hover:Transparent")
                 {
+                    Directory = Page,
                     BackgroundColorHover = Backcolor, BackgroundColor = Backcolor
                 }
                 }
@@ -1480,6 +1490,7 @@ namespace QB.Controls
             Frame = new QB.Controls.Box(Name, x: X, y: Y, w: W, h: H
                 , boxes: new[] {
                 new QB.Controls.Box(Name, textFunction:() => Target.Text, x:0, y:0, w:"100%", h:"100%", format: $"bg:#e6e6e6,align:ml", style:$"font::{H*0.7}:,align:tl,bg-hover:Transparent") {
+                    Directory = Page,
                     BackgroundColorHover = Backcolor, BackgroundColor = Backcolor
                 },
                 Read = new QB.Controls.Box("read", textFunction:() => Target.Value.ToString(), x:0, y:"27%", w:"90%", h:"73%",
@@ -1492,6 +1503,7 @@ namespace QB.Controls
                 }
             );
             Frame.Directory = Page;
+            Read.Directory = Page;
 
 
             if (Locked)
@@ -1503,11 +1515,13 @@ namespace QB.Controls
             }
 
             SetBackColor(Backcolor);
+            SetVisible();
 
         }
 
         void edit()
         {
+            QB.Logger.Debug($"{Target.Name} Edit");
             if (Locked) return;
             string input = Target.Value.ToString();
             Extensions.ShowEditTextDialog(ref input, text: Target.Text);
@@ -1544,8 +1558,13 @@ namespace QB.Controls
 
         public override void SetVisible()
         {
-            Read.Clickable = Visible;
-            Frame.Clickable = Visible;
+            if (Frame != null)
+            {
+                Frame.Visible = Visible;
+                Frame.Clickable = false;
+            }
+            if (Read != null)
+                Read.Clickable = Visible && !Locked;
 
         }
 
@@ -1580,10 +1599,11 @@ namespace QB.Controls
             Frame = new QB.Controls.Box(Name, x: X, y: Y, w: W, h: H
                 , boxes: new[] {
                 new QB.Controls.Box(Name, text:BoxName, x:0, y:0, w:"100%", h:"100%", format: $"bg:#e6e6e6,align:ml", style:$"font::{H*0.66*0.7}:,align:tl,bg-hover:Transparent") {
+                    Directory = Page,
                     BackgroundColorHover = Backcolor, BackgroundColor = Backcolor
                 },
-                Headline = new QB.Controls.Box("headline", text:HeadlineText, x:1.5, y:"22%", w:"97%", h:"35%", style:$"font::{H*0.66}:b:bg:Transparent,align:tl,bg-hover:Transparent"),
-                Content = new QB.Controls.Box("content", text:ContentText, x:1.5, y:"60%", w:"97%", h:"90%", style:$"font::{H*0.35}:b:bg:Transparent,align:tl,bg-hover:Transparent"),
+                Headline = new QB.Controls.Box("headline", text:HeadlineText, x:1.5, y:"22%", w:"97%", h:"35%", style:$"font::{H*0.66}:b:bg:Transparent,align:tl,bg-hover:Transparent") { Directory = Page },
+                Content = new QB.Controls.Box("content", text:ContentText, x:1.5, y:"60%", w:"97%", h:"90%", style:$"font::{H*0.35}:b:bg:Transparent,align:tl,bg-hover:Transparent") { Directory = Page },
                 }
             );
             Frame.Directory = Page;
@@ -1662,7 +1682,7 @@ namespace QB.Controls
                 
                 Frame = new QB.Controls.Box(Name, x: X, y: Y, w: W, h: H, 
                     boxes: new[] {
-                    new QB.Controls.Box("text", x:1.5, text: Target.Text, w:W-5, style: $"font::{H}:,align:ml,bg-hover:Transparent"),
+                    new QB.Controls.Box("text", x:1.5, text: Target.Text, w:W-5, style: $"font::{H}:,align:ml,bg-hover:Transparent") { Directory = Page },
                     new QB.Controls.Box("led", x:W - 5, y:ly, w:ledSize, h:ledSize, style: $"bg:transparent,border:Black:1",onClick:(s) => toggle()) {Directory = Page}
                     }
                  );
@@ -1801,6 +1821,7 @@ namespace QB.Controls
 
             Channels[0] = new QB.Controls.Box(Name, text: Target.Text, x: 0, y: 0, w: W, h: "40%", format: $"bg:#e6e6e6,align:ml", style: $"font::{H * 0.8}::,align:tl")
             {
+                Directory = Page,
                 BackgroundColorHover = Backcolor,
                 BackgroundColor = Backcolor
             };
@@ -1855,8 +1876,8 @@ namespace QB.Controls
 
                     Channels[c] = new QB.Controls.Box(channel.Name, x: sx + "%", y: "40%", w: cw, h: "60%", style: $"bg:transparent", onClick: (s) => SetValue(channel.Value),
                          boxes: new[] {
-                            new QB.Controls.Box("text", text: channel.Text, x:5,y:"2%", style: $"font::{H * 0.6}:b,bg:transparent,align:ml"),
-                            new QB.Controls.Box("led", x:lx, y:ly, w:ledSize, h:ledSize,style: $"bg:transparent,border:Black:1")
+                            new QB.Controls.Box("text", text: channel.Text, x:5,y:"2%", style: $"font::{H * 0.6}:b,bg:transparent,align:ml") { Directory = Page },
+                            new QB.Controls.Box("led", x:lx, y:ly, w:ledSize, h:ledSize,style: $"bg:transparent,border:Black:1") { Directory = Page }
                          })
                     {
                         Directory = Page,
@@ -1869,6 +1890,7 @@ namespace QB.Controls
             Frame = new QB.Controls.Box(Name, text: "", x: X, y: Y, w: W, h: H, format: $"bg:#e6e6e6,align:ml,bg-hover:#e6e6e6",
                 boxes: Channels)
             {
+                Directory = Page,
                 BackgroundColor = Backcolor,
                 BackgroundColorHover = Backcolor,
 
@@ -2007,8 +2029,8 @@ namespace QB.Controls
                     Frame = new QB.Controls.Box(Name, text: Id, x: X, y: Y, w: W, h: H, style: $"font::{aligment * 0.5},align:tl,bg:Transparent",
                         onClick: OnClick,
                         boxes: new[] {
-                    State = new QB.Controls.Box("icon", x:aligment * 0.2, y:(H - iconSize) / 2, w:iconSize, h:iconSize),
-                    Description = new QB.Controls.Box("description", textFunction:DescriptionText, x:H * 0.9, y:(H - iconSize) / 2, w:W - H -2, h:H - (H - iconSize) / 2, onClick:OnClick, style:$"font::{H},align:ml,bg:Transparent"),
+                    State = new QB.Controls.Box("icon", x:aligment * 0.2, y:(H - iconSize) / 2, w:iconSize, h:iconSize) { Directory = Page },
+                    Description = new QB.Controls.Box("description", textFunction:DescriptionText, x:H * 0.9, y:(H - iconSize) / 2, w:W - H -2, h:H - (H - iconSize) / 2, onClick:OnClick, style:$"font::{H},align:ml,bg:Transparent") { Directory = Page },
                         });
                     Description.OnWheel += (box, delta) => MouseWheel(box, delta);
 
@@ -2017,7 +2039,7 @@ namespace QB.Controls
                 if (DescriptionText == null)
                 {
                     Frame = new QB.Controls.Box(Name, text: Id, x: X, y: Y, w: W, h: H, style: $"font::{H * 0.5},align:tl,bg:Transparent", onClick: OnClick, boxes: new[] {
-                    State = new QB.Controls.Box("icon",text:"", x:0, y:H * 0.2, w:W, h:H * 0.6, onClick : OnClick),
+                    State = new QB.Controls.Box("icon",text:"", x:0, y:H * 0.2, w:W, h:H * 0.6, onClick : OnClick) { Directory = Page },
                 });
                 }
             }
@@ -2028,9 +2050,9 @@ namespace QB.Controls
                     Frame = new QB.Controls.Box(Name, x: X, y: Y, w: W, h: H, style: $"font::{aligment * 0.5},align:tl,bg:Transparent",
                         onClick: OnClick,
                         boxes: new[] {
-                            Led = new QB.Controls.Box("led", x:0.5, y:0.5, w:2.5, h:2.5,style: $"bg:transparent,border::Black:1", onClick : OnClick),
-                            State = new QB.Controls.Box("icon", x:aligment * 0.2, y:(H - iconSize) / 2, w:iconSize, h:iconSize,onClick: OnClick),
-                            Description = new QB.Controls.Box("description", textFunction:DescriptionText, x:H * 0.9, y:(H - iconSize) / 2, w:W - H -2, h:H - (H - iconSize) / 2, onClick:OnClick, style:$"font::{H},align:ml,bg:Transparent"),
+                            Led = new QB.Controls.Box("led", x:0.5, y:0.5, w:2.5, h:2.5,style: $"bg:transparent,border::Black:1", onClick : OnClick) { Directory = Page },
+                            State = new QB.Controls.Box("icon", x:aligment * 0.2, y:(H - iconSize) / 2, w:iconSize, h:iconSize,onClick: OnClick) { Directory = Page },
+                            Description = new QB.Controls.Box("description", textFunction:DescriptionText, x:H * 0.9, y:(H - iconSize) / 2, w:W - H -2, h:H - (H - iconSize) / 2, onClick:OnClick, style:$"font::{H},align:ml,bg:Transparent") { Directory = Page },
                         });
                     Description.OnWheel += (box, delta) => MouseWheel(box, delta);
 
@@ -2041,8 +2063,8 @@ namespace QB.Controls
                     Frame = new QB.Controls.Box(Name, x: X, y: Y, w: W, h: H, style: $"font::{H * 0.5},align:tl,bg:Transparent", 
                         onClick: OnClick, 
                         boxes: new[] {
-                            Led = new QB.Controls.Box("led", x:0.5, y:0.5, w:2.5, h:2.5,style: $"bg:transparent,border:Black:1",onClick: OnClick),
-                            State = new QB.Controls.Box("icon",text:"", x:0, y:H * 0.2, w:W, h:H * 0.6,onClick: OnClick),
+                            Led = new QB.Controls.Box("led", x:0.5, y:0.5, w:2.5, h:2.5,style: $"bg:transparent,border:Black:1",onClick: OnClick) { Directory = Page },
+                            State = new QB.Controls.Box("icon",text:"", x:0, y:H * 0.2, w:W, h:H * 0.6,onClick: OnClick) { Directory = Page },
                         });
                 }
 

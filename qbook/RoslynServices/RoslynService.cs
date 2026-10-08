@@ -1577,6 +1577,7 @@ namespace qbook
                                 { "justMyCode", false },
                                 { "requireExactSource", false },
                                 { "suppressJITOptimizations", true },
+                                { "sourceFileMap", BuildSourceFileMap(compilationSourcePaths, codeDir) },
                                 { "logging", new Dictionary<string, object>
                                     {
                                         { "moduleLoad", true },
@@ -1672,6 +1673,40 @@ namespace qbook
                 lock (_buildLock) _isBuildingAssembly = false;
             }
         }
+        /// <summary>
+        /// Builds the debugger sourceFileMap from the source paths stored in the PDB.
+        /// </summary>
+        /// <param name="sourcePaths">File paths of the compiled syntax trees.</param>
+        /// <param name="fallbackCodeDir">Code directory used when no source path is available.</param>
+        /// <returns>Map of PDB source root to workspace folder.</returns>
+        private static Dictionary<string, object> BuildSourceFileMap(IEnumerable<string> sourcePaths, string fallbackCodeDir)
+        {
+            const string pagesSegment = "\\Pages\\";
+            var map = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var path in sourcePaths)
+            {
+                if (string.IsNullOrWhiteSpace(path))
+                    continue;
+
+                int pagesIndex = path.IndexOf(pagesSegment, StringComparison.OrdinalIgnoreCase);
+                string? root = pagesIndex >= 0 ? path.Substring(0, pagesIndex) : Path.GetDirectoryName(path);
+                if (string.IsNullOrWhiteSpace(root))
+                    continue;
+
+                root = root.TrimEnd('\\', '/');
+                map[root] = "${workspaceFolder}";
+
+                if (pagesIndex >= 0)
+                    map[root + "\\Pages"] = "${workspaceFolder}\\Pages";
+            }
+
+            if (map.Count == 0 && !string.IsNullOrWhiteSpace(fallbackCodeDir))
+                map[fallbackCodeDir.TrimEnd('\\', '/')] = "${workspaceFolder}";
+
+            return map;
+        }
+
         private static bool IsManagedAssembly(string path)
         {
             try
