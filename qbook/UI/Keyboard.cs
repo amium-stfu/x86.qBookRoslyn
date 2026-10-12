@@ -158,7 +158,6 @@ namespace qbook.UI
     {
         TextBox TbResult;
 
-        string[] quertz = null;
 
         FlowLayoutPanel panel = null;
         public KeyboardButtonCapsLock(TextBox tbResult, FlowLayoutPanel panel)

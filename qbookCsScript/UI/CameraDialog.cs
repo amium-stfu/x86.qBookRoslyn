@@ -61,11 +61,9 @@ namespace QB.UI
             return device.VideoCapabilities.Last();
         }
 
-        static Image img = null;
 
         private static FilterInfoCollection VideoCaptureDevices;
         private static VideoCaptureDevice videoSource;
-        static bool captured = false;
         void Idle()
         {
           //  while (t)

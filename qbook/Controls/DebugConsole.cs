@@ -58,64 +58,50 @@ namespace qbook.Controls
         BindingList<WatchItem> watchItems = new BindingList<WatchItem>();
         private void buttonRefresh_Click(object sender, EventArgs e)
         {
-
-            //Assembly assembly = qbook.Core.ActiveCsAssembly;
-
-            // Get all types in the assembly
-            //Type[] types = assembly.GetTypes();
-            Type[] types = qbook.Core.csScript.GetType().Assembly.GetTypes();
-            Type qbScript = types.FirstOrDefault(t => t.Name == "QbScript");
-            //types = qbScript.GetType().Assembly.GetTypes();
-            object castedCsScript = Convert.ChangeType(qbook.Core.csScript, qbook.Core.csScript.GetType()); 
             watchItems.Clear();
-            // Filter and display only classes
-            //Console.WriteLine("Classes in the assembly:");
+            dataGridViewWatch.DataSource = watchItems;
 
+            Assembly assembly = Core.ActiveCsAssembly;
+            if (assembly == null) return;
 
-            foreach (Type type in types)
+            object[] instances = Core.ThisBook?.Main?.Objects?.OfType<oPage>()
+                .Select(page => page.DynInstance)
+                .Where(instance => instance != null)
+                .ToArray() ?? Array.Empty<object>();
+
+            foreach (Type type in assembly.GetTypes().Where(type => type.IsClass))
             {
-                if (type.IsClass)
+                foreach (PropertyInfo property in type.GetProperties())
                 {
-                    PropertyInfo[] properties = type.GetProperties();
-                    foreach (PropertyInfo property in properties)
+                    MethodInfo getter = property.GetGetMethod(nonPublic: true);
+                    if (getter == null || property.GetIndexParameters().Length != 0) continue;
+
+                    object target = null;
+                    if (!getter.IsStatic)
                     {
-                        string accessModifier = GetAccessModifier(property);
-                        object propertyValue = null;
-                        try
-                        {
-                            //Console.WriteLine($"Type of csScript: {qbook.Core.csScript.GetType()}");
-                            //Console.WriteLine($"Type of property: {property.DeclaringType}");
-                            propertyValue = property.GetValue(castedCsScript);
-                        }
-                        catch (Exception ex) 
-                        {
-                            propertyValue = "#EX: " + ex.Message;
-                        }
-                        watchItems.Add(new WatchItem { Type = accessModifier, Class = type.FullName, Expression = property.Name, Value = propertyValue });
+                        target = instances.FirstOrDefault(instance => type.IsInstanceOfType(instance));
+                        if (target == null) continue;
                     }
 
+                    object propertyValue;
+                    try
+                    {
+                        propertyValue = property.GetValue(target);
+                    }
+                    catch (Exception ex)
+                    {
+                        propertyValue = "#EX: " + ex.Message;
+                    }
 
-                    //PropertyInfo[] properties = type.GetProperties(BindingFlags.Public);
-                    //foreach (PropertyInfo property in properties)
-                    //{
-                    //    watchItems.Add(new WatchItem { Type = "public", Class = type.FullName, Expression = property.Name, Value = null/*property.GetValue(null)*/ });
-                    //}
-
-                    //properties = type.GetProperties(BindingFlags.NonPublic);
-                    //foreach (PropertyInfo property in properties)
-                    //{
-                    //    watchItems.Add(new WatchItem { Type = "private", Class = type.FullName, Expression = property.Name, Value = null/*property.GetValue(null)*/ });
-                    //}
-
-                    //properties = type.GetProperties(BindingFlags.Instance);
-                    //foreach (PropertyInfo property in properties)
-                    //{
-                    //    watchItems.Add(new WatchItem { Type = "instance", Class = type.FullName, Expression = property.Name, Value = null/*property.GetValue(null)*/ });
-                    //}
-
+                    watchItems.Add(new WatchItem
+                    {
+                        Type = GetAccessModifier(property),
+                        Class = type.FullName,
+                        Expression = property.Name,
+                        Value = propertyValue
+                    });
                 }
             }
-            dataGridViewWatch.DataSource = watchItems;
         }
     }
 }

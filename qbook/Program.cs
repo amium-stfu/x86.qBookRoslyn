@@ -77,41 +77,6 @@ namespace qbook
 
 
 
-            if (false) //testing
-                {
-                    log4net.Repository.Hierarchy.Hierarchy hierarchy = (log4net.Repository.Hierarchy.Hierarchy)log4net.LogManager.GetRepository();
-
-                    //RollingFileAppender
-                    PatternLayout rollerPatternLayout = new log4net.Layout.PatternLayout();
-                    rollerPatternLayout.ConversionPattern = "%date [%thread] %-5level %logger - %message%newline";
-                    rollerPatternLayout.ActivateOptions();
-                    RollingFileAppender roller = new log4net.Appender.RollingFileAppender();
-                    roller.AppendToFile = false;
-                    roller.File = @"qbook.log";
-                    roller.Layout = rollerPatternLayout;
-                    roller.MaxSizeRollBackups = 5;
-                    roller.MaximumFileSize = "10MB";
-                    roller.RollingStyle = RollingFileAppender.RollingMode.Size;
-                    roller.StaticLogFileName = true;
-                    roller.ActivateOptions();
-                    hierarchy.Root.AddAppender(roller);
-
-                    //UdpAppender
-                    var udpPatternLayout = new log4net.Layout.PatternLayout();
-                    udpPatternLayout.ConversionPattern = "%date [%thread] %-5level %logger - %message%newline";
-                    udpPatternLayout.ActivateOptions();
-                    var udpAppender = new log4net.Appender.UdpAppender();
-                    udpAppender.RemoteAddress = new System.Net.IPAddress(new byte[] { 127, 0, 0, 1 });
-                    udpAppender.RemotePort = 39999;
-                    udpAppender.Layout = udpPatternLayout;
-                    udpAppender.ActivateOptions();
-                    hierarchy.Root.AddAppender(udpAppender);
-
-                    hierarchy.Root.Level = log4net.Core.Level.All;
-                    hierarchy.Configured = true;
-
-                    ILog logger = log4net.LogManager.GetLogger(hierarchy.Name, "qbLogger");
-                }
 
 
                 //license for SyntaxEditor (Actipro+.NetLang+PythonLang)
@@ -142,27 +107,6 @@ namespace qbook
                 AppUdpLogListener.StartListening(39999);
 
 
-                if (false) //HALE //TEMP testing
-                {
-                    Form f = new Form();
-                    f.Width = 800;
-                    f.Height = 600;
-
-                    TextBox tb = new TextBox();
-                    tb.Dock = DockStyle.Top;
-                    f.Controls.Add(tb);
-
-                    ColoredTextBox.ColoredTextBoxControl ctb = new ColoredTextBox.ColoredTextBoxControl();
-                    ctb.ParentObjectName = "";
-                    ctb.Dock = DockStyle.Fill;
-                    f.Controls.Add(ctb);
-                    ctb.BringToFront();
-                    ctb.Text = "";
-                    ctb.ShowDebugInfo = true;
-
-                    f.ShowDialog();
-                    return;
-                }
 
 
 

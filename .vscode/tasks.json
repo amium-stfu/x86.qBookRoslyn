@@ -9,7 +9,7 @@
         "qbookStudio.sln",
         "/t:Build",
         "/p:Configuration=Release",
-        "/p:Platform=x86"
+        "/p:Platform=x64"
       ],
       "options": {
         "cwd": "${workspaceFolder}"

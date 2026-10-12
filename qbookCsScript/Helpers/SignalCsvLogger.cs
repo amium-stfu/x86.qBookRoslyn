@@ -34,7 +34,6 @@ namespace QB.Helpers
         public string DecimalSeperator = ".";
         public string Folder = QB.Book.DataDirectory;
 
-        TimeSpan totalSeconds;
 
 
         public int Interval = 1000;

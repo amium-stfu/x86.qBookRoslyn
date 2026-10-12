@@ -436,7 +436,6 @@ namespace qbook
         //cs-script 
         // A project assembly (similar to a Visual Studio project) contains source files and assembly references for reflection
 
-        internal static System.Reflection.Assembly CsScript_ass;
 
         internal static System.Reflection.Assembly ActiveCsAssembly = null;
         internal static string LastScriptDllFilename = null;
@@ -458,7 +457,6 @@ namespace qbook
         private static string[] _LastCsScriptBuildCodeLines = null;
    
 
-        internal static dynamic csScript;
         internal static bool IsBuilding = false;
         internal static string LastBuildResult = null; //null=OK
         internal static string LastBuildErrors = null; //null=OK
@@ -560,7 +558,6 @@ using System.Text.Json;
         //    return code;
         //}
 
-        static AppDomain scriptDomain = null;
         //static string ReplaceCodeInclude(Match m, string pathToPage = "")
         //{
         //    if (!m.Groups[1].Success)
@@ -624,28 +621,7 @@ using System.Text.Json;
         //    }
         //}
 
-        internal static void CsScript_Destroy()
-        {
-            if (csScript != null)
-            {
-                try
-                {
-                    //Main.Qb.Root.ResetObjectDict();
-                    //Main.Qb.Root.ResetWidgetDict();
-                    //Main.Qb.Automation.SignalGen.SignalGenList.Clear();
-                    csScript._DestroyClasses(null);
-           
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("#EX CsScript_Destroy: " + ex.Message + (QB.Logger.ShowStackTrace ? ex.StackTrace : ""));
-                    QB.Logger.Error("#EX in CsScript_Destroy: " + ex.ToString());
-                }
-            }
-        }
 
-        internal static string ProgramMainCode;
-        internal static string MethodMainCode_2step;
 
         //HALE:20230919 static UdpLogger udpLogger = null;
         //HALE:20230919 static public string UdpLoggerStatus = null;
@@ -863,8 +839,6 @@ using System.Text.Json;
                 if (!Directory.Exists(backupDir))
                     Directory.CreateDirectory(backupDir);
 
-                string dataDir = "";
-                string settingsDir = "";
                 Debug.WriteLine("Check if XML");
                 if (IsXml(fullPath))
                 {

@@ -169,6 +169,12 @@ namespace qbook
             pageControl.ResetDialogInput();
             if (DialogBox.Active != null)
             {
+                if (displayedDialog != null && !ReferenceEquals(displayedDialog, DialogBox.Active))
+                {
+                    foreach (var editor in Controls.Cast<System.Windows.Forms.Control>().Where(c =>
+                        c.Tag is QB.Controls.Control widget && displayedDialog.Owns(widget)).ToArray())
+                        editor.Dispose();
+                }
                 displayedDialog = DialogBox.Active;
                 DisableDialogBackground(this);
                 pageControl.Focus();
@@ -199,11 +205,11 @@ namespace qbook
                     DisableDialogBackground(child);
                     continue;
                 }
-                dialogEnabledStates[child] = child.Enabled;
+                if (!dialogEnabledStates.ContainsKey(child)) dialogEnabledStates[child] = child.Enabled;
                 child.Enabled = false;
                 if (ReferenceEquals(parent, pageControl) || child.Tag is QB.Controls.Control)
                 {
-                    dialogVisibleStates[child] = child.Visible;
+                    if (!dialogVisibleStates.ContainsKey(child)) dialogVisibleStates[child] = child.Visible;
                     child.Visible = false;
                 }
                 if (child is ToolStrip strip)
@@ -462,7 +468,6 @@ namespace qbook
         }
 
         int start = 0;
-        int yrect = 0;
         List<oIcon> Icons = new List<oIcon>();
 
         void IconsAdd(oIcon icon)
@@ -522,7 +527,6 @@ namespace qbook
             e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
             int y = pageControl.Location.Y;
             int h = 40;
-            int w = 20;
             int wBrowser = 280;
             int dist = 1;
             lock (Icons)
@@ -531,7 +535,6 @@ namespace qbook
             }
 
             y = pageControl.Location.Y + pageControl.Height + 10;
-            int wo = 30;
             int xo = pageControl.Location.X + pageControl.Width - 2;
 
            
@@ -544,7 +547,6 @@ namespace qbook
                 IconsAdd(new oIcon(null, qbook.Icon.Button, Pens.Black, "<<", Width - wBrowser, y, 25, h, Root));
             }
             xo = 10;
-            wo = 50;
             int skip = start;
 
             List<oPage> viewList = new List<oPage>();
@@ -1022,12 +1024,6 @@ namespace qbook
             {
                 base.OnPaint(e);
 
-                if (false) //custom paint -> TODO!
-                {
-                    Rectangle textRect = new Rectangle(0, 1, this.Width, 20);
-                    StringFormat fmt = new StringFormat();
-                    e.Graphics.DrawString(this.Text, this.Font, Brushes.Black, textRect, fmt);
-                }
 
 
                 /*
@@ -1408,7 +1404,6 @@ namespace qbook
             base.OnMouseEnter(e);
         }
 
-        bool _IsFirstActivation = true;
         private async void MainForm_Activated(object sender, EventArgs e)
         {
             //if (_IsFirstActivation)
@@ -2066,7 +2061,7 @@ namespace qbook
                 {
                     if (DISABLE_LICENSE_CHECK)
                     {
-                        log.Debug("verifying license (check disabled)");
+                    //  log.Debug("verifying license (check disabled)");
                         this.Text = title + $" [LICENSED]";
                     }
                     else
@@ -2334,7 +2329,6 @@ namespace qbook
         }
 
 
-        bool fullScreenMenuVisible = false;
 
         FullScreenMenu menuFullscreen;
         private void MainForm_MouseMove(object sender, MouseEventArgs e)
@@ -2353,7 +2347,6 @@ namespace qbook
                     menuFullscreen.Show(this);
                     menuFullscreen.AutoScaleMode = AutoScaleMode.None;
                     menuFullscreen.Size = new Size(108, 36);
-                    fullScreenMenuVisible = true;
                 }
             }
 

@@ -17,7 +17,6 @@ namespace qbook
            IntPtr pdv, [System.Runtime.InteropServices.In] ref uint pcFonts);
         private static PrivateFontCollection fonts = new PrivateFontCollection();
 
-        static bool fontInit = false;
 
 
         public static Bitmap GetImageByName(string imageName)

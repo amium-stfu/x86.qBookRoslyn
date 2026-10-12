@@ -76,15 +76,9 @@ namespace QB.Controls
             }
             set
             {
-                bool changed = _mmToPx != value;
                 _mmToPx = value;
 
-                if (false)
-                {   //HALE: need this for sizing HTML controls. but it's currently not working correctly as this 
-                    //changes permanently in case of multiple windows (UnDocked, PageDialogs, etc)
-                    if (changed)
-                        OnMmToPxChanged(value);
-                }
+                // Change notifications remain disabled: multiple windows use different drawing scales.
             }
         }
 
@@ -774,7 +768,6 @@ namespace QB.Controls
                         if (float.IsInfinity(x1) ||
                         float.IsInfinity(y1))
                         {
-                            string a = "";
                             lines[i].Y = 0;
                             lines[i].X = 0;
                         }

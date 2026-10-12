@@ -168,7 +168,6 @@ namespace Amium.Helpers
 
 
         static string HardwareId = null;
-        static string XeroLicense2Type = null; //PC or USB:X
         public static string GetLicense(string filename, out string source)
         {
             string licenseStr = null;

@@ -1572,7 +1572,6 @@ namespace ColoredTextBox
             {
                 int lineCount = 0;
                 float x = 0.0f;
-                float y = 0.0f;
                 foreach (var line in lines.Skip(firstVisibleRow).Take((int)visibleRowCount + 1))
                 {
                     lineCount++;

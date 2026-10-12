@@ -126,9 +126,7 @@ namespace QB
             }
         }
 
-        bool noFrame = false;
         public Rectangle Bounds = null;
-        double _mmToPx = 1f;
         public double mmToPxPdf = 2.835f; //@72dpi, 595dots, 21cm)
 
 

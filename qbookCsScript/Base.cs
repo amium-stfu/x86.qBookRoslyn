@@ -166,26 +166,6 @@ namespace QB
                     (o as Item).Destroy();
             }
 
-            if (false) //HALE: test 2025-05-22
-            {
-                foreach (object o in ClassDict.Values.ToList())
-                {
-                    if (o.GetType().Name == "oPage")
-                    {
-                        Type type = o.GetType();
-                        Type targetType = Type.GetType("qbook.oPage, qbookStudio");
-                        object castedObject = Convert.ChangeType(o, targetType);
-                        MethodInfo destroyMethod = type.GetMethod("Destroy");
-                        if (destroyMethod != null && destroyMethod.GetParameters().Length == 0)
-                        {
-                            destroyMethod.Invoke(o, null);
-                        }
-                        else
-                        {
-                        }
-                    }
-                }
-            }
 
             ObjectDict.Clear();
 

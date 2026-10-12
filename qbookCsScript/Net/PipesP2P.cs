@@ -26,7 +26,6 @@ namespace QB.Net
     {
         private string PipeName;
         private NamedPipeClientStream Client;
-        private bool IsRunning = false;
         private StreamWriter writer;
         private BinaryWriter writerBinary;
 
@@ -37,13 +36,11 @@ namespace QB.Net
 
         public void Start()
         {
-            IsRunning = true;
             QB.Logger.Info("PipesClient started.");
         }
 
         public void Stop()
         {
-            IsRunning = false;
 
             if (Client != null)
             {

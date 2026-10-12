@@ -8,7 +8,6 @@ namespace QB.Helpers
 {
     public class SignalFilter : Module
     {
-        string name;
         public Module raw = new Module("Raw");
         public QB.Timer timer;
 
@@ -71,7 +70,6 @@ namespace QB.Helpers
 
         public List<double> filterValues = new List<double>();
         double sum;
-        int max = 0;
         double result = 0;
 
         public SignalFilter(string name, Module raw, int Interval, int Filtertime) : base(name)

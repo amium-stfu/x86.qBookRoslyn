@@ -55,22 +55,6 @@ namespace qbook
             {
                 modifided = false;
 
-                if (false)
-                {
-                    if (checkBoxScroll.Checked)
-                    {
-                        listBoxLog.Invoke((MethodInvoker)(() =>
-                        {
-                            //listBoxLog.Enabled = false;
-                            //listBoxLog.BeginUpdate();
-                            listBoxLog.DataSource = null;
-                            listBoxLog.DataSource = qbook.Core.LogItems;
-                            listBoxLog.DisplayMember = Text;
-                            listBoxLog.TopIndex = listBoxLog.Items.Count - 1;
-                            //listBoxLog.EndUpdate();
-                        }));
-                    }
-                }
 
                 if (checkBoxScroll.Checked)
                 {

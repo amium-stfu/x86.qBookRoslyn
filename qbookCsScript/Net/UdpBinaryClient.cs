@@ -289,13 +289,15 @@ namespace QB.Net
 
         public void Start()
         {
-            Port = (int)FindAvailableUdpPort(startPort: 9100, endPort: 9200);
+            int? availablePort = FindAvailableUdpPort(startPort: 9100, endPort: 9200);
 
-            if (Port == null)
+            if (!availablePort.HasValue)
             {
                 QB.Logger.Error("UDP Client -> Find free port failed");
                 return;
             }
+
+            Port = availablePort.Value;
          
 
 
@@ -485,7 +487,6 @@ namespace QB.Net
         int ValueInterval;
         int DescriptorInterval;
 
-        DataPacket dataPacket = new DataPacket();
 
         public Dictionary<string, BinaryStream> Streams = new Dictionary<string, BinaryStream>();
         public StreamerWriterUDP(string name, bool sendDirect, int valueInterval, int descriptorInterval) : base(name)

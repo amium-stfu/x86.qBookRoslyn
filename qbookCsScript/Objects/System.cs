@@ -137,7 +137,6 @@ namespace QB
                 _BackBrush = new SolidBrush(value);
             }
         }
-        string _BackColorName = null;
         public string BackColorName
         {
             get
@@ -197,7 +196,6 @@ namespace QB
                 _ForeBrush = new SolidBrush(value);
             }
         }
-        string _ForeColorName = null;
         public string ForeColorName
         {
             get

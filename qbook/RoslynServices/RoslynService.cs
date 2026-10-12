@@ -1,4 +1,6 @@
-﻿using IronPython.Compiler;
+﻿#nullable enable annotations
+
+using IronPython.Compiler;
 using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Classification;
@@ -319,7 +321,8 @@ namespace qbook
 
                 _ws = MSBuildWorkspace.Create(props);
 
-                _ws.WorkspaceFailed += (s, e) => QB.Logger.Error($"[WorkspaceFailed] {e.Diagnostic.Kind}: {e.Diagnostic.Message}");
+                _workspaceFailedHandler = (s, e) => QB.Logger.Error($"[WorkspaceFailed] {e.Diagnostic.Kind}: {e.Diagnostic.Message}");
+                _ws.WorkspaceFailed += _workspaceFailedHandler;
                 try
                 {
                     _project = await _ws.OpenProjectAsync(csprojPath);
@@ -415,6 +418,7 @@ namespace qbook
 
             if (_ws != null && _workspaceFailedHandler != null)
                 _ws.WorkspaceFailed -= _workspaceFailedHandler;
+            _workspaceFailedHandler = null;
 
             _ws?.Dispose();
             _adhocWs?.Dispose();
@@ -452,30 +456,6 @@ namespace qbook
             refs = new();
             return false;
 
-            try
-            {
-                if (!File.Exists(ReferenceCachePath))
-                    return false;
-
-                var json = File.ReadAllText(ReferenceCachePath);
-                var data = JsonSerializer.Deserialize<ReferenceCacheFile>(json);
-                if (data == null || data.References.Count == 0)
-                    return false;
-
-                foreach (var path in data.References)
-                {
-                    if (!File.Exists(path))
-                        return false; // Cache ungültig → neu erzeugen
-
-                    refs.Add(MetadataReference.CreateFromFile(path));
-                }
-
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
         }
         private void SaveReferenceCache(IEnumerable<MetadataReference> refs)
         {
@@ -916,22 +896,10 @@ namespace qbook
                 return codeDoc;
             }
         }
-        public async Task IncludeDocument(string fileName, string code)
+        public Task IncludeDocument(string fileName, string code)
         {
-            return; // Nicht mehr benötigt, da AddCodeDocument jetzt immer mit FilePath arbeitet
-            var projectId = _project.Id;
-
-            // Prüfen, ob das Dokument schon existiert
-            var existingDoc = _project.Documents.FirstOrDefault(d => d.Name == fileName);
-            if (existingDoc != null)
-                return; // Schon vorhanden
-
-            var source = SourceText.From(code, Encoding.UTF8);
-            var added = _adhocWs.AddDocument(projectId, fileName, source);
-            var withPath = added.WithFilePath(FilePath(fileName));
-            _adhocWs.TryApplyChanges(withPath.Project.Solution);
-            _project = _adhocWs.CurrentSolution.GetProject(projectId);
-            var compilation = await _project.GetCompilationAsync();
+            // AddCodeDocument already assigns the file path.
+            return Task.CompletedTask;
         }
         public async Task <string> GetDocumentText(string fileName)
         {
@@ -1384,7 +1352,6 @@ namespace qbook
                 Debug.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
                 var normalizedSolution = _adhocWs.CurrentSolution;
-                var normalizedAny = false;
                 int docIndex = 0;
                 foreach (var document in project.Documents)
                 {

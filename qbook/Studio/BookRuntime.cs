@@ -1,4 +1,6 @@
-﻿using log4net;
+﻿#nullable enable annotations
+
+using log4net;
 using log4net.Appender;
 using log4net.Layout;
 using Microsoft.CodeAnalysis;
@@ -291,9 +293,6 @@ namespace qbook
             QB.Logger.Info("=== PageRuntime.DestroyAll() completed ===");
         }
 
-        private static int _buildVersion = 0;
-        private static ProjectId? _lastProjectId;
-        private static int _lastDocumentCount = 0;
 
 
         public static List<string> ErrorFiles = new List<string>();

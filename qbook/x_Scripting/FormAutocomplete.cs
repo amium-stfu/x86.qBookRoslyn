@@ -199,17 +199,6 @@ namespace qbook.Scripting
                 }
 
 
-                if (false)
-                {
-                    this.toolTip.Active = true;
-                    this.toolTip.AutomaticDelay = 0;
-                    this.toolTip.AutoPopDelay = 30000;
-                    this.toolTip.ReshowDelay = 50;
-                    this.toolTip.ShowAlways = true;
-                    this.toolTip.Show(info, this.listBoxItems); //.listBoxItems);
-                    this.toolTip.ToolTipTitle = title;
-                    this.toolTip.Show(info, this.listBoxItems); //.listBoxItems);
-                }
             }
             else
             {

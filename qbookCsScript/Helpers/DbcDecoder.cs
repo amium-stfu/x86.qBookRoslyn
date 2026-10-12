@@ -196,7 +196,6 @@ namespace QB
                                     DbcValue canValue = new DbcValue();
 
                                     //name = DbcMessages[actualId].Name.Trim() + "." + name;
-                                    name = name;
                                     canValue.Name = name;
                                     canValue.Unit = unit;
                                     canValue.ByteDecoder = new ByteDecoder(msgOffset, bits, byteOrder, signed);

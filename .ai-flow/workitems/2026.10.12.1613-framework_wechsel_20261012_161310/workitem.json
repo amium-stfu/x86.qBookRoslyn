@@ -1,0 +1,13 @@
+{
+  "id": "2026.10.12.1613-framework_wechsel_20261012_161310",
+  "title": "Framework wechsel - 20261012-161310",
+  "owner_user_id": "StefanFunk",
+  "status": "defining",
+  "branch": "main",
+  "updated_at": "2026-10-12T16:13:10.4778899\u002B02:00",
+  "progress": "Structure definition is in progress.",
+  "next_step": "Resolve plan-relevant Structure questions.",
+  "planning_ready": false,
+  "ai_mode": false,
+  "validation": true
+}

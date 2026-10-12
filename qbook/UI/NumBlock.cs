@@ -373,10 +373,6 @@ namespace qbook.UI
             if (e.KeyCode == Keys.Enter)
             {
                 return;
-                if (sendToTarget())
-                {
-                    this.Close();
-                }
             }
             if (e.KeyCode == Keys.Escape)
             {

@@ -44,10 +44,15 @@ namespace QB.Logging
         /// Interal default = 1000
         /// </summary>
         /// <param name="interval"></param>
-        /// <param name="filename"></param>
         public void Start(int interval = -1)
         {
-   
+            if (cts != null)
+            {
+                QB.Logger.Error("CsvLogger is already running or stopping.");
+                return;
+            }
+
+
             Running = true;
             if (interval > 0)
                 Interval = interval;
@@ -57,12 +62,19 @@ namespace QB.Logging
             loggingTask = Task.Run(() => RunLogger(cts.Token));
             writingTask = Task.Run(() => WriteLogsToFile(cts.Token));
             start = DateTime.Now;
-          
+
 
         }
 
         public void Start(string file, int interval = -1)
         {
+            if (cts != null)
+            {
+                QB.Logger.Error("CsvLogger is already running or stopping.");
+                return;
+            }
+
+
             Init(file);
             Running = true;
             if (interval > 0)
@@ -92,7 +104,7 @@ namespace QB.Logging
             LogList.Add(new LogObject(name, unit, format, value, type));
         }
 
-      
+
 
         public void Reset()
         {
@@ -149,7 +161,7 @@ namespace QB.Logging
 
         public void Init(string file = null)
         {
-            if(file != null)
+            if (file != null)
             {
                 Folder = Path.GetDirectoryName(file);
                 Filename = Path.GetFileName(file);
@@ -158,15 +170,15 @@ namespace QB.Logging
             {
                 Filename = DateTime.Now.ToString("yyyy-MM-dd HH.mm.ss") + "_" + Name + ".csv";
             }
-           
-            
+
+
             StreamWriter myWriter = new StreamWriter(Folder + "\\" + Filename, append: true, encoding: Encoding.UTF8);
             StringBuilder stringBuilder = new StringBuilder();
             foreach (var obj in LogList)
             {
-               
+
                 stringBuilder.Append(obj.Name).Append(Seperator);
-               // Debug.WriteLine(obj.Name);
+                // Debug.WriteLine(obj.Name);
             }
             if (stringBuilder.Length > 0)
             {
@@ -201,13 +213,13 @@ namespace QB.Logging
                 foreach (var item in LogList)
                 {
                     object obj = item.GetLogObject;
-                //    Debug.WriteLine(item.Name + " '" + item.CurrentValue + "' -> " + item.Object.GetType().Name);
+                    //    Debug.WriteLine(item.Name + " '" + item.CurrentValue + "' -> " + item.Object.GetType().Name);
 
                     string TypeName = item.Object.GetType().Name;
                     if (item.Object is Double)
                     {
                         double i = (double)item.CurrentValue;
-                        stringBuilder.Append(i.ToString(item.Format).Replace(".",DecimalSeperator)).Append(Seperator);
+                        stringBuilder.Append(i.ToString(item.Format).Replace(".", DecimalSeperator)).Append(Seperator);
                     }
 
                     if (item.Object is DateTime)
@@ -242,13 +254,13 @@ namespace QB.Logging
 
             while (!token.IsCancellationRequested)
             {
-                TimeRelative =  DateTime.Now - start;
+                TimeRelative = DateTime.Now - start;
                 Lines.Enqueue(getValues());
 
                 // Wait for the next interval using Stopwatch
-                while (stopwatch.ElapsedMilliseconds < Interval)
+                while (stopwatch.ElapsedMilliseconds < Interval && !token.IsCancellationRequested)
                 {
-                    System.Threading.Thread.SpinWait(1); // Busy-wait to avoid sleep inaccuracy
+                    System.Threading.Thread.SpinWait(1);
                 }
                 stopwatch.Restart();
             }
@@ -256,29 +268,61 @@ namespace QB.Logging
 
         private async Task WriteLogsToFile(System.Threading.CancellationToken token)
         {
-            myWriter = new StreamWriter(Folder + "\\" + Filename, append: true, encoding: Encoding.UTF8);
+            var writer = new StreamWriter(
+                Path.Combine(Folder, Filename),
+                append: true,
+                encoding: Encoding.UTF8);
 
-            while (!token.IsCancellationRequested)
+            myWriter = writer;
+
+            try
             {
-                if (!Lines.IsEmpty)
+                try
                 {
-                    while (Lines.TryDequeue(out string result))
+                    while (!token.IsCancellationRequested)
                     {
-                        await myWriter.WriteLineAsync(result);
+                        while (Lines.TryDequeue(out string line))
+                        {
+                            await writer.WriteLineAsync(line);
+                        }
+
+                        await writer.FlushAsync();
+                        await Task.Delay(50, token);
                     }
-                    await myWriter.FlushAsync();
                 }
-                await Task.Delay(50, token); // Adjust delay for batch writing
+                catch (OperationCanceledException)
+                    when (token.IsCancellationRequested)
+                {
+                    // Normal shutdown.
+                }
+
+                // Wait until no more measurements are produced.
+                if (loggingTask != null)
+                {
+                    await loggingTask;
+                }
+
+                // Write remaining measurements.
+                while (Lines.TryDequeue(out string line))
+                {
+                    await writer.WriteLineAsync(line);
+                }
+
+                await writer.FlushAsync();
             }
-            myWriter.Close();
+            finally
+            {
+                writer.Dispose();
+                myWriter = null;
+            }
         }
 
         public override void Destroy()
         {
             if (cts != null)
                 cts.Cancel();
-            Running = false;
 
+            Running = false;
         }
     }
 
@@ -295,9 +339,9 @@ namespace QB.Logging
 
         public object Object;
 
-        
 
-        public LogObject(string name,string unit,string format, Func<object> value,string type, string sqlTable = "", string description = "")
+
+        public LogObject(string name, string unit, string format, Func<object> value, string type, string sqlTable = "", string description = "")
         {
             GetLogObject = value;
             Name = name;

@@ -7,9 +7,9 @@ namespace QB.Automation
     public class Pid : TimerModule
     {
 
-        /// <summary>
-        /// Creates a new PID (proportional–integral–derivative controller)
-        /// </summary>
+        // <summary>
+        // Creates a new PID (proportional–integral–derivative controller)
+        // </summary>
         //    public Pid(string name) : base(name)
         //   {
         //      

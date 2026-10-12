@@ -2,7 +2,7 @@
 
 - Session Title: DialogBox - 20261008-213253
 - Session Id: 36ad60dc-0ffa-4ef9-ab8f-b9b79635a886
-- Exported At: 2026-10-08T20:46:09.6329184+00:00
+- Exported At: 2026-10-09T14:07:32.3370849+00:00
 - WorkItem Path: .ai-flow/workitems/2026.10.08.2132-dialogbox_20261008_213253
 
 ## 2026-10-08T19:32:54.0396447+00:00 | User | 1968c9bd-1304-47b6-b182-a73bed0c9d3d
@@ -494,3 +494,181 @@ Implementierung und automatischer Build sind abgeschlossen.
 - `DialogBox.RemoveControl()` entfernt zuerst den gemeinsamen Control-Baum und gibt danach UIBox-Referenzen und Registrierungen frei. Fehler in einzelnen Cleanup-Schritten verhindern die weiteren Freigaben nicht.
 - Der genehmigte RunWorker-Build für `qbookStudio.sln` war erfolgreich: `Success = true`, `success = true`, `exitCode = 0`, Bericht `.ai-flow/BuildReport.txt`.
 - Es wurden keine Tests oder Laufzeitmessungen ausgeführt. Die Build-Ergebnisse belegen keine konkrete Zeitersparnis.
+
+
+## 2026-10-09T13:37:03.0272656+00:00 | User | 6dfb74d1-b360-40d3-b545-8f9b6fb9abcc
+
+Grundsätzlich funktionieren die Dialoge.Es gibt nur ein Problem wenn ein Dialog in seiner Action einen anderen öffnet.B:\x86.qBookRoslyn\DebugProject\Audi\CellTester_2026.08.26.code\Pages\FunkyLib\FunkyLib.view.csSaveWorkflow:- _confirmOverwrite()Welche Möglichkeiten haben wir:- Mehr als einen Dialog erlauben- Oder die Close Routine anpassen
+
+
+## 2026-10-09T13:38:04.7039655+00:00 | Assistant | f28d7f0b-4ea1-47a2-8335-b179e9271b61
+
+Für `SaveWorkflow` empfehle ich **erst schließen, dann die Action ausführen**. Hier folgt die Überschreibbestätigung auf die Namenseingabe; der erste Dialog muss dafür nicht offen bleiben.
+
+Aktuell läuft es so:
+
+1. `DialogWithParameters` ruft `OkAction` auf.
+2. `_confirmOverwrite()` versucht `DialogWithText.Show()`.
+3. Der erste Dialog steht noch in `DialogBox.Active`; der zweite wird deshalb abgewiesen.
+4. Erst danach schließt der erste Dialog im `finally`.
+
+Die einfache Lösung für `DialogWithParameters` und `DialogWithText` wäre:
+
+- Ergebniszustand setzen.
+- Action lokal sichern, weil `Close()` die Action-Properties leert.
+- Dialog vollständig schließen und freigeben.
+- Gesicherte Action ausführen.
+
+Damit bleibt genau ein Dialog aktiv. Die Action kann anschließend den nächsten öffnen. Actions sehen künftig allerdings einen bereits geschlossenen Dialog.
+
+**Mehrere Dialoge** wären sinnvoll, wenn der erste unter der Bestätigung erhalten bleiben und nach Abbrechen wieder bedienbar werden soll. Dafür braucht es einen Dialogstapel mit geregelter Darstellung, Eingabesperre und Wiederaktivierung – deutlich mehr Umfang.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "dialog_action_order",
+      "type": "single_select",
+      "text": "Welches Verhalten soll für die Dialog-Actions gelten?",
+      "required": true,
+      "options": [
+        "DialogWithParameters und DialogWithText schließen vor OK-/Cancel-Action; weiterhin ein aktiver Dialog (empfohlen)",
+        "Dialogstapel: Der vorherige Dialog bleibt unter dem nächsten erhalten",
+        "Andere Regelung"
+      ]
+    },
+    {
+      "id": "dialog_action_order_other",
+      "type": "text",
+      "text": "Welche andere Regelung soll gelten?",
+      "required": true,
+      "visible_when": {
+        "question_id": "dialog_action_order",
+        "has_any_of": ["Andere Regelung"]
+      }
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-10-09T13:41:44.4237786+00:00 | User | 1f7a259e-2c5b-4b9b-abe7-f002b85637a5
+
+Welches Verhalten soll für die Dialog-Actions gelten?: Dialogstapel: Der vorherige Dialog bleibt unter dem nächsten erhalten
+
+
+## 2026-10-09T13:42:16.8449224+00:00 | Assistant | d17043b7-7bfe-446d-9722-0408b8fdde4f
+
+Dann wird der **oberste Dialog bedienbar**, die darunterliegenden bleiben sichtbar und gesperrt. Die Page bleibt gesperrt, solange der Stapel nicht leer ist.
+
+Ein Punkt muss noch geklärt werden: Aktuell schließt der vorherige Dialog nach seiner Action automatisch im `finally`. Auch mit einem Stapel würde er daher nach `_confirmOverwrite()` entfernt. Für echtes Zurückkehren muss diese Regel angepasst werden.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "parent_dialog_lifecycle",
+      "type": "single_select",
+      "text": "Was soll passieren, wenn die Überschreibbestätigung geschlossen wird?",
+      "required": true,
+      "options": [
+        "Bei Cancel zur Namenseingabe zurückkehren; bei erfolgreichem Speichern beide Dialoge schließen",
+        "Bei OK und Cancel zum vorherigen Dialog zurückkehren; dieser wird ausdrücklich geschlossen",
+        "Den vorherigen Dialog nach Abschluss der Bestätigung automatisch mit schließen",
+        "Andere Regelung"
+      ]
+    },
+    {
+      "id": "parent_dialog_lifecycle_other",
+      "type": "text",
+      "text": "Wie sollen vorheriger und untergeordneter Dialog geschlossen werden?",
+      "required": true,
+      "visible_when": {
+        "question_id": "parent_dialog_lifecycle",
+        "has_any_of": ["Andere Regelung"]
+      }
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-10-09T14:00:15.3255744+00:00 | User | 985d5522-b9de-4590-bae2-4d54e5b3a53a
+
+Ziel soll einfach nur sein das ich einen Dialog geführten Prozess abbliden kann:Dialog -> Dialog -> DialogEs ist erstmal ausreichend, dass imm er nur einer sichtbar Topmost ist.Ich glaube es ist nur einfacher mehrere zu erlauben auch wenn der vorherige unmittelbar schließt. Man bräuchte keine große Logikänderung.Wie bewertest du das
+
+
+## 2026-10-09T14:00:56.1436623+00:00 | Assistant | 8b7ed43a-6574-4ff3-88cc-663c7602590b
+
+Ja, für **`Dialog → Dialog → Dialog`** ist dein Vorschlag einfacher als ein vollständiger Dialogstapel. Kurzzeitig dürfen mehrere Instanzen existieren, aber nur der zuletzt geöffnete Dialog ist sichtbar und bedienbar.
+
+Der Ablauf wäre:
+
+1. Dialog A führt seine Action aus.
+2. Die Action öffnet Dialog B; B übernimmt `DialogBox.Active`.
+3. A schließt anschließend wie bisher im `finally`.
+4. B bleibt aktiv; nach seinem Schließen wird der Hintergrund wieder freigegeben.
+
+Der bestehende Code passt bereits teilweise dazu: `Close()` löscht `Active` nur, wenn der schließende Dialog selbst noch aktiv ist. Das spätere Schließen von A würde B somit nicht deaktivieren.
+
+Angepasst werden müssten:
+
+- Die Öffnungssperren in `DialogBox`, `DialogWithParameters` und `DialogWithText`.
+- Der Übergang zum neuen Dialog: alte Eingabezustände und native Editorfelder dürfen nicht weiter bedienbar bleiben.
+- Die Hintergrundsperre: Beim Dialogwechsel müssen die ursprünglich gespeicherten Zustände erhalten bleiben, damit am Ende alles korrekt freigegeben wird.
+
+**Diese Variante empfehle ich für dein Ziel.** Die Action-/Close-Reihenfolge bleibt erhalten, ebenso die endgültige Freigabe der temporären Dialoge. Eine automatische Rückkehr zum vorherigen Dialog wäre dabei nicht vorgesehen.
+
+
+## 2026-10-09T14:02:14.4727321+00:00 | User | 0003a58c-eee9-4d8e-94fc-8c743f0ce410
+
+Bitte ein planen
+
+
+## 2026-10-09T14:02:52.2088477+00:00 | Assistant | 722cb126-5484-44fc-b2fa-d215e96bb342
+
+Für PLAN ist die Lösung festgelegt:
+
+- Eine Action darf den nächsten Dialog öffnen; dieser übernimmt Anzeige und Eingaben.
+- Der vorherige Dialog schließt anschließend wie bisher. Sein Cleanup darf den neuen nicht deaktivieren.
+- Hintergrundsperre und ursprüngliche UI-Zustände bleiben beim Wechsel erhalten.
+- Kein Dialogstapel mit automatischer Rückkehr. Bestehende APIs und temporäre Freigabe bleiben erhalten.
+- Betroffen sind die Dialogklassen in `BoxView.cs` und die Modalitätsverwaltung in `MainForm.cs`. `SaveWorkflow` dient als Referenz.
+
+Abnahme: `Dialog A → B → C` funktioniert; nur der aktuelle ist sichtbar und bedienbar. Nach dessen Schließen wird der Hintergrund korrekt freigegeben.
+
+`status: ready` und `planning_ready: true` sind gesetzt. Offene materielle Entscheidungen: keine. `validation: true`; PLAN konkretisiert den vollständigen Build, aktuell Release/x64.
+
+Der Host-Aufruf ist noch STRUCTURE. Die Implementierungsübergabe wird im nächsten **PLAN-Aufruf** erstellt. Kein Quellcode geändert.
+
+
+## 2026-10-09T14:03:09.1827319+00:00 | User | 4d55e2b0-db96-4fe9-b16a-d67249b5a714
+
+Plan
+
+
+## 2026-10-09T14:06:16.2687720+00:00 | Assistant | ab4cd9c4-07dc-4d5a-b452-799b1ac48ff3
+
+Die [Implementierungsübergabe](.ai-flow/workitems/2026.10.08.2132-dialogbox_20261008_213253/handoffs/2026.10.08.2132-implementation-handoff.md) ist erstellt.
+
+Geplant sind Dialogfolgen mit nur einem sichtbaren, aktiven Dialog. Die Reihenfolge „Action, danach Close“ bleibt erhalten; der Hintergrund bleibt während der Übergabe gesperrt. Zur Prüfung ist der vollständige Release/x64-Build vorgesehen.
+
+Quellcode wurde nicht geändert, kein Build ausgeführt.
+
+
+## 2026-10-09T14:06:29.9050576+00:00 | User | a7760748-844a-4293-acdd-37e842d3c82b
+
+Implement with gpt-6-luna • Medium
+
+
+## 2026-10-09T14:07:32.1795357+00:00 | Assistant | d0bb314d-ee04-4016-8c92-1d505775abf0
+
+Die freigegebenen Änderungen sind umgesetzt:
+
+- `DialogBox.Show()` kann einen aktiven Dialog direkt durch einen anderen ersetzen. Eine identische aktive Instanz wird nicht erneut geöffnet; beim Wechsel werden der Vorgänger ausgeblendet und seine Hover-Zustände zurückgesetzt.
+- Die Show-Prüfungen in `DialogWithParameters` und `DialogWithText` blockieren nicht mehr allein deshalb, weil ein anderer Dialog aktiv ist.
+- `MainForm` entfernt beim Dialogwechsel die nativen Editoren des Vorgängers und erhält die ursprünglichen Enabled-/Visible-Zustände bis zum Schließen des letzten aktiven Dialogs.
+
+Der vorgeschriebene RunWorker-Build für `qbookStudio.sln` war erfolgreich: `Success = true`, `success = true`, `exitCode = 0`, Report `.ai-flow/BuildReport.txt`. `git diff --check` meldete keine Whitespace-Fehler.
+
+Im Arbeitsbaum bestehen zahlreiche weitere Änderungen außerhalb dieses Handoffs; ich habe sie nicht bearbeitet.

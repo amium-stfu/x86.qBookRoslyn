@@ -43,7 +43,7 @@ namespace QB.Net
                     Name = measurement.Name,
                     Text = measurement.Text,
                     Unit = measurement.Unit,
-                    Value = measurement.Value == null ? double.NaN : measurement.Value,
+                    Value = measurement.Value,
                     Epoch = Epoch,
                     Timestamp = Timestamp
                 });

@@ -1,0 +1,13 @@
+{
+  "id": "2026.10.09.0645-runtime_probleme_20261009_064506",
+  "title": "Runtime Probleme - 20261009-064506",
+  "owner_user_id": "StefanFunk",
+  "status": "defining",
+  "branch": "main",
+  "updated_at": "2026-10-09T06:45:06.8704249\u002B02:00",
+  "progress": "Structure definition is in progress.",
+  "next_step": "Resolve plan-relevant Structure questions.",
+  "planning_ready": false,
+  "ai_mode": false,
+  "validation": true
+}

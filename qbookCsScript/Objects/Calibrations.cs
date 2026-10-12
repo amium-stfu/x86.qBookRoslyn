@@ -19,21 +19,6 @@ namespace QB
 
                 // ref , read
 
-                if (false)
-                {
-                    values.Add(160.704, 162);
-                    values.Add(145.8, 145.8);
-                    values.Add(130.41, 129.6);
-                    values.Add(114.372, 113.4);
-                    values.Add(98.658, 97.2);
-                    values.Add(82.458, 81);
-                    values.Add(65.934, 64.8);
-                    values.Add(41.148, 40.5);
-                    values.Add(32.886, 32.4);
-                    values.Add(16.362, 16.2);
-                    //     values.Add(0, 0);
-                }
-                else
                 {
 
                     //     values.Add(0, 0);

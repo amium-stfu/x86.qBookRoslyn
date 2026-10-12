@@ -5,9 +5,9 @@
       "name": "AiFlow Launch: qbook",
       "type": "clr",
       "request": "launch",
-      "program": "${workspaceFolder}/qbook/bin/x86/Release/qbookStudio.exe",
+      "program": "${workspaceFolder}/qbook/bin/x64/Release/qbookStudio.exe",
       "args": [],
-      "cwd": "${workspaceFolder}/qbook/bin/x86/Release",
+      "cwd": "${workspaceFolder}/qbook/bin/x64/Release",
       "_aiFlow": {
         "owner": "AiFlow",
         "path": "qbook/qbook.csproj",

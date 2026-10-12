@@ -1,0 +1,124 @@
+{
+  "FormatVersion": 1,
+  "Session": {
+    "Id": "65f2cdd0-98c2-4a72-b085-7a3ffdb1fda5",
+    "Title": "Framework wechsel - 20261012-161310",
+    "WorkItemPath": ".ai-flow/workitems/2026.10.12.1613-framework_wechsel_20261012_161310",
+    "ExportedAt": "2026-10-12T14:51:20.6725309+00:00",
+    "ApplicationVersion": "2026.10.05.2030"
+  },
+  "Messages": [
+    {
+      "Id": "a2497900-e044-4de6-81ce-646bb128beeb",
+      "CreatedAt": "2026-10-12T14:13:10.6847064+00:00",
+      "Role": "User",
+      "Text": "# Title Framework wechsel\n\n## Current\nAktuell l\u00E4uft das qBook 4.8\n\n## Goal\nKl\u00E4re ob ein Wechsel auf ein aktuelles Framework machbar w\u00E4re.\u000BIdeal auf Net 10\n\n## Acceptance Criteria\n\n\n## Out of Scope\n",
+      "Attachments": []
+    },
+    {
+      "Id": "37e438f1-4be6-4bf9-8c22-58adf13d9291",
+      "CreatedAt": "2026-10-12T14:15:39.4243878+00:00",
+      "Role": "Assistant",
+      "Text": "**Ein Wechsel auf .NET 10 erscheint grunds\u00E4tzlich machbar, erfordert aber eine Portierung mit Anpassungen an Code und Abh\u00E4ngigkeiten.** Eine vollst\u00E4ndige Kompatibilit\u00E4tszusage l\u00E4sst sich aus der bisherigen Pr\u00FCfung noch nicht ableiten.\n\n.NET 10 ist eine unterst\u00FCtzte LTS-Version bis November 2028. WinForms kann dabei erhalten bleiben; das naheliegende Ziel w\u00E4re \u0060net10.0-windows\u0060 mit x64. [Microsoft-Support\u00FCbersicht](https://dotnet.microsoft.com/en-us/platform/support/policy), [WinForms-Migration](https://learn.microsoft.com/en-us/dotnet/desktop/winforms/migration/)\n\nDie wesentlichen Befunde im aktuellen Repository:\n\n| Bereich | Befund und Bedeutung |\n|---|---|\n| Projekte | \u0060qbook\u0060 verwendet Framework 4.8, \u0060qbookCsScript\u0060 4.7.2. Beide m\u00FCssen ber\u00FCcksichtigt werden. |\n| Projektformat | Klassische \u0060.csproj\u0060-Dateien und \u0060packages.config\u0060 m\u00FCssen f\u00FCr die Migration angepasst werden. |\n| Thread-Lebenszyklus | \u0060qbookCsScript\u0060 nutzt \u0060Thread.Abort()\u0060 unter anderem in Netzwerkclients und \u0060Controls/Object.cs\u0060. Diese Aufrufe funktionieren unter .NET 10 nicht und ben\u00F6tigen eine andere Abbruchlogik. [API-Dokumentation](https://learn.microsoft.com/en-us/dotnet/api/system.threading.thread.abort?view=net-10.0) |\n| Framework-APIs | \u0060Studio/Helpers.cs\u0060 verwendet \u0060System.Web.Script.Serialization.JavaScriptSerializer\u0060. Diese Framework-Abh\u00E4ngigkeit muss ersetzt werden. |\n| Browser | F\u00FCr die verwendete CefSharp-Version existiert \u0060CefSharp.WinForms.NETCore\u0060. Das er\u00F6ffnet einen Migrationsweg; die Paketkompatibilit\u00E4t ersetzt noch keinen Funktionstest. [Paketinformationen](https://www.nuget.org/packages/CefSharp.WinForms.NETCore/141.0.110) |\n| Skripte und B\u00FCcher | \u0060BookBuilder.cs\u0060 erzeugt bereits Projekte f\u00FCr \u0060net8.0\u0060; \u0060RoslynService.cs\u0060 enth\u00E4lt einen Ansatz mit \u0060AssemblyLoadContext\u0060. Referenzen, Kompilierung und wiederholtes Laden m\u00FCssen dennoch zusammen gepr\u00FCft werden. |\n| Weitere Abh\u00E4ngigkeiten | Actipro, Datenbankanbieter, Kamera-/Ger\u00E4tebibliotheken und Outlook-COM ben\u00F6tigen eine gezielte Pr\u00FCfung ihrer tats\u00E4chlich ben\u00F6tigten Funktionen. |\n\nDie gefundenen \u0060AppDomain.CreateDomain\u0060-Stellen liegen in derzeit nicht eingebundenen Editor-Dateien. Der \u0060BinaryFormatter\u0060-Treffer ist auskommentiert. Ich werte beides deshalb bislang nicht als aktiven Migrationsblocker.\n\n**Vorl\u00E4ufige Bewertung:** Ein konkreter Migrationsweg ist erkennbar. Entscheidend sind die ben\u00F6tigten Integrationen und die Kompatibilit\u00E4t vorhandener B\u00FCcher beziehungsweise zus\u00E4tzlicher DLLs. Die externen Dateieinbindungen der Projektdateien betreffen native DLLs; eingebundene externe C#-Quellen konnte ich dort nicht best\u00E4tigen.\n\nEs wurden keine Dateien ver\u00E4ndert und keine Builds ausgef\u00FChrt. \u0060planning_ready\u0060 bleibt \u0060false\u0060.\n\n:::questions\n{\n  \u0022questions\u0022: [\n    {\n      \u0022id\u0022: \u0022deployment_targets\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Auf welchen Betriebssystemen und Ger\u00E4ten muss qBook nach dem Wechsel laufen, insbesondere Windows-Versionen und gegebenenfalls Raspberry Pi?\u0022,\n      \u0022required\u0022: true\n    },\n    {\n      \u0022id\u0022: \u0022required_integrations\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Welche Integrationen m\u00FCssen erhalten bleiben, insbesondere Kamera, PicoScope, Datenbanken, HTML/CefSharp und Outlook?\u0022,\n      \u0022required\u0022: true\n    },\n    {\n      \u0022id\u0022: \u0022book_compatibility\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022M\u00FCssen bestehende B\u00FCcher und Skripte unver\u00E4ndert laufen, und werden zus\u00E4tzliche vorkompilierte .NET-Framework-DLLs geladen?\u0022,\n      \u0022required\u0022: true\n    }\n  ]\n}\n:::endquestions",
+      "Attachments": []
+    },
+    {
+      "Id": "1651d145-aceb-4062-8b59-867759e3c7e9",
+      "CreatedAt": "2026-10-12T14:19:15.7878234+00:00",
+      "Role": "User",
+      "Text": "Auf welchen Betriebssystemen und Ger\u00E4ten muss qBook nach dem Wechsel laufen, insbesondere Windows-Versionen und gegebenenfalls Raspberry Pi?: Windows only. \naktuelle Windows Version\r\nWelche Integrationen m\u00FCssen erhalten bleiben, insbesondere Kamera, PicoScope, Datenbanken, HTML/CefSharp und Outlook?: Kamera, Datenbank\r\nM\u00FCssen bestehende B\u00FCcher und Skripte unver\u00E4ndert laufen, und werden zus\u00E4tzliche vorkompilierte .NET-Framework-DLLs geladen?: Idealerweise ja.\nIm Ornder .DebugProject findest du aktuelle Projekte. Diese m\u00FCssen lauff\u00E4hig bleiben",
+      "Attachments": []
+    },
+    {
+      "Id": "ff3c0a97-ba91-4e8d-9d49-331827128ae8",
+      "CreatedAt": "2026-10-12T14:21:26.8290034+00:00",
+      "Role": "Assistant",
+      "Text": "**Unter deinen Vorgaben ist .NET 10 ein realistisches Ziel. Vollst\u00E4ndig unver\u00E4ndert k\u00F6nnen allerdings nicht alle vorhandenen Projekte weiterlaufen.**\n\nIm Ordner \u0060DebugProject\u0060 habe ich f\u00FCnf aktuelle Projektst\u00E4nde gepr\u00FCft: **AkbSps, Audi/CellTester, CalibrationStudioVT, Cast und GO83P05 mShedAK**.\n\nDabei zeigt sich:\n\n- **Projektdateien:** Alle f\u00FCnf deklarieren \u0060net8.0\u0060, referenzieren aber weiterhin .NET-Framework-Assemblies aus dem Windows-GAC. Diese Referenzen und die Projektgenerierung m\u00FCssen umgestellt werden. Die Deklaration allein belegt keine .NET-8-Kompatibilit\u00E4t.\n- **Skriptcode:** Die Sequencer \u0060QS\u0060 und \u0060ShedSystem\u0060 in \u0060GO83P05 mShedAK\u0060 verwenden direkt \u0060System.Threading.Thread.Abort()\u0060. Unter .NET 10 wirft diese Methode eine Ausnahme. F\u00FCr funktionierende Abbr\u00FCche sind dort Codeanpassungen erforderlich. [Microsoft-Dokumentation](https://learn.microsoft.com/en-us/dotnet/api/system.threading.thread.abort?view=net-10.0)\n- **Datenbank:** Mehrere Projekte verwenden \u0060QB.Logging.SqlLogger\u0060 mit SQLite. F\u00FCr den verwendeten Anbieter existiert eine .NET-Standard-Variante. Damit ist ein Migrationsweg erkennbar, ohne automatisch das Datenbankformat wechseln zu m\u00FCssen. Schreiben, Lesen und die benutzerdefinierte SQLite-Funktion m\u00FCssen anschlie\u00DFend gepr\u00FCft werden. [SQLite-Paket](https://www.nuget.org/packages/Stub.System.Data.SQLite.Core.NetStandard/1.0.119)\n- **Kamera:** Die Projekte verwenden \u0060CameraControl\u0060 auf Basis von AForge/DirectShow. Das eingebundene Paket weist .NET-Framework-Kompatibilit\u00E4t aus. Die Kameraanbindung bleibt deshalb ein offener technischer Pr\u00FCfpunkt; ihre Funktionsf\u00E4higkeit unter .NET 10 ist bislang nicht nachgewiesen. [AForge-Paket](https://www.nuget.org/packages/AForge.Video.DirectShow/2.2.5)\n\n**Meine Empfehlung:** Windows/x64 und WinForms beibehalten, .NET 10 direkt als Ziel bewerten und die f\u00FCnf Projekte als verbindliche Kompatibilit\u00E4tsf\u00E4lle verwenden. \u00D6ffnen, Kompilieren, Ausf\u00FChren, Stoppen sowie Kameraaufnahme und Datenbankzugriff m\u00FCssen erhalten bleiben. Ein fehlerfreier Build allein gen\u00FCgt daf\u00FCr nicht.\n\nDie Einsch\u00E4tzung basiert auf Quellcode und Paketinformationen; es gab keine \u00C4nderungen oder Laufzeittests. \u0060planning_ready\u0060 bleibt \u0060false\u0060, weil der zul\u00E4ssige Umfang der Kompatibilit\u00E4tsanpassungen noch offen ist.\n\n:::questions\n{\n  \u0022questions\u0022: [\n    {\n      \u0022id\u0022: \u0022compatibility_adjustments\u0022,\n      \u0022type\u0022: \u0022single_select\u0022,\n      \u0022text\u0022: \u0022Welche Anpassungen sind mit der geforderten Lauff\u00E4higkeit bestehender Projekte vereinbar?\u0022,\n      \u0022options\u0022: [\n        \u0022Notwendige Skriptanpassungen und neu erzeugte Projektdateien sind zul\u00E4ssig; Funktionen und Daten bleiben erhalten.\u0022,\n        \u0022Die Projektquellen m\u00FCssen unver\u00E4ndert bleiben; eine vollst\u00E4ndige Portierung scheidet bei Inkompatibilit\u00E4ten aus.\u0022,\n        \u0022Andere Vorgabe\u0022\n      ],\n      \u0022required\u0022: true\n    },\n    {\n      \u0022id\u0022: \u0022compatibility_adjustments_other\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Welche Kompatibilit\u00E4tsvorgabe soll gelten?\u0022,\n      \u0022required\u0022: true,\n      \u0022visible_when\u0022: {\n        \u0022question_id\u0022: \u0022compatibility_adjustments\u0022,\n        \u0022has_any_of\u0022: [\u0022Andere Vorgabe\u0022]\n      }\n    },\n    {\n      \u0022id\u0022: \u0022database_scope\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Ist SQLite die ben\u00F6tigte Datenbank, oder m\u00FCssen zus\u00E4tzlich andere Datenbanksysteme unterst\u00FCtzt bleiben?\u0022,\n      \u0022required\u0022: true\n    }\n  ]\n}\n:::endquestions",
+      "Attachments": []
+    },
+    {
+      "Id": "b9c0044b-e593-436f-8d10-c4ed050eb40a",
+      "CreatedAt": "2026-10-12T14:25:18.0280363+00:00",
+      "Role": "User",
+      "Text": "Welche Anpassungen sind mit der geforderten Lauff\u00E4higkeit bestehender Projekte vereinbar?: Notwendige Skriptanpassungen und neu erzeugte Projektdateien sind zul\u00E4ssig; Funktionen und Daten bleiben erhalten.\r\nIst SQLite die ben\u00F6tigte Datenbank, oder m\u00FCssen zus\u00E4tzlich andere Datenbanksysteme unterst\u00FCtzt bleiben?: Aktuell nur SQLite",
+      "Attachments": []
+    },
+    {
+      "Id": "0e35c86e-cd83-4e92-bf66-4b7a709bb4f5",
+      "CreatedAt": "2026-10-12T14:26:37.9247434+00:00",
+      "Role": "Assistant",
+      "Text": "**Mit diesen Vorgaben erscheint eine Portierung auf .NET 10 technisch machbar.** Die erlaubten Skriptanpassungen l\u00F6sen den wesentlichen Konflikt mit den bestehenden Projekten.\n\nDer sinnvolle Zielrahmen ist:\n\n- Aktuelles Windows, x64, bestehende WinForms-Oberfl\u00E4che.\n- Alle f\u00FCnf aktuellen Projekte aus \u0060DebugProject\u0060 bleiben funktional erhalten.\n- Notwendige Skript\u00E4nderungen und neu erzeugte Projektdateien sind zul\u00E4ssig.\n- SQLite, vorhandene Daten und Kamerafunktionen bleiben erhalten.\n\nDie wichtigsten Arbeiten w\u00E4ren die Umstellung der Projekt- und Paketreferenzen, die Anpassung der Roslyn-Kompilierung und das Ersetzen von \u0060Thread.Abort()\u0060 in Bibliothek und betroffenen Skripten. Ein .NET-10-SDK ist lokal bereits installiert.\n\n**SQLite besitzt einen erkennbaren Migrationsweg:** Der verwendete Anbieter bietet eine .NET-Standard-Variante. Ein Wechsel des Datenbankformats erscheint deshalb nicht erforderlich. [SQLite-Paket](https://www.nuget.org/packages/Stub.System.Data.SQLite.Core.NetStandard/1.0.119)\n\n**Die Kameraanbindung ist die gr\u00F6\u00DFte verbleibende Unsicherheit.** AForge enth\u00E4lt intern ebenfalls \u0060Thread.Abort()\u0060, das insbesondere im Kameradialog \u00FCber \u0060Stop()\u0060 erreicht werden kann. Die Anbindung muss angepasst oder ersetzt werden; OpenCvSharp ist bereits eingebunden und w\u00E4re ein zu pr\u00FCfender Kandidat. Die tats\u00E4chliche Ger\u00E4tekompatibilit\u00E4t bleibt durch Tests nachzuweisen. [AForge-Quellcode](https://github.com/andrewkirillov/AForge.NET/blob/master/Sources/Video.DirectShow/VideoCaptureDevice.cs)\n\nAls Abnahmema\u00DFstab sollten alle f\u00FCnf Projekte \u00F6ffnen, kompilieren, laufen und korrekt stoppen sowie Kameraaufnahme und SQLite-Zugriffe einschlie\u00DFlich vorhandener Daten funktionieren.\n\nDas Ergebnis ist eine **positive Machbarkeitseinsch\u00E4tzung mit konkretem Anpassungsbedarf**, noch kein Laufzeitnachweis. F\u00FCr eine konkrete Migrationsplanung bleiben Kamerastrategie und weitere Paketkompatibilit\u00E4t offen; \u0060planning_ready\u0060 bleibt \u0060false\u0060. Nur Workflow-Metadaten wurden aktualisiert.",
+      "Attachments": []
+    },
+    {
+      "Id": "50feda05-b8e6-4a7a-9762-0d7a2c1142c3",
+      "CreatedAt": "2026-10-12T14:29:29.39593+00:00",
+      "Role": "User",
+      "Text": "Gibt es f\u00FCr Thread.Abort() nicht noch eine Hintert\u00FCr mit der man das wieder aktivieren kann?",
+      "Attachments": []
+    },
+    {
+      "Id": "21de3d36-622b-4821-9531-89ca5f740ea2",
+      "CreatedAt": "2026-10-12T14:30:24.2653675+00:00",
+      "Role": "Assistant",
+      "Text": "**Unter .NET 10 gibt es keinen Schalter, der das urspr\u00FCngliche \u0060Thread.Abort()\u0060 wieder aktiviert.** Die Implementierung wirft unmittelbar \u0060PlatformNotSupportedException\u0060. Reflection oder das Unterdr\u00FCcken der Compilerwarnung \u00E4ndern daran nichts. [Quellcode von .NET 10](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Private.CoreLib/src/System/Threading/Thread.cs#L431)\n\n\u00DCber native Windows-Funktionen wie \u0060TerminateThread\u0060 l\u00E4sst sich ein Thread gewaltsam beenden. Das stellt jedoch die fr\u00FChere .NET-Abbruchlogik nicht wieder her: Aufr\u00E4umarbeiten entfallen, Sperren k\u00F6nnen bestehen bleiben und der Prozesszustand kann besch\u00E4digt werden. F\u00FCr qBook mit Kamera- und Datenbankzugriffen w\u00E4re das keine tragf\u00E4hige L\u00F6sung. [Microsoft-Dokumentation](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-terminatethread)\n\nF\u00FCr die Migration ergeben sich daher zwei unterschiedliche Anforderungen:\n\n- **Kontrollierte Abl\u00E4ufe:** kooperativer Abbruch \u00FCber \u0060CancellationToken\u0060 und abbrechbare Warteoperationen.\n- **Beliebiger Skriptcode, der auch bei einer Endlosschleife zwangsweise stoppbar sein muss:** Ausf\u00FChrung in einem separaten Prozess, der bei Bedarf beendet wird. [Microsoft-Empfehlung](https://learn.microsoft.com/en-us/dotnet/standard/threading/destroying-threads)\n\nGerade die zweite Anforderung w\u00E4re eine wesentliche Architekturentscheidung: Ein \u0060CancellationToken\u0060 beendet nur Code, der den Abbruch auch ber\u00FCcksichtigt.",
+      "Attachments": []
+    },
+    {
+      "Id": "931e2671-7af3-408b-b900-0b5f75f420b3",
+      "CreatedAt": "2026-10-12T14:34:09.4756143+00:00",
+      "Role": "User",
+      "Text": "Ok dann bleiben wir beim sauberen Weg. \u000BIch nehme den Migrationsaufwand in kauf.",
+      "Attachments": []
+    },
+    {
+      "Id": "0b6a0e90-7850-48a1-821e-f05b7d6e3a39",
+      "CreatedAt": "2026-10-12T14:35:16.458336+00:00",
+      "Role": "Assistant",
+      "Text": "Damit ist **die Portierung auf .NET 10 mit notwendigen Anpassungen** als Ziel best\u00E4tigt. Windows, Kamera, SQLite sowie Funktionen und Daten der f\u00FCnf Projekte aus \u0060DebugProject\u0060 bleiben ma\u00DFgeblich.\n\nEine wesentliche Entscheidung bleibt beim Skriptstopp: Die Skripte greifen derzeit direkt auf qBook-Objekte und die Oberfl\u00E4che zu. **Ich empfehle, diese Architektur beizubehalten und kooperativen Abbruch einzuf\u00FChren.** Schleifen und Warteoperationen werden daf\u00FCr angepasst.\n\nSoll hingegen auch fehlerhafter Skriptcode ohne Abbruchpr\u00FCfung zwangsweise stoppbar sein, w\u00E4re eine separate Prozessausf\u00FChrung n\u00F6tig. Das w\u00FCrde zus\u00E4tzlich die Kommunikation zwischen Skripten, Oberfl\u00E4che und Ger\u00E4ten ver\u00E4ndern. [Microsoft-Empfehlung](https://learn.microsoft.com/en-us/dotnet/standard/threading/destroying-threads)\n\n\u0060planning_ready\u0060 bleibt bis zur Kl\u00E4rung dieser Anforderung und der verbleibenden Abh\u00E4ngigkeiten \u0060false\u0060.\n\n:::questions\n{\n  \u0022questions\u0022: [\n    {\n      \u0022id\u0022: \u0022script_stop_guarantee\u0022,\n      \u0022type\u0022: \u0022single_select\u0022,\n      \u0022text\u0022: \u0022Welche Garantie soll der Skriptstopp bieten?\u0022,\n      \u0022options\u0022: [\n        \u0022Kooperativer Abbruch im qBook-Prozess: Skripte werden angepasst und m\u00FCssen Abbruchsignale ber\u00FCcksichtigen (empfohlen).\u0022,\n        \u0022Zwangsweiser Abbruch auch bei Endlosschleifen ohne Abbruchpr\u00FCfung: separate Prozessausf\u00FChrung mit zus\u00E4tzlichem Architekturaufwand.\u0022,\n        \u0022Andere Vorgabe\u0022\n      ],\n      \u0022required\u0022: true\n    },\n    {\n      \u0022id\u0022: \u0022script_stop_guarantee_other\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Welche Anforderungen soll der Skriptstopp erf\u00FCllen?\u0022,\n      \u0022required\u0022: true,\n      \u0022visible_when\u0022: {\n        \u0022question_id\u0022: \u0022script_stop_guarantee\u0022,\n        \u0022has_any_of\u0022: [\u0022Andere Vorgabe\u0022]\n      }\n    }\n  ]\n}\n:::endquestions",
+      "Attachments": []
+    },
+    {
+      "Id": "164f4717-e439-4fd7-907d-065070a8effa",
+      "CreatedAt": "2026-10-12T14:35:44.4479054+00:00",
+      "Role": "User",
+      "Text": "Welche Garantie soll der Skriptstopp bieten?: Kooperativer Abbruch im qBook-Prozess: Skripte werden angepasst und m\u00FCssen Abbruchsignale ber\u00FCcksichtigen (empfohlen).",
+      "Attachments": []
+    },
+    {
+      "Id": "eeb1f40f-3eef-4c98-92d1-7f65da1037e0",
+      "CreatedAt": "2026-10-12T14:37:44.6013814+00:00",
+      "Role": "Assistant",
+      "Text": "Der **kooperative Abbruch im qBook-Prozess** ist best\u00E4tigt. Skripte und Hintergrundoperationen ber\u00FCcksichtigen Abbruchsignale; eine separate Skriptprozess-Architektur entf\u00E4llt.\n\nF\u00FCr die Kamera empfehle ich, **AForge durch das bereits eingebundene OpenCvSharp zu ersetzen**. \u0060CameraControl\u0060 beh\u00E4lt die ben\u00F6tigten Funktionen: Ger\u00E4teauswahl, Start/Stopp, Livebild, Sichtbarkeit und Snapshots. Die tats\u00E4chliche Kamera muss anschlie\u00DFend gepr\u00FCft werden.\n\nDamit w\u00E4re die Migration abgegrenzt:\n\n- \u0060qbook\u0060, \u0060qbookCsScript\u0060, Roslyn-Referenzen und Projektgenerierung auf \u0060net10.0-windows\u0060/x64 umstellen.\n- Die f\u00FCnf aktuellen Projekte aus \u0060DebugProject\u0060 bei Bedarf anpassen; Funktionen und Daten erhalten.\n- SQLite einschlie\u00DFlich vorhandener Datenbanken und Loggerfunktionen erhalten.\n- Keine neue Oberfl\u00E4che, zus\u00E4tzliche Plattform oder zwangsweise Skriptbeendigung einf\u00FChren.\n\nAls Abnahme gelten ein vollst\u00E4ndiger Build sowie \u00D6ffnen, Kompilieren, Ausf\u00FChren, kooperatives Stoppen und erneutes Starten aller f\u00FCnf Projekte. Hinzu kommen Kamera- und SQLite-Funktionspr\u00FCfungen. Bei \u0060validation: true\u0060 werden das konkrete automatische Build-Ziel und die Ausf\u00FChrung \u00FCber Worker ausdr\u00FCcklich an PLAN delegiert.\n\n\u0060planning_ready\u0060 bleibt bis zur Entscheidung \u00FCber die Kameraumstellung \u0060false\u0060.\n\n:::questions\n{\n  \u0022questions\u0022: [\n    {\n      \u0022id\u0022: \u0022camera_backend\u0022,\n      \u0022type\u0022: \u0022single_select\u0022,\n      \u0022text\u0022: \u0022Soll die Kameraaufnahme auf OpenCvSharp umgestellt werden, wobei die beschriebenen CameraControl-Funktionen erhalten bleiben?\u0022,\n      \u0022options\u0022: [\n        \u0022Ja, OpenCvSharp verwenden.\u0022,\n        \u0022Andere Vorgabe\u0022\n      ],\n      \u0022required\u0022: true\n    },\n    {\n      \u0022id\u0022: \u0022camera_backend_other\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Welche Vorgabe soll f\u00FCr die Kameraanbindung gelten?\u0022,\n      \u0022required\u0022: true,\n      \u0022visible_when\u0022: {\n        \u0022question_id\u0022: \u0022camera_backend\u0022,\n        \u0022has_any_of\u0022: [\u0022Andere Vorgabe\u0022]\n      }\n    }\n  ]\n}\n:::endquestions",
+      "Attachments": []
+    },
+    {
+      "Id": "9a50dff8-498a-47ee-b2ce-dd63cd24753f",
+      "CreatedAt": "2026-10-12T14:41:28.3453375+00:00",
+      "Role": "User",
+      "Text": "Soll die Kameraaufnahme auf OpenCvSharp umgestellt werden, wobei die beschriebenen CameraControl-Funktionen erhalten bleiben?: Ja, OpenCvSharp verwenden.",
+      "Attachments": []
+    },
+    {
+      "Id": "122773c8-acba-4136-8128-f4bc355f5be3",
+      "CreatedAt": "2026-10-12T14:42:46.7482977+00:00",
+      "Role": "Assistant",
+      "Text": "**Die Migration ist planungsreif.** Im aktiven \u0060workitem.md\u0060 stehen jetzt \u0060status: ready\u0060 und \u0060planning_ready: true\u0060.\n\nDie festgelegte L\u00F6sung:\n\n- **Ziel und Umfang:** \u0060qbook\u0060, \u0060qbookCsScript\u0060, Abh\u00E4ngigkeiten, Roslyn-Kompilierung und Projektgenerierung auf \u0060net10.0-windows\u0060/x64 umstellen. WinForms bleibt erhalten.\n- **Skripte:** Ausf\u00FChrung weiterhin im qBook-Prozess mit kooperativem Abbruch. Notwendige Anpassungen an den f\u00FCnf aktuellen Projekten aus \u0060DebugProject\u0060 sind zul\u00E4ssig; Funktionen und Daten bleiben erhalten.\n- **Kamera und Datenbank:** OpenCvSharp ersetzt AForge f\u00FCr die Kameraaufnahme. Ger\u00E4teauswahl, Livebild, Start/Stopp und Snapshots bleiben erhalten. SQLite einschlie\u00DFlich vorhandener Daten und Loggerfunktionen bleibt bestehen.\n- **Nichtziele:** Neue Oberfl\u00E4che, zus\u00E4tzliche Betriebssysteme, separate Skriptprozesse und erzwungener Threadabbruch. Die f\u00FCnf gesch\u00FCtzten \u0060Amium.Items\u0060-Dateien bleiben unver\u00E4ndert.\n\n**Abnahme:** Alle f\u00FCnf Projekte m\u00FCssen \u00F6ffnen, kompilieren, laufen, kooperativ stoppen und erneut starten. Kameraaufnahme und SQLite-Zugriffe m\u00FCssen funktionieren; vorhandene Daten m\u00FCssen weiter nutzbar sein.\n\n**Validierung:** \u0060validation: true\u0060. Das konkrete automatische Validierungsziel und der exakte Build-Befehl werden an PLAN delegiert. Der vorhandene Visual-Studio-MSBuild-Task f\u00FCr \u0060qbookStudio.sln\u0060 ist gepr\u00FCft. Paketrestore bleibt benutzer- oder hostgesteuert. Der vorhandene Start-Eintrag \u0060AiFlow Launch: qbook\u0060 muss f\u00FCr .NET 10 ber\u00FCcksichtigt werden.\n\n**Offene wesentliche Punkte und verbleibende wesentliche PLAN-Entscheidungen: keine.** Die technische Funktionsf\u00E4higkeit wird w\u00E4hrend der Umsetzung gepr\u00FCft.\n\nNur Workflow-Metadaten wurden ge\u00E4ndert; Quellcode und Build-Ausf\u00FChrung bleiben dem n\u00E4chsten Modus vorbehalten.",
+      "Attachments": []
+    },
+    {
+      "Id": "b27c89fd-1479-4885-bb8e-0bbe3c9eefa6",
+      "CreatedAt": "2026-10-12T14:43:54.0471329+00:00",
+      "Role": "User",
+      "Text": "Plan",
+      "Attachments": []
+    },
+    {
+      "Id": "d4a102e1-8907-45de-84ee-a64d0c7e5463",
+      "CreatedAt": "2026-10-12T14:51:20.4855933+00:00",
+      "Role": "Assistant",
+      "Text": "Der [Implementierungsplan](B:/x86.qBookRoslyn/.ai-flow/workitems/2026.10.12.1613-framework_wechsel_20261012_161310/handoffs/2026.10.12.1613-implementation-handoff.md) ist erstellt.\n\nEr enth\u00E4lt Dateiumfang, Umsetzungsschritte, Schutzregeln, Abnahmekriterien sowie den verbindlichen Worker-Build und die Launch-Anpassung.\n\n\u0060planning_ready: true\u0060 bleibt erhalten. Nur das Handoff wurde geschrieben; Quellcode\u00E4nderungen und Builds wurden nicht ausgef\u00FChrt.",
+      "Attachments": []
+    }
+  ]
+}

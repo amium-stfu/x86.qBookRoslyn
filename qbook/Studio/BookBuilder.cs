@@ -147,8 +147,6 @@ namespace qbook.Studio
             sb.AppendLine($"    <AssemblyName>{projectName}</AssemblyName>");
             sb.AppendLine("  </PropertyGroup>");
 
-            bool needsSystemDrawingCommon = false;
-            bool needsSystemIoPorts = false;
             sb.AppendLine("  <ItemGroup>");
 
             var refs = Core.Roslyn.GetProject?.MetadataReferences.OfType<PortableExecutableReference>() ?? Enumerable.Empty<PortableExecutableReference>();
@@ -160,13 +158,11 @@ namespace qbook.Studio
                 string fileName = System.IO.Path.GetFileNameWithoutExtension(r.FilePath);
                 if (string.Equals(fileName, "System.Drawing", StringComparison.OrdinalIgnoreCase))
                 {
-                    needsSystemDrawingCommon = true;
                     continue; // nicht das alte Framework-Assembly einbetten
                 }
 
                 if (string.Equals(fileName, "System.IO.Ports", StringComparison.OrdinalIgnoreCase))
                 {
-                    needsSystemIoPorts = true;
                     continue; // nicht das alte Framework-Assembly einbetten
                 }
 
@@ -571,7 +567,6 @@ namespace qbook.Studio
 
             List<string> Pages = new List<string>();
 
-            int CodeIndex = 0;
             int PageIndex = 0;
             foreach (oPage page in qbook.Core.ActualMain.Objects.OfType<oPage>())
             {
@@ -757,9 +752,6 @@ namespace qbook.Studio
             int lineNumber = 0;
             int includeLineNumber = 0;
 
-            bool inIncludeBlock = false;
-            bool includeStartExists = false;
-            bool includeEndExists = false;
 
             foreach (var line in lines)
             {

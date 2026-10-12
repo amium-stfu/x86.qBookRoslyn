@@ -1,4 +1,4 @@
-﻿using QB; //qbookCsScript
+using QB; //qbookCsScript
 using QB.Controls;
 using System;
 using System.Collections.Generic;
@@ -33,11 +33,13 @@ namespace qbook
 
         public oPage Page;
         private QB.Controls.Control dialogMouseDown;
+        private MouseButtons dialogMouseDownButton = MouseButtons.None;
 
         internal void ResetDialogInput()
         {
             selectedItem = null;
             mouseDownControl = dialogMouseDown = null;
+            mouseDownButton = dialogMouseDownButton = MouseButtons.None;
             moveOrEdit = edit = resize = settings = selectOrNew = scratch = button = control = moved = false;
             Capture = false;
             Cursor = Cursors.Default;
@@ -58,22 +60,30 @@ namespace qbook
             var target = dialog.HitTest(point);
             if (action == "down")
             {
-                dialogMouseDown = e.Button == MouseButtons.Left ? target : null;
+                dialogMouseDown = e.Button == MouseButtons.Left || e.Button == MouseButtons.Right ? target : null;
+                dialogMouseDownButton = dialogMouseDown != null ? e.Button : MouseButtons.None;
                 Focus();
             }
             else if (action == "up")
             {
                 var pressed = dialogMouseDown;
+                var pressedButton = dialogMouseDownButton;
                 dialogMouseDown = null;
-                if (e.Button == MouseButtons.Left && pressed != null && ReferenceEquals(pressed, target))
-                    pressed.RaiseOnClick(point);
+                dialogMouseDownButton = MouseButtons.None;
+                if (e.Button == pressedButton && pressed != null && !pressed.IsRemoved && ReferenceEquals(pressed, target))
+                {
+                    if (pressedButton == MouseButtons.Left)
+                        pressed.RaiseOnClick(point);
+                    else if (pressedButton == MouseButtons.Right)
+                        pressed.RaiseOnRightClick(point);
+                }
             }
             else if (action == "wheel") target?.RaiseOnWheel(e.Delta);
             else if (action == "move")
             {
                 Cursor = target == null ? Cursors.Default : Cursors.Hand;
                 target?.RaiseOnMove(point.X, point.Y);
-                if (ReferenceEquals(DialogBox.Active, dialog) && dialogMouseDown != null && e.Button == MouseButtons.Left)
+                if (ReferenceEquals(DialogBox.Active, dialog) && dialogMouseDown != null && dialogMouseDownButton == MouseButtons.Left && e.Button == MouseButtons.Left)
                     dialogMouseDown.Drag(point);
             }
             Invalidate();
@@ -506,18 +516,11 @@ namespace qbook
         {
             return; //handled in OnPaint()
 
-            if (DesignMode)
-                return;
-
-            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-            Draw.g = e.Graphics;
-            Draw.DesignMode = Core.ThisBook.DesignMode;
-
-            Render();
         }
 
         oControl selectedItem = null;
         QB.Controls.Control mouseDownControl = null;
+        private MouseButtons mouseDownButton = MouseButtons.None;
         bool moveOrEdit = false;
         bool edit = false;
         bool resize = false;
@@ -751,9 +754,19 @@ namespace qbook
             }
 
             bool mouseClickHandled = false;
-            if (mouseDownControl != null)
+            var pressed = mouseDownControl;
+            var pressedButton = mouseDownButton;
+            mouseDownControl = null;
+            mouseDownButton = MouseButtons.None;
+            if (pressed != null)
             {
-                mouseDownControl.RaiseOnClick(new Point(x, y)); //not sure if this Point is correct?!
+                if (!pressed.IsRemoved && e.Button == pressedButton)
+                {
+                    if (pressedButton == MouseButtons.Left)
+                        pressed.RaiseOnClick(new Point(x, y)); //not sure if this Point is correct?!
+                    else if (pressedButton == MouseButtons.Right)
+                        pressed.RaiseOnRightClick(new Point(x, y));
+                }
                 mouseClickHandled = true;
             }
 
@@ -823,6 +836,7 @@ namespace qbook
         {
             if (HandleDialogMouse(e, "down")) return;
             mouseDownControl = null;
+            mouseDownButton = MouseButtons.None;
 
             if (!Popout)
                 Page = Core.SelectedPage;
@@ -870,6 +884,7 @@ namespace qbook
                     if (isVisible)
                     {
                         mouseDownControl = controlUnderCursor; //HALE: new -> prefer mouseDownControl over selectedItem when clicking
+                        mouseDownButton = e.Button;
                         selectedItem = null;
                         selectOrNew = false;
                         control = true;
@@ -1164,7 +1179,6 @@ namespace qbook
 
         private void PageControl_Scroll(object sender, ScrollEventArgs e)
         {
-            string scroll = "";
         }
 
         private void PageControl_SizeChanged(object sender, EventArgs e)

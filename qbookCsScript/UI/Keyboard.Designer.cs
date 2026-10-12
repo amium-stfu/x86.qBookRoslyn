@@ -160,7 +160,6 @@ namespace QB.UI
         private System.Windows.Forms.TextBox tbResult;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
         private FlowLayoutPanel Numblock;
-        private FontAwesome.Sharp.IconButton btnClose;
         private Button btnCheck;
         private Button btnAbort;
         private Button btnClear;

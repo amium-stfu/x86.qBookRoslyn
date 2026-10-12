@@ -136,7 +136,6 @@ namespace QB
             }
         }
 
-        static Regex getNewObjectAssignee = new Regex(@"\b(?<name>[_a-zA-Z\.][_0-9a-zA-Z\.]+)\s+=\s+new\s+.*");
 
 
         public static string GetDirectoryFromCaller(int skipFrames = 2)
@@ -308,35 +307,6 @@ namespace QB
 
             return;
 
-            //try to set .name
-            try
-            {
-                var srcFile = new StackFrame(skipFrames - 2, true).GetFileName();
-                var srcLineNr = new StackFrame(skipFrames - 2, true).GetFileLineNumber();
-                string line = System.IO.File.ReadLines(srcFile).Skip(srcLineNr - 1).Take(1).First();
-                Match m = getNewObjectAssignee.Match(line);
-                if (m.Success)
-                {
-                    if (this is QB.Signal)
-                    {
-                        this.Name = m.Groups["name"].Value + ".Signal";
-                    }
-                    else
-                    {
-                        this.Name = m.Groups["name"].Value;
-                    }
-                    //this.text = m.Groups["name"].Value;
-
-                }
-                else
-                {
-                    //TODO
-                }
-            }
-            catch
-            {
-                //this.name = null;
-            }
         }
 
 
@@ -548,8 +518,6 @@ namespace QB
         /// <summary>
         /// Starts the timer
         /// </summary>
-        /// <param name="interval">Interval in milliseconds</param>
-        /// <param name="repeatCount">If specified, the counter only fires *repeatCount* times</param>
         public virtual void Run()
         {
             //@SCAN return;
@@ -732,8 +700,6 @@ namespace QB
         /// <summary>
         /// Starts the timer
         /// </summary>
-        /// <param name="interval">Interval in milliseconds</param>
-        /// <param name="repeatCount">If specified, the counter only fires *repeatCount* times</param>
         public virtual void Run()
         {
             //this.Interval = interval;
@@ -851,8 +817,6 @@ namespace QB
         /// <summary>
         /// Starts the timer
         /// </summary>
-        /// <param name="interval">Interval in milliseconds</param>
-        /// <param name="repeatCount">If specified, the counter only fires *repeatCount* times</param>
         public virtual void Resume()
         {
 

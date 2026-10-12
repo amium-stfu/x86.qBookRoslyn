@@ -59,7 +59,6 @@ namespace QB.Logging
         List<Task> loggingTasks = new List<Task>();
 
         protected Dictionary<string, int> loggers = new Dictionary<string, int>();
-        string insertString;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SqlLogger"/> class with a specified name.

@@ -1,0 +1,200 @@
+{
+  "FormatVersion": 1,
+  "Session": {
+    "Id": "77201a5d-e8d8-4d30-a2ab-5f3e2f7aefbb",
+    "Title": "Build Cleaning - 20261009-002550",
+    "WorkItemPath": ".ai-flow/workitems/2026.10.09.0025-build_cleaning_20261009_002550",
+    "ExportedAt": "2026-10-09T11:53:01.4003155+00:00",
+    "ApplicationVersion": "2026.10.05.2030"
+  },
+  "Messages": [
+    {
+      "Id": "760ac0a0-b457-422f-bbb8-0975331c478f",
+      "CreatedAt": "2026-10-08T22:25:50.464298+00:00",
+      "Role": "User",
+      "Text": "# Title Build Cleaning\n\nAktuell sind sehr view Warnings.\u000BBitte bewerte ob dies Problemlos beseitigt werden k\u00F6nnen",
+      "Attachments": [
+        {
+          "FileName": "BuildReport.txt",
+          "FileType": "text/plain",
+          "RelativePath": "attachments/760ac0a0-b457-422f-bbb8-0975331c478f/BuildReport.txt"
+        }
+      ]
+    },
+    {
+      "Id": "23ffe51b-d73f-4716-be78-d54bdddd83b3",
+      "CreatedAt": "2026-10-08T22:26:59.2155359+00:00",
+      "Role": "Assistant",
+      "Text": "**Teilweise ja \u2013 eine pauschal problemlose Beseitigung aller Warnungen ist nicht m\u00F6glich.** Der Buildbericht vom 08.10.2026 enth\u00E4lt **576 Warnungen und 0 Fehler**.\n\n| Gruppe | Anzahl | Bewertung |\n|---|---:|---|\n| Nullable-Pr\u00FCfungen | 291 | Initialisierung, erlaubte Nullwerte und Objektlebenszyklus pr\u00FCfen; teilweise echte Absturzrisiken. |\n| Nullable-Annotationen ohne passenden Kontext | 48 | Meist einfach durch gezielten Annotation-Kontext korrigierbar. |\n| Ungenutzte Variablen/Felder, nie zugewiesene Felder | 109 | Viele einfach bereinigbar; Initialisierungsnebenwirkungen und externe Nutzung vorher pr\u00FCfen. |\n| XML-Dokumentation, doppeltes \u0060using\u0060, Syntaxanalyse | 25 | \u00DCberwiegend risikoarm und ohne Laufzeit\u00E4nderung korrigierbar. |\n| Verdeckte geerbte Member | 39 | Absicht kl\u00E4ren: \u0060new\u0060 dokumentiert Verdeckung, \u0060override\u0060 kann Verhalten \u00E4ndern. |\n| Nicht abgewartete asynchrone Aufrufe | 20 | Ablauf und Fehlerbehandlung pr\u00FCfen; pauschales \u0060await\u0060 ver\u00E4ndert Verhalten. |\n| Unerreichbarer Code, Selbstzuweisungen, unm\u00F6gliche Nullvergleiche, unvollst\u00E4ndiger Enum-Switch | 27 | Teilweise \u00FCberfl\u00FCssiger Code, teilweise Hinweise auf Logikfehler. |\n| Veraltete APIs | 14 | Ersatz vorhanden; Optionen, Datenzugriff und Darstellung abgleichen. |\n| Architektur-/Referenzprobleme | 3 | Vorrangig pr\u00FCfen; m\u00F6gliche Laufzeitprobleme. |\n\n**Zwei konkrete Befunde verdienen Priorit\u00E4t:**\n\n- \u0060qbook\u0060 wird f\u00FCr **x86** gebaut, w\u00E4hrend \u0060qbookCsScript\u0060 \u00FCber die Solution-Zuordnung \u0060Release|Any CPU\u0060 tats\u00E4chlich **x64** erzeugt. Das erkl\u00E4rt \u0060MSB3270\u0060 und \u0060CS8012\u0060. Eine Korrektur muss native Abh\u00E4ngigkeiten ber\u00FCcksichtigen.\n- Der Verweis auf \u0060ShellBrowser\u0060 wird nicht aufgel\u00F6st (\u0060MSB3245\u0060). In den durchsuchten Quellen und Ressourcen fand ich keine Verwendung; m\u00F6glicherweise ist der Verweis entbehrlich.\n\nMeine Empfehlung: zuerst Architektur und Referenzen kl\u00E4ren, anschlie\u00DFend die risikoarmen Warnungen bereinigen und danach Nullable-, Async- und Vererbungsstellen einzeln bearbeiten. Warnungen global zu unterdr\u00FCcken w\u00FCrde m\u00F6gliche Fehler verdecken.\n\nDie Bewertung basiert auf dem vorhandenen Bericht und Stichproben im aktuellen Quellcode; einzelne gemeldete Zeilen stimmen bereits nicht mehr \u00FCberein. **Keine Dateien ge\u00E4ndert und keinen neuen Build ausgef\u00FChrt.**",
+      "Attachments": []
+    },
+    {
+      "Id": "1a5a7691-2e66-4533-99c3-75e807616d7f",
+      "CreatedAt": "2026-10-09T05:53:11.5598383+00:00",
+      "Role": "User",
+      "Text": "Bitte pr\u00FCfe erneut: B:\\x86.qBookRoslyn\\.ai-flow\\BuildReport.txt",
+      "Attachments": []
+    },
+    {
+      "Id": "85301af4-9b96-4508-96dc-5a34139e837c",
+      "CreatedAt": "2026-10-09T05:53:33.4244775+00:00",
+      "Role": "Assistant",
+      "Text": "Der aktualisierte Bericht vom **09.10.2026, 07:50 Uhr** zeigt einen erfolgreichen **Release|x64-Build mit 573 Warnungen und 0 Fehlern**.\n\nGegen\u00FCber dem vorherigen Bericht sind drei Warnungen entfallen:\n\n- \u0060MSB3270\u0060: x86/x64-Architekturkonflikt\n- \u0060CS8012\u0060: abweichender Zielprozessor\n- \u0060MSB3245\u0060: nicht aufgel\u00F6ster \u0060ShellBrowser\u0060-Verweis\n\nDamit werden die zuvor hervorgehobenen Architektur- und Referenzprobleme **im aktuellen x64-Build nicht mehr gemeldet**. Der vorherige x86-Build ist dadurch nicht erneut gepr\u00FCft.\n\nDie \u00FCbrigen Warnungsgruppen sind zahlenm\u00E4\u00DFig unver\u00E4ndert. Die Bewertung bleibt daher: **Ein Teil l\u00E4sst sich risikoarm bereinigen**, insbesondere Dokumentationsfehler und das doppelte \u0060using\u0060. Nullable-, Async- und Vererbungswarnungen brauchen weiterhin eine Pr\u00FCfung der jeweiligen Programmlogik.\n\nNur den Bericht ausgewertet; keine Dateien ge\u00E4ndert und keinen neuen Build gestartet.",
+      "Attachments": []
+    },
+    {
+      "Id": "ca95fd41-e4a8-49d5-97ea-e366415eccc1",
+      "CreatedAt": "2026-10-09T06:07:52.0339291+00:00",
+      "Role": "User",
+      "Text": "W\u00E4re ein erster Schritt die risikoarmen zu bereinigen?",
+      "Attachments": []
+    },
+    {
+      "Id": "258b1645-24ec-4f0a-bf6a-87fb7f2545c7",
+      "CreatedAt": "2026-10-09T06:08:03.4119372+00:00",
+      "Role": "Assistant",
+      "Text": "Ja, das w\u00E4re ein sinnvoller erster Schritt.\n\nIch w\u00FCrde zun\u00E4chst diese Stellen bereinigen:\n\n- **22 XML-Dokumentationswarnungen:** ung\u00FCltiges XML, falsche Parameternamen und falsch platzierte Kommentare.\n- **Ein doppeltes \u0060using\u0060:** ohne Verhaltens\u00E4nderung entfernbar.\n- **Ungenutzte lokale Variablen:** nur dort entfernen, wo die Initialisierung keine ben\u00F6tigten Nebenwirkungen hat.\n\nUngenutzte Felder w\u00FCrde ich zuvor auf Reflection-, Designer- und externe Nutzung pr\u00FCfen. Nullable-, Async- und Vererbungswarnungen sollten separat folgen.\n\nDanach sollte ein Build \u00FCber den Worker best\u00E4tigen, welche Warnungen entfallen sind. So entsteht eine kleine, gut \u00FCberpr\u00FCfbare erste Bereinigung.",
+      "Attachments": []
+    },
+    {
+      "Id": "709518e7-ee7c-47e9-97f6-a29ac4fbc4eb",
+      "CreatedAt": "2026-10-09T06:08:56.6448446+00:00",
+      "Role": "User",
+      "Text": "Hier bereinigen oder besser in einer separaten Session",
+      "Attachments": []
+    },
+    {
+      "Id": "eba36865-710d-41a6-a1f4-053ac715cb61",
+      "CreatedAt": "2026-10-09T06:09:08.3827617+00:00",
+      "Role": "Assistant",
+      "Text": "Das k\u00F6nnen wir gut **hier in dieser Session** bereinigen. Die Regeln, der Buildbericht und der begrenzte Umfang sind bereits bekannt.\n\nEine separate Session ist erst f\u00FCr die komplexeren Nullable-, Async- und Vererbungswarnungen sinnvoll. Die erste Bereinigung w\u00FCrde ich auf XML-Dokumentation, das doppelte \u0060using\u0060 und nachweislich nebenwirkungsfreie ungenutzte lokale Variablen begrenzen und anschlie\u00DFend per Worker-Build pr\u00FCfen.",
+      "Attachments": []
+    },
+    {
+      "Id": "25db2647-bdce-4de1-a30f-69ecca7802fd",
+      "CreatedAt": "2026-10-09T06:09:29.576226+00:00",
+      "Role": "User",
+      "Text": "Dann leg los",
+      "Attachments": []
+    },
+    {
+      "Id": "3ef63b81-7ea8-4018-9c80-f2addc477661",
+      "CreatedAt": "2026-10-09T06:13:31.2660498+00:00",
+      "Role": "Assistant",
+      "Text": "Die erste Bereinigung ist abgeschlossen: **42 Warnungen beseitigt**, von **573 auf 531**.\n\n- 22 XML-Dokumentationswarnungen korrigiert.\n- Ein doppeltes \u0060using\u0060 entfernt.\n- 19 ungenutzte lokale Variablen samt \u00FCberfl\u00FCssigen Zuweisungen entfernt.\n\nDer abschlie\u00DFende **Worker-Build f\u00FCr Release|x64 war erfolgreich: 0 Fehler**. Der aktualisierte Bericht liegt in \u0060.ai-flow/BuildReport.txt\u0060.\n\nNullable-, Async- und Vererbungsstellen wurden nicht ver\u00E4ndert.",
+      "Attachments": []
+    },
+    {
+      "Id": "0f42831c-a01a-4ab4-b454-6ee658bd39a1",
+      "CreatedAt": "2026-10-09T06:15:53.979513+00:00",
+      "Role": "User",
+      "Text": "So was alles n\u00E4chstes in einer separaten Session. die ganzen Nullable ?",
+      "Attachments": []
+    },
+    {
+      "Id": "1964df59-51b4-43a2-ac16-367faf240e52",
+      "CreatedAt": "2026-10-09T06:16:11.447898+00:00",
+      "Role": "Assistant",
+      "Text": "Ja, **Nullable w\u00E4re der n\u00E4chste sinnvolle Schwerpunkt f\u00FCr eine separate Session**. Dabei w\u00FCrde ich die 339 Warnungen in zwei Schritte aufteilen:\n\n1. **48 Kontextwarnungen (\u0060CS8632\u0060):** Nullable-Annotationen gezielt aktivieren, ohne sofort zus\u00E4tzliche Nullpr\u00FCfungen im ganzen Projekt einzuschalten.\n2. **291 Nullable-Warnungen:** Dateiweise pr\u00FCfen, beginnend mit m\u00F6glichen Null-Dereferenzierungen (\u0060CS8602\u0060) und Nullargumenten (\u0060CS8604\u0060). Danach Initialisierung, R\u00FCckgaben und Eventhandler-Signaturen.\n\nWichtig: Kein pauschales \u0060!\u0060, keine beliebigen Standardwerte und kein globales Abschalten der Warnungen. Jede \u00C4nderung sollte den tats\u00E4chlichen Objektlebenszyklus abbilden.\n\nAls Auftrag f\u00FCr die neue Session eignet sich:\n\n\u003E Mode: DIRECT  \n\u003E Pr\u00FCfe die Nullable-Warnungen aus \u0060.ai-flow/BuildReport.txt\u0060. Bereinige zun\u00E4chst die \u0060CS8632\u0060-Kontextwarnungen. Pr\u00FCfe anschlie\u00DFend die Nullable-Warnungen in \u0060qbookCode\u0060 dateiweise und korrigiere eindeutig begr\u00FCndbare Stellen. Keine pauschalen Null-Unterdr\u00FCckungen oder fachlichen Verhaltens\u00E4nderungen. Validiere die \u00C4nderungen \u00FCber den Worker-Build f\u00FCr \u0060qbookStudio.sln\u0060 und berichte verbleibende unklare F\u00E4lle.",
+      "Attachments": []
+    },
+    {
+      "Id": "77ee6ead-7fa1-40fc-8990-823256268157",
+      "CreatedAt": "2026-10-09T06:17:53.5601703+00:00",
+      "Role": "User",
+      "Text": "Die Frage ist ob ich vorher qbookCode aus der Solution entferne. Ist noch altlast und wurde durch vs code ersetzt",
+      "Attachments": []
+    },
+    {
+      "Id": "19c24b2a-0f56-485d-8bb7-362d45f01d12",
+      "CreatedAt": "2026-10-09T06:18:06.7080442+00:00",
+      "Role": "Assistant",
+      "Text": "**Ja, wenn \u0060qbookCode\u0060 vollst\u00E4ndig durch VS Code ersetzt wurde, w\u00FCrde ich es vor der Nullable-Bereinigung aus der Solution nehmen.** Sonst investieren wir Arbeit in einen ausgemusterten Editor.\n\nVorher sollten wir pr\u00FCfen, ob \u0060qbook\u0060 oder \u0060qbookCsScript\u0060 noch Projektverweise darauf haben oder ob Start-, Build- und Releaseabl\u00E4ufe dessen Ausgabe verwenden.\n\nIst es unabh\u00E4ngig, reicht zun\u00E4chst das Entfernen aus \u0060qbookStudio.sln\u0060; die Quelldateien k\u00F6nnen als Archiv erhalten bleiben. Anschlie\u00DFend ein Worker-Build und eine neue Auswertung der Warnungen.\n\nNach dem zuletzt gepr\u00FCften Bericht stammen **331 der 531 verbleibenden Warnungen aus \u0060qbookCode\u0060**. Ohne dieses Projekt w\u00E4ren voraussichtlich **200 Warnungen** \u00FCbrig. Damit w\u00FCrde auch der Umfang der Nullable-Bereinigung deutlich kleiner.",
+      "Attachments": []
+    },
+    {
+      "Id": "4ec6eb99-beea-4ba3-9237-24e74cc1fc38",
+      "CreatedAt": "2026-10-09T06:37:42.7611681+00:00",
+      "Role": "User",
+      "Text": "Ok ist auch erledigt. Siehe neuen B:\\x86.qBookRoslyn\\.ai-flow\\BuildReport.txt",
+      "Attachments": []
+    },
+    {
+      "Id": "ad306e75-d89a-4ec5-bdd1-44403c748bd2",
+      "CreatedAt": "2026-10-09T06:38:05.6200774+00:00",
+      "Role": "Assistant",
+      "Text": "Der neue **Release|x64-Build ist erfolgreich: 154 Warnungen, 0 Fehler**.\n\n- \u0060qbookCode\u0060 erscheint weder in der Solution noch im Buildbericht.\n- \u0060qbook\u0060: **50 Warnungen**\n- \u0060qbookCsScript\u0060: **104 Warnungen**\n- **Keine Nullable-Warnungen mehr im Bericht.** Eine separate Nullable-Bereinigung ist damit aktuell nicht n\u00F6tig.\n\nAls n\u00E4chsten Schritt w\u00FCrde ich die **52 Warnungen zu ungenutzten Feldern** (\u0060CS0169\u0060, \u0060CS0414\u0060) pr\u00FCfen. Danach folgen Vererbungswarnungen (38), nie zugewiesene Felder (23), unerreichbarer Code (20) und die \u00FCbrigen API-, Async- und Logikstellen.\n\nKeine Dateien ge\u00E4ndert und keinen neuen Build gestartet.",
+      "Attachments": []
+    },
+    {
+      "Id": "59f606b1-b43f-4f5a-be6b-c307fcea42f8",
+      "CreatedAt": "2026-10-09T06:48:41.0007397+00:00",
+      "Role": "User",
+      "Text": "wurde auch bereinigt. B:\\x86.qBookRoslyn\\.ai-flow\\BuildReport.txt",
+      "Attachments": []
+    },
+    {
+      "Id": "fc2fb0d1-0cf1-4897-b0de-5a83a3d799d7",
+      "CreatedAt": "2026-10-09T06:49:02.5665903+00:00",
+      "Role": "Assistant",
+      "Text": "Der aktuelle **Release|x64-Build ist erfolgreich: 101 Warnungen, 0 Fehler** \u2014 **53 weniger** als zuvor.\n\nDie Warnungen zu ungenutzten Feldern (\u0060CS0169\u0060, \u0060CS0414\u0060) sind vollst\u00E4ndig entfallen. Zus\u00E4tzlich gibt es eine Verdeckungswarnung weniger.\n\n| Verbleibende Gruppe | Anzahl |\n|---|---:|\n| Verdeckte geerbte Member | 37 |\n| Nie zugewiesene Felder | 23 |\n| Unerreichbarer Code | 20 |\n| Veraltete APIs | 7 |\n| Nicht abgewartete Async-Aufrufe | 7 |\n| Selbstzuweisungen | 4 |\n| Unm\u00F6gliche Nullvergleiche | 2 |\n| Syntaxanalyse-Hinweis | 1 |\n\nAls n\u00E4chsten kleinen Schritt w\u00FCrde ich die **vier Selbstzuweisungen und zwei Nullvergleiche** pr\u00FCfen. Sie sind \u00FCberschaubar, k\u00F6nnen aber auch auf urspr\u00FCnglich beabsichtigte Logik hinweisen.\n\nNur den Bericht ausgewertet; keine \u00C4nderungen vorgenommen.",
+      "Attachments": []
+    },
+    {
+      "Id": "a775555b-e8eb-4de5-bd1b-fe7a22185809",
+      "CreatedAt": "2026-10-09T06:55:36.2321267+00:00",
+      "Role": "User",
+      "Text": "ok wurde auch bereinigt: B:\\x86.qBookRoslyn\\.ai-flow\\BuildReport.txt",
+      "Attachments": []
+    },
+    {
+      "Id": "003bf3e2-f30b-4b66-85be-7b2e2234938e",
+      "CreatedAt": "2026-10-09T06:55:57.7191179+00:00",
+      "Role": "Assistant",
+      "Text": "Der neue **Release|x64-Build ist erfolgreich: 95 Warnungen, 0 Fehler**.\n\nAlle **vier Selbstzuweisungen und zwei unm\u00F6glichen Nullvergleiche** werden nicht mehr gemeldet.\n\n| Verbleibende Gruppe | Anzahl |\n|---|---:|\n| Verdeckte geerbte Member | 37 |\n| Nie zugewiesene Felder | 23 |\n| Unerreichbarer Code | 20 |\n| Veraltete APIs | 7 |\n| Nicht abgewartete Async-Aufrufe | 7 |\n| Syntaxanalyse-Hinweis | 1 |\n\nAls N\u00E4chstes w\u00FCrde ich die **23 nie zugewiesenen Felder (\u0060CS0649\u0060)** pr\u00FCfen: Werden sie extern oder per Reflection gesetzt, sind sie \u00FCberfl\u00FCssig oder fehlt tats\u00E4chlich eine Initialisierung?\n\nNur den Bericht ausgewertet; keine \u00C4nderungen vorgenommen.",
+      "Attachments": []
+    },
+    {
+      "Id": "303684b8-75c7-4f84-9e6b-9311663db085",
+      "CreatedAt": "2026-10-09T07:04:31.4762511+00:00",
+      "Role": "User",
+      "Text": "ok wurde auch bereinigt. B:\\x86.qBookRoslyn\\.ai-flow\\BuildReport.txt",
+      "Attachments": []
+    },
+    {
+      "Id": "b3599b21-6fac-4616-961e-70d4a3cd0f36",
+      "CreatedAt": "2026-10-09T07:04:51.1394061+00:00",
+      "Role": "Assistant",
+      "Text": "Der aktuelle **Release|x64-Build ist erfolgreich: 72 Warnungen, 0 Fehler** \u2014 **23 weniger** als zuvor. Alle Warnungen zu nie zugewiesenen Feldern (\u0060CS0649\u0060) sind entfallen.\n\n| Verbleibende Gruppe | Anzahl |\n|---|---:|\n| Verdeckte geerbte Member | 37 |\n| Unerreichbarer Code | 20 |\n| Veraltete APIs | 7 |\n| Nicht abgewartete Async-Aufrufe | 7 |\n| Syntaxanalyse-Hinweis | 1 |\n\nAls N\u00E4chstes w\u00FCrde ich die **20 Stellen mit unerreichbarem Code (\u0060CS0162\u0060)** pr\u00FCfen. Dabei kl\u00E4ren, ob der Code entbehrlich ist oder eine vorzeitige R\u00FCckgabe beziehungsweise feste Bedingung unbeabsichtigt Funktionalit\u00E4t deaktiviert.\n\nNur den Bericht ausgewertet; keine \u00C4nderungen vorgenommen.",
+      "Attachments": []
+    },
+    {
+      "Id": "37ccfec9-95ef-4fc9-93ff-303d5e48363e",
+      "CreatedAt": "2026-10-09T07:09:39.382328+00:00",
+      "Role": "User",
+      "Text": "Ok auch erledigt: B:\\x86.qBookRoslyn\\.ai-flow\\BuildReport.txt",
+      "Attachments": []
+    },
+    {
+      "Id": "69206077-2d8d-4575-a432-ccc1cc561fc0",
+      "CreatedAt": "2026-10-09T07:10:00.1945689+00:00",
+      "Role": "Assistant",
+      "Text": "Der neue **Release|x64-Build ist erfolgreich: 52 Warnungen, 0 Fehler**. Alle **20 Warnungen zu unerreichbarem Code (\u0060CS0162\u0060)** sind entfallen.\n\n| Verbleibende Gruppe | Anzahl |\n|---|---:|\n| Verdeckte geerbte Member (\u0060CS0108\u0060, \u0060CS0114\u0060) | 37 |\n| Veraltete APIs (\u0060CS0618\u0060) | 7 |\n| Nicht abgewartete Async-Aufrufe (\u0060CS4014\u0060) | 7 |\n| Syntaxanalyse-Hinweis (\u0060RS1034\u0060) | 1 |\n\nAls N\u00E4chstes w\u00FCrde ich die **37 Vererbungswarnungen** pr\u00FCfen. Dabei bewusst zwischen beabsichtigtem Verdecken (\u0060new\u0060) und \u00DCberschreiben (\u0060override\u0060) unterscheiden; \u0060override\u0060 kann das Laufzeitverhalten \u00E4ndern.\n\nNur den Bericht ausgewertet; keine \u00C4nderungen vorgenommen.",
+      "Attachments": []
+    },
+    {
+      "Id": "2cbf5635-908c-4b5d-9be0-aee53f7deca2",
+      "CreatedAt": "2026-10-09T08:51:42.2670783+00:00",
+      "Role": "User",
+      "Text": "Bei den Verdeckte geerbte Member wurde mir empfohlen diese erstmal zu lassen.\u000BWie sieht du die anderen Punkte?",
+      "Attachments": []
+    },
+    {
+      "Id": "90eb11b9-4f51-428d-a60c-bb6021269a55",
+      "CreatedAt": "2026-10-09T08:51:59.8898591+00:00",
+      "Role": "Assistant",
+      "Text": "Die **37 Vererbungswarnungen vorerst zu lassen ist sinnvoll**, solange die beabsichtigte Verwendung nicht gekl\u00E4rt ist. Ein pauschales \u0060new\u0060 w\u00FCrde nur die Warnungen beseitigen; \u0060override\u0060 k\u00F6nnte Verhalten \u00E4ndern.\n\nDie anderen Punkte w\u00FCrde ich so priorisieren:\n\n| Gruppe | Einsch\u00E4tzung |\n|---|---|\n| **1 \u00D7 \u0060RS1034\u0060** | Wahrscheinlich risikoarm: Syntaxart mit \u0060IsKind(...)\u0060 pr\u00FCfen. Ein guter n\u00E4chster kleiner Schritt. |\n| **7 \u00D7 veraltete APIs** | Anschlie\u00DFend einzeln umstellen. Bei Roslyn Optionen vergleichen; bei MQTT beachten, dass \u0060PayloadSegment\u0060 einen Offset und eine L\u00E4nge hat. |\n| **7 \u00D7 nicht abgewartete Async-Aufrufe** | Inhaltlich besonders relevant: Ausf\u00FChrungsreihenfolge und Fehlerbehandlung pr\u00FCfen. Nicht automatisch \u00FCberall \u0060await\u0060 erg\u00E4nzen. |\n\nBei Async-Aufrufen muss klar sein, ob die Operation **abgeschlossen sein muss**, bevor es weitergeht, oder bewusst im Hintergrund l\u00E4uft. \u0060_ = SomeAsync()\u0060 dokumentiert Letzteres, l\u00F6st aber keine fehlende Fehlerbehandlung.\n\nMeine Empfehlung: **erst \u0060RS1034\u0060, dann die veralteten APIs; Async separat mit gezielter Pr\u00FCfung des jeweiligen Ablaufs.**",
+      "Attachments": []
+    }
+  ]
+}

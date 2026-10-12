@@ -264,7 +264,6 @@ namespace QB.Net
                 */
             }
 
-            bool init = false;
 
             public bool PdoOnCanMessageReceived(UInt32 id, byte dlc, byte[] data)
             {

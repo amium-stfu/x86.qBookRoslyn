@@ -192,7 +192,6 @@ namespace QB.Controls
         private Chart chart;
         private double xrange = 3600;
 
-        private QB.Controls.Box yFrame;
 
         private QB.Controls.Box xControl;
 
@@ -250,7 +249,6 @@ namespace QB.Controls
 
         public List<ChartSeries> signals;
 
-        int legendIndex = 0;
 
         string name;
 
@@ -757,7 +755,6 @@ namespace QB.Controls
 
         }
 
-        int lastAxis = 1;
 
         bool y2Active = false;
         bool y3Active = false;

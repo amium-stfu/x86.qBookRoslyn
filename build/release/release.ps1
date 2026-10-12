@@ -56,7 +56,7 @@ if ([string]::IsNullOrWhiteSpace($msbuildPath)) {
     throw "MSBuild.exe was not found in any discovered Visual Studio installation. Discovered installations: $foundInstallations"
 }
 
-& $msbuildPath $solutionPath /m /t:Rebuild /p:Configuration=Release /p:Platform=x86
+& $msbuildPath $solutionPath /m /t:Rebuild /p:Configuration=Release /p:Platform=x64
 if ($LASTEXITCODE -ne 0) { throw "qbook Release build failed." }
 
 & (Join-Path $PSScriptRoot "updateBuildInfo.ps1") -RevisionStatePath $revisionStatePath -OutputDirectory (Join-Path $repositoryRoot "Setup\Release\bin\qbook")

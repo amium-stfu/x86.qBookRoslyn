@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
@@ -86,6 +86,7 @@ namespace QB.Controls
         internal override void ReleaseControl(List<Exception> errors)
         {
             OnBoxClick = null;
+            OnBoxRightClick = null;
             OnAccept = null;
             OnCancel = null;
             EditMask = null;
@@ -118,6 +119,7 @@ namespace QB.Controls
 
         public delegate void ClickEventHandler(Control s);
         public event ClickEventHandler OnBoxClick;
+        public event ClickEventHandler OnBoxRightClick;
         internal override void RaiseOnClick(PointF point)
         {
             if (IsRemoved) return;
@@ -128,58 +130,27 @@ namespace QB.Controls
                 {
                     OnBoxClick(this); //default handler
                 }
-                if (!IsRemoved && EditMask != null)
-                {
-                    //in-place edit
-                    TextBox editBox = new TextBox();
-                    editors.Add(editBox);
-                    editBox.Font = Draw.GetFont(this._Font.FontFamily.Name, Math.Max(10, this._Font.Size * 0.30 * Draw.mmToPx), this._Font.Style);
-                    var parentForm = System.Windows.Forms.Application.OpenForms[0];
-                    System.Windows.Forms.Control pageControl = parentForm.Controls.OfType<System.Windows.Forms.Control>().FirstOrDefault(c => c.GetType().Name == "PageControl");
-                    if (pageControl != null)
-                    {
-                        parentForm.Controls.Add(editBox);
-                        editBox.Name = "BoxEditor";
-                        editBox.Tag = this;
-
-                        if (this.Text is Delegate)
-                        {
-                            editBox.Text = ((Delegate)_Text).DynamicInvoke().ToString();
-                        }
-                        else
-                        {
-                            editBox.Text = Text.ToString();
-                        }
-
-                        switch (TextAlignment)
-                        {
-                            case ContentAlignment.TopRight:
-                            case ContentAlignment.MiddleRight:
-                            case ContentAlignment.BottomRight:
-                                editBox.TextAlign = HorizontalAlignment.Right;
-                                break;
-                            case ContentAlignment.TopCenter:
-                            case ContentAlignment.MiddleCenter:
-                            case ContentAlignment.BottomCenter:
-                                editBox.TextAlign = HorizontalAlignment.Center;
-                                break;
-                            default:
-                                editBox.TextAlign = HorizontalAlignment.Left;
-                                break;
-                        }
-                        editBox.KeyPress += EditBox_KeyPress;
-                        editBox.LostFocus += EditBox_LostFocus;
-                        editBox.Location = new Point((int)(Bounds.X * Draw.mmToPx) + pageControl.Left + 1, (int)(Bounds.Y * Draw.mmToPx) + pageControl.Top - 2);
-                        editBox.Size = new Size((int)(Bounds.W * Draw.mmToPx), (int)(Bounds.H * Draw.mmToPx));
-                        editBox.Show();
-                        editBox.BringToFront();
-                        editBox.Focus();
-                    }
-                }
             }
             catch (Exception ex)
             {
                 QB.Logger.Error("#EX in OnBoxClick: " + ex.Message);
+            }
+        }
+
+        internal override void RaiseOnRightClick(PointF point)
+        {
+            if (IsRemoved) return;
+            try
+            {
+                ClickPosition = point;
+                if (OnBoxRightClick != null)
+                {
+                    OnBoxRightClick(this);
+                }
+            }
+            catch (Exception ex)
+            {
+                QB.Logger.Error("#EX in OnBoxRightClick: " + ex.Message);
             }
         }
 
@@ -250,7 +221,7 @@ namespace QB.Controls
         /// 
         /// </summary>
         /// <param name="name"></param>
-        /// <param name="value"></param>
+        /// <param name="text"></param>
         /// <param name="x"></param>
         /// <param name="y"></param>
         /// <param name="w"></param>
@@ -267,7 +238,8 @@ namespace QB.Controls
             CancelEventHandler onCancel = null,
             string editMask = null,
             string icon = null,
-            System.Drawing.Color? hoverColor = null
+            System.Drawing.Color? hoverColor = null,
+        ClickEventHandler onRightClick = null
             )
         : base(name, x: 0, y: 0, w: 0, h: 0)
         {
@@ -284,15 +256,15 @@ namespace QB.Controls
 
             this.Clickable = false;
 
-            if (editMask != null)
+            if (onClick != null)
             {
                 this.OnBoxClick += onClick;
                 this.Clickable = true;
             }
 
-            if (onClick != null)
+            if (onRightClick != null)
             {
-                this.OnBoxClick += onClick;
+                this.OnBoxRightClick += onRightClick;
                 this.Clickable = true;
             }
 
@@ -348,7 +320,8 @@ namespace QB.Controls
         CancelEventHandler onCancel = null,
         string editMask = null,
         string icon = null,
-        System.Drawing.Color? hoverColor = null
+        System.Drawing.Color? hoverColor = null,
+        ClickEventHandler onRightClick = null
         )
 : base(name, x: 0, y: 0, w: 0, h: 0)
         {
@@ -365,15 +338,15 @@ namespace QB.Controls
 
             this.Clickable = false;
 
-            if (editMask != null)
+            if (onClick != null)
             {
                 this.OnBoxClick += onClick;
                 this.Clickable = true;
             }
 
-            if (onClick != null)
+            if (onRightClick != null)
             {
-                this.OnBoxClick += onClick;
+                this.OnBoxRightClick += onRightClick;
                 this.Clickable = true;
             }
 
@@ -1390,27 +1363,6 @@ namespace QB.Controls
                 }
             }
 
-            if (false)
-            {
-                //draw background
-                Brush backgroundBrush;
-                if (Hover)
-                {
-                    if (BackgroundColorHover != null && BackgroundColorHover != System.Drawing.Color.Transparent)
-                        backgroundBrush = Draw.GetBrush("#" + ((System.Drawing.Color)BackgroundColorHover).ToArgb().ToString("X8"));
-                    else
-                        backgroundBrush = Draw.GetBrush("#AAEEEEEE");
-                }
-                else
-                {
-                    if (BackgroundColor != null && BackgroundColor != System.Drawing.Color.Transparent)
-                        backgroundBrush = Draw.GetBrush("#" + ((System.Drawing.Color)BackgroundColor).ToArgb().ToString("X8"));
-                    else
-                        backgroundBrush = null; // Draw.GetBrush("#AAEEEEEE");
-                }
-                if (backgroundBrush is SolidBrush)
-                    Draw.FillRectangle((SolidBrush)backgroundBrush, x, y, w, h);
-            }
 
 
         }

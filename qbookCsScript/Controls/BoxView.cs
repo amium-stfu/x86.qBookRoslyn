@@ -1,4 +1,4 @@
-﻿using Autofac.Core;
+using Autofac.Core;
 using CefSharp.DevTools.Target;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using OpenCvSharp;
@@ -273,11 +273,28 @@ namespace QB.Controls
             bool opened = false;
             OnUIThread(() =>
             {
-                if (removed || Active != null) return;
+                if (removed || ReferenceEquals(Active, this)) return;
+                var previous = Active;
+                if (previous != null)
+                {
+                    previous.frame.Visible = false;
+                    foreach (var control in previous.Controls()) control.Hover = false;
+                }
                 Active = this;
-                frame.Visible = true;
-                try { ActiveChanged?.Invoke(); opened = true; }
-                catch { Close(); throw; }
+                try
+                {
+                    frame.Visible = true;
+                    ActiveChanged?.Invoke();
+                    opened = true;
+                }
+                catch
+                {
+                    frame.Visible = false;
+                    Active = previous;
+                    if (previous != null) previous.frame.Visible = true;
+                    try { ActiveChanged?.Invoke(); } catch { }
+                    throw;
+                }
             });
             return opened;
         }
@@ -863,8 +880,6 @@ namespace QB.Controls
         //Box.ClickEventHandler OnOk;
         //Box.ClickEventHandler OnCancel;
 
-        BoxButton okButton;
-        BoxButton cancelButton;
 
         public System.Drawing.Color BackColor;
         double Border;
@@ -1133,8 +1148,6 @@ namespace QB.Controls
     public class BoxDialogWithParameters : BoxFlowPanel 
     {
 
-        string headerText;
-        Func<string> readHeader;
         string Position;
 
         double Border;
@@ -1598,7 +1611,7 @@ namespace QB.Controls
 
         public void Show()
         {
-            if (closed || showing || DialogBox.Active != null) return;
+            if (closed || showing) return;
             UpdateLayout();
             if (dialog.Show()) showing = true;
         }
@@ -1701,7 +1714,7 @@ namespace QB.Controls
             double w = 150,
             double fontSize = 12)
         {
-            if (closed || showing || DialogBox.Active != null)
+            if (closed || showing)
                 return;
 
             if (fontSize <= 0 || w <= 8)
@@ -1869,7 +1882,6 @@ namespace QB.Controls
 
 
         QB.Controls.Box Read;
-        string page;
         public Signal Target = new Signal("dummy", value: 1000, unit: "ddd");
         public double Min;
         public double Max;
@@ -1987,12 +1999,10 @@ namespace QB.Controls
         QB.Controls.Box Read;
         QB.Controls.Box Set;
         QB.Controls.Box Out;
-        string page;
 
         Module Target = new Module("dummy", value: 1000, unit: "ddd");
         public double Min;
         public double Max;
-        double FontSize;
 
         bool Locked = false;
         string Format;
@@ -2010,7 +2020,6 @@ namespace QB.Controls
 
             Backcolor = backColor.ToColor();
             Locked = locked;
-            this.page = page;
             X = double.IsNaN(x) ? 0 : x;
             Y = double.IsNaN(y) ? 0 : y;
             W = double.IsNaN(w) ? 50 : w;
@@ -2089,8 +2098,6 @@ namespace QB.Controls
     public class BoxLabel : UIBox
     {
 
-        QB.Controls.Box Read;
-        string page;
         public StringSignal Target = new StringSignal("demo", "Demo", "Value");
         bool Locked = false;
 
@@ -2110,7 +2117,6 @@ namespace QB.Controls
 
             Backcolor = backColor.ToColor();
             Locked = locked;
-            Page = page;
             X = double.IsNaN(x) ? 0 : x;
             Y = double.IsNaN(y) ? 0 : y;
             W = double.IsNaN(w) ? 50 : w;
@@ -2193,7 +2199,6 @@ namespace QB.Controls
 
 
         QB.Controls.Box Read;
-        string page;
         public StringSignal Target = new StringSignal("demo", "Demo", "Value");
         bool Locked = false;
         public BoxStringSignal(string name, StringSignal target = null, double x = double.NaN, double y = double.NaN, double w = double.NaN, double h = double.NaN, object backColor = null, bool locked = false) : base(name)
@@ -2207,7 +2212,6 @@ namespace QB.Controls
 
             Backcolor = backColor.ToColor();
             Locked = locked;
-            this.page = page;
             X = double.IsNaN(x) ? 0 : x;
             Y = double.IsNaN(y) ? 0 : y;
             W = double.IsNaN(w) ? 50 : w;
@@ -2317,7 +2321,6 @@ namespace QB.Controls
                 backColor = "lightgray";
 
             Backcolor = backColor.ToColor();
-            Page = Page;
             X = double.IsNaN(x) ? 0 : x;
             Y = double.IsNaN(y) ? 0 : y;
             W = double.IsNaN(w) ? 50 : w;
@@ -2361,7 +2364,6 @@ namespace QB.Controls
         public QB.Controls.Box On;
         public QB.Controls.Box Off;
         bool Locked = false;
-        string page;
         Signal Target;
         bool LedStyle = true;
 
@@ -2382,7 +2384,6 @@ namespace QB.Controls
             DefaultColor = defaultColor.ToColor();
             SelectColor = selectColor.ToColor();
             Locked = locked;
-            Page = page;
             X = double.IsNaN(x) ? 0 : x;
             Y = double.IsNaN(y) ? 0 : y;
             W = double.IsNaN(w) ? 50 : w;
@@ -2691,6 +2692,7 @@ namespace QB.Controls
         {
             Read = null;
             OnClick = null;
+            OnRightClick = null;
             DescriptionText = null;
             base.ReleaseOwnedUI();
         }
@@ -2699,25 +2701,25 @@ namespace QB.Controls
         protected QB.Controls.Box Read;
 
         public string Icon;
-        string page;
        // string DescriptionText;
         double IconSizeFactor;
 
         string Id;
         bool Locked = false;
-        string Format;
 
         public Box.ClickEventHandler OnClick;
+        public Box.ClickEventHandler OnRightClick;
  
         bool LedStyle = false;
 
         Func<string> DescriptionText;
 
       
-        public BoxButton(string name, string id = null, double x = double.NaN, double y = double.NaN, double w = double.NaN, double h = double.NaN, object description = null, object backColor = null, bool locked = false, string icon = null, double iconSizeFactor = 0.6, QB.Controls.Box.ClickEventHandler onClick = null, string page = null, bool ledStyle = false) : base(name)
+        public BoxButton(string name, string id = null, double x = double.NaN, double y = double.NaN, double w = double.NaN, double h = double.NaN, object description = null, object backColor = null, bool locked = false, string icon = null, double iconSizeFactor = 0.6, QB.Controls.Box.ClickEventHandler onClick = null, string page = null, bool ledStyle = false, QB.Controls.Box.ClickEventHandler onRightClick = null) : base(name)
         {
 
             OnClick = onClick;
+            OnRightClick = onRightClick;
             Icon = icon;
             IconSizeFactor = iconSizeFactor;
 
@@ -2775,10 +2777,10 @@ namespace QB.Controls
                 if (DescriptionText != null)
                 {
                     Frame = new QB.Controls.Box(Name, text: Id, x: X, y: Y, w: W, h: H, style: $"font::{aligment * 0.5},align:tl,bg:Transparent",
-                        onClick: OnClick,
+                        onClick: OnClick, onRightClick: OnRightClick,
                         boxes: new[] {
-                    State = new QB.Controls.Box("icon", x:aligment * 0.2, y:(H - iconSize) / 2, w:iconSize, h:iconSize) { Directory = Page },
-                    Description = new QB.Controls.Box("description", textFunction:DescriptionText, x:H * 0.9, y:(H - iconSize) / 2, w:W - H -2, h:H - (H - iconSize) / 2, onClick:OnClick, style:$"font::{H},align:ml,bg:Transparent") { Directory = Page },
+                    State = new QB.Controls.Box("icon", x:aligment * 0.2, y:(H - iconSize) / 2, w:iconSize, h:iconSize, onClick: OnClick, onRightClick: OnRightClick) { Directory = Page },
+                    Description = new QB.Controls.Box("description", textFunction:DescriptionText, x:H * 0.9, y:(H - iconSize) / 2, w:W - H -2, h:H - (H - iconSize) / 2, onClick:OnClick, onRightClick: OnRightClick, style:$"font::{H},align:ml,bg:Transparent") { Directory = Page },
                         });
                     Description.OnWheel += (box, delta) => MouseWheel(box, delta);
 
@@ -2786,8 +2788,8 @@ namespace QB.Controls
 
                 if (DescriptionText == null)
                 {
-                    Frame = new QB.Controls.Box(Name, text: Id, x: X, y: Y, w: W, h: H, style: $"font::{H * 0.5},align:tl,bg:Transparent", onClick: OnClick, boxes: new[] {
-                    State = new QB.Controls.Box("icon",text:"", x:0, y:H * 0.2, w:W, h:H * 0.6, onClick : OnClick) { Directory = Page },
+                    Frame = new QB.Controls.Box(Name, text: Id, x: X, y: Y, w: W, h: H, style: $"font::{H * 0.5},align:tl,bg:Transparent", onClick: OnClick, onRightClick: OnRightClick, boxes: new[] {
+                    State = new QB.Controls.Box("icon",text:"", x:0, y:H * 0.2, w:W, h:H * 0.6, onClick : OnClick, onRightClick: OnRightClick) { Directory = Page },
                 });
                 }
             }
@@ -2796,11 +2798,11 @@ namespace QB.Controls
                 if (DescriptionText != null)
                 {
                     Frame = new QB.Controls.Box(Name, x: X, y: Y, w: W, h: H, style: $"font::{aligment * 0.5},align:tl,bg:Transparent",
-                        onClick: OnClick,
+                        onClick: OnClick, onRightClick: OnRightClick,
                         boxes: new[] {
-                            Led = new QB.Controls.Box("led", x:0.5, y:0.5, w:2.5, h:2.5,style: $"bg:transparent,border::Black:1", onClick : OnClick) { Directory = Page },
-                            State = new QB.Controls.Box("icon", x:aligment * 0.2, y:(H - iconSize) / 2, w:iconSize, h:iconSize,onClick: OnClick) { Directory = Page },
-                            Description = new QB.Controls.Box("description", textFunction:DescriptionText, x:H * 0.9, y:(H - iconSize) / 2, w:W - H -2, h:H - (H - iconSize) / 2, onClick:OnClick, style:$"font::{H},align:ml,bg:Transparent") { Directory = Page },
+                            Led = new QB.Controls.Box("led", x:0.5, y:0.5, w:2.5, h:2.5,style: $"bg:transparent,border::Black:1", onClick : OnClick, onRightClick: OnRightClick) { Directory = Page },
+                            State = new QB.Controls.Box("icon", x:aligment * 0.2, y:(H - iconSize) / 2, w:iconSize, h:iconSize,onClick: OnClick, onRightClick: OnRightClick) { Directory = Page },
+                            Description = new QB.Controls.Box("description", textFunction:DescriptionText, x:H * 0.9, y:(H - iconSize) / 2, w:W - H -2, h:H - (H - iconSize) / 2, onClick:OnClick, onRightClick: OnRightClick, style:$"font::{H},align:ml,bg:Transparent") { Directory = Page },
                         });
                     Description.OnWheel += (box, delta) => MouseWheel(box, delta);
 
@@ -2809,10 +2811,10 @@ namespace QB.Controls
                 if (DescriptionText == null)
                 {
                     Frame = new QB.Controls.Box(Name, x: X, y: Y, w: W, h: H, style: $"font::{H * 0.5},align:tl,bg:Transparent", 
-                        onClick: OnClick, 
+                        onClick: OnClick, onRightClick: OnRightClick, 
                         boxes: new[] {
-                            Led = new QB.Controls.Box("led", x:0.5, y:0.5, w:2.5, h:2.5,style: $"bg:transparent,border:Black:1",onClick: OnClick) { Directory = Page },
-                            State = new QB.Controls.Box("icon",text:"", x:0, y:H * 0.2, w:W, h:H * 0.6,onClick: OnClick) { Directory = Page },
+                            Led = new QB.Controls.Box("led", x:0.5, y:0.5, w:2.5, h:2.5,style: $"bg:transparent,border:Black:1",onClick: OnClick, onRightClick: OnRightClick) { Directory = Page },
+                            State = new QB.Controls.Box("icon",text:"", x:0, y:H * 0.2, w:W, h:H * 0.6,onClick: OnClick, onRightClick: OnRightClick) { Directory = Page },
                         });
                 }
 
@@ -2939,11 +2941,9 @@ namespace QB.Controls
 
 
         double rowHeight;
-        string page;
         string ColumnConfig;
         string HeaderText;
         public Table Target;
-        int lastViewRow;
         int LastViewRow;
         int FirstViewRow;
         List<string> view = new List<string>();
@@ -3331,7 +3331,6 @@ namespace QB.Controls
 
         int StartLine = -1;
 
-        string[] AllLines;
         int TotalLines;
 
         FileSystemWatcher watcher;
@@ -3538,8 +3537,6 @@ namespace QB.Controls
     {
         public BoxLogView View;
 
-        string Info = "";
-        string Media = "";
         public BoxLogLine(string name, BoxLogView view, int line = 0, string id = null, double x = double.NaN, double y = double.NaN, double w = double.NaN, double h = double.NaN, string description = null, object backColor = null, bool locked = false, string icon = null, double iconSizeFactor = 0.6, QB.Controls.Box.ClickEventHandler onClick = null) :
         base(name, id, x, y, w, h, description, backColor, locked, icon, iconSizeFactor, onClick)
         {
@@ -3977,7 +3974,6 @@ namespace QB.Controls
 
         Box ParameterName;
         Box ParameterRead;
-        Box ParameterReadString;
         Box ParameterUnit;
         Box ParameterLed;
         Box ParameterText;
@@ -4247,8 +4243,6 @@ namespace QB.Controls
             H = double.IsNaN(h) ? 15 : h;
         }
 
-        double readXDefault;
-        double readWidthDefault;
 
         public override void Create()
         {
@@ -4317,7 +4311,6 @@ namespace QB.Controls
                
 
                 StringSignal read = Target as StringSignal;
-                string uri = "";
                 using (System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog())
                 {
                     openFileDialog.InitialDirectory = folder;
@@ -4343,7 +4336,6 @@ namespace QB.Controls
                 QB.Logger.Info("Select folder '" + folder + "'");
 
                 StringSignal read = Target as StringSignal;
-                string uri = "";
                 using (System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog())
                 {
                     openFileDialog.InitialDirectory = folder;
@@ -4728,7 +4720,6 @@ namespace QB.Controls
 
         int FirstVisible = -1;
 
-        string[] AllLines;
         int TotalLines;
 
         public string Folder = "";

@@ -119,7 +119,7 @@ namespace qbook
         public void SetMruByCsvString(string csv)
         {
             var items = csv.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var item in items.Reverse())
+            foreach (var item in System.Linq.Enumerable.Reverse(items))
             {
                 Add(item);
             }

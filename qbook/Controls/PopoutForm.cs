@@ -21,7 +21,6 @@ namespace qbook
                 pageControl.Frame = false;
             }
         }
-        double ratio = 29.7f / 21f;
 
         //void ResizePageControl()
         //{

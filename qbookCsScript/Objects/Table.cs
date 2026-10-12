@@ -427,7 +427,7 @@ namespace QB
         }
 
         /// <summary>
-        /// Save the Table's contents as CSV to the default location, i.e. .\csv\<filename>_<date.time>.csv
+        /// Save the Table's contents as CSV to the default location, i.e. .\csv\&lt;filename&gt;_&lt;date.time&gt;.csv
         /// </summary>
         /// <returns></returns>
         public System.Object SaveCsv()
@@ -468,7 +468,7 @@ namespace QB
 
 
         /// <summary>
-        /// Loads the most recent CSV from the default directory matching <filename>_xyz.csv
+        /// Loads the most recent CSV from the default directory matching &lt;filename&gt;_xyz.csv
         /// </summary>
         /// <returns></returns>
         public System.Object LoadCsv(bool firstRowIsHeader = false)

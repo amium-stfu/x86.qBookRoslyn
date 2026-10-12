@@ -1,4 +1,6 @@
-﻿using System;
+﻿#nullable enable annotations
+
+using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;

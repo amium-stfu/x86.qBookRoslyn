@@ -32,27 +32,7 @@ namespace qbook
             settings.PersistSessionCookies = false;
             //settings.abc = ...
             //settings.xyz = ...
-            if (false) //some example settings
-            {
-                settings.CefCommandLineArgs.Add("--disable-features", "FormControlsRefresh,IntensiveWakeUpThrottling");
-                settings.CefCommandLineArgs.Add("no-proxy-server", "1");
-                settings.CefCommandLineArgs.Add("v8-cache-options", "code");
-                settings.CefCommandLineArgs.Add("disable-touch-adjustment", "1");
-                settings.CefCommandLineArgs.Add("plugin-policy", "block");
-                settings.CefCommandLineArgs.Add("disable-backgrounding-occluded-windows");
-                settings.CefCommandLineArgs.Remove("disable-site-isolation-trials");
 
-                settings.MultiThreadedMessageLoop = true;
-                settings.ExternalMessagePump = false;
-                settings.JavascriptFlags = "--expose-gc --allow-natives-syntax";
-            }
-
-            if (false) //disable GPU
-            {
-                settings.CefCommandLineArgs.Add("disable-gpu", "1");
-                settings.CefCommandLineArgs.Add("disable-gpu-vsync", "1");
-                settings.CefCommandLineArgs.Add("disable-gpu-compositing", "1");
-            }
 
             bool ok = Cef.Initialize(settings, true);
             if (!ok)
@@ -256,16 +236,10 @@ namespace qbook
             Render();
         }
 
-        class OnAssignItem
-        {
-            public string MethodName;
-            public object[] Params;
-        }
 
         Dictionary<string, Action<object>> OnEventDict = new Dictionary<string, Action<object>>();
         Dictionary<string, Func<object>> SetAttributeValueDict = new Dictionary<string, Func<object>>();
         Dictionary<string, ElementHandle> ElementDict = new Dictionary<string, ElementHandle>();
-        Dictionary<string, OnAssignItem> OnAssignDict = new Dictionary<string, OnAssignItem>();
 
         private async void DevtoolsContext_Console(object sender, ConsoleEventArgs e)
         {
@@ -650,17 +624,6 @@ namespace qbook
         }
 
 
-        class SettingItem
-        {
-            public string type;
-            public string onChanged;
-            public string onClick;
-            public string onValueChanged;
-            public string value;
-            public string data_value;
-            public string text;
-            public string color;
-        }
 
         private async Task ParseSettings()
         {
@@ -674,7 +637,6 @@ namespace qbook
                 try
                 {
                     OnEventDict.Clear();
-                    OnAssignDict.Clear();
                     SetAttributeValueDict.Clear();
                     ElementDict.Clear();
 
@@ -686,65 +648,7 @@ namespace qbook
                     Settings.Parse(2, MyHtmlItem.CodeSettings, out errors, MyHtmlItem);
                     */
 
-                    //TODO MIGRATION-new -> new settings storage needed!!!
-                    List<SettingItem> settingItems = new List<SettingItem>();
-                    foreach (var item in settingItems)
-                    {
-                        if (item.type.StartsWith("@")) //changed-event
-                        {
-                            string onChanged = item.onChanged?.ToString().Trim() ?? "";
-                            if (onChanged.StartsWith("js(") && onChanged.EndsWith(")"))
-                            {
-                                onChanged = onChanged.Substring(3, onChanged.Length - 4);
-                                var nameAndParams = onChanged.SplitOutsideQuotes();
-                                if (nameAndParams != null)
-                                {
-                                    OnAssignDict.Add(item.type, new OnAssignItem() { MethodName = nameAndParams[0], Params = nameAndParams.Skip(1).ToArray<object>() });
-                                    //Action<object>((param) => Main.Qb.ScriptingEngine.InterpretScript(item["onChanged"].Replace("{value}", param.ToString()))));
-                                    //TODO: MAGES->CsScript: Main.Qb.ScriptingEngine.SubscribeAssignEventPrefix(item.Type.Substring(1), ScriptingEngine_AssignEvent, "html." + this.GetHashCode() + "." + item.Type);
-                                }
-                            }
-                        }
-                        else if (item.type.StartsWith("#")) //element-name
-                        {
-                            var element = devtoolsContext.QuerySelectorAsync(item.type);
-                            if (element != null)
-                            {
-                                if (item.onClick != null)
-                                {
-                                    //OnClickDict.Add(item.Type + ".onClick", new Action(() => InterpretScript(item["onClick"])));
-                                    //TODO: MAGES->CsScript: OnEventDict.Add(item.Type + ".onClick", new Action<object>((param) => Main.Qb.ScriptingEngine.InterpretScript(item["onClick"]?.ToString())));
-                                }
-                                if (item.onValueChanged != null)
-                                {
-                                    //TODO: MAGES->CsScript: OnEventDict.Add(item.Type + ".onValueChanged", new Action<object>((param) => Main.Qb.ScriptingEngine.InterpretScript(item["onValueChanged"]?.ToString().Replace("{value}", param.ToString()))));
-                                }
-
-                                if (item.value != null)
-                                {
-                                    //TODO: MAGES->CsScript:  SetAttributeValueDict.Add(item.Type + ".value", new Func<object>(() => Main.Qb.ScriptingEngine.InterpretScript(item["value"]?.ToString())?.ToDouble() ?? double.NaN));
-                                }
-                                if (item/*["data-value"]*/.data_value != null)
-                                {
-                                    //TODO: MAGES->CsScript: SetAttributeValueDict.Add(item.Type + ".data-value", new Func<object>(() => Main.Qb.ScriptingEngine.InterpretScript(item["data-value"]?.ToString())?.ToDouble() ?? double.NaN));
-                                }
-
-                                if (item.text != null)
-                                {
-                                    //TODO: MAGES->CsScript: SetAttributeValueDict.Add(item.Type + ".text", new Func<object>(() => Main.Qb.ScriptingEngine.InterpretScript(item["text"]?.ToString())?.ToString()));
-                                }
-
-                                if (item.color != null)
-                                {
-                                    //TODO: MAGES->CsScript: SetAttributeValueDict.Add(item.Type + ".color", new Func<object>(() => Main.Qb.ScriptingEngine.InterpretScript(item["color"]?.ToString())?.ToString())); //TODO: ParseColor
-                                }
-                            }
-                        }
-                        else
-                        {
-                            //error
-                        }
-                    }
+                    // TODO: Connect HTML settings to the migrated settings storage.
                 }
                 finally
                 {
@@ -758,35 +662,6 @@ namespace qbook
         }
 
 
-        private async void ScriptingEngine_AssignEvent(/* //TODO: MAGES->CsScript: ScriptingClass.WriteEventArgs e */)
-        {
-            //TODO: MAGES->CsScript: //string key = "@" + e.Key;
-            string key = "@";
-
-            await _semaphore.WaitAsync();
-            try
-            {
-                if (OnAssignDict.ContainsKey(key))
-                {
-                    //OnAssignDict[key].Invoke(null);
-                    var assignItem = OnAssignDict[key];
-                    object[] results = new object[assignItem.Params.Length];
-                    for (int i = 0; i < assignItem.Params.Length; i++)
-                    {
-                        //TODO: MAGES->CsScript: results[i] = Main.Qb.ScriptingEngine.InterpretScript(assignItem.Params[i].ToString());
-                    }
-
-                    editForm?.AddLog(">>js: " + assignItem.MethodName + "(" + string.Join(", ", results) + ")");
-
-                    if (browser != null && !browser.IsDisposed)
-                        browser.ExecuteScriptAsync(assignItem.MethodName, results);
-                }
-            }
-            finally
-            {
-                _semaphore.Release();
-            }
-        }
 
 
         bool _enableRender = false;

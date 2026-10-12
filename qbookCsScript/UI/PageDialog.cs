@@ -281,19 +281,10 @@ namespace QB.UI
             }
         }
 
-        MethodInfo _renderMethod = null;
         private void panelPage_Paint(object sender, PaintEventArgs e)
         {
             return;
 
-            if (MyPage != null)
-            {
-                if (_renderMethod == null)
-                    _renderMethod = MyPage.GetType().GetMethod("Render");
-
-                if (_renderMethod != null)
-                    _renderMethod.Invoke(MyPage, new object[] { });
-            }
         }
 
         private void timerRender_Tick(object sender, EventArgs e)

@@ -302,18 +302,6 @@ namespace QB.Net
             }
             #endregion
 
-            public enum ReadType { Read, Write };
-            public class ReadItem
-            {
-                public string Name;
-                public string Command;
-                public Int32 Index = -1;
-                public string Format;
-                public Int32 Timer = 0;
-                public ReadType Type = ReadType.Read;
-                public Int32 Value;
-            }
-            public List<ReadItem> ReadList = new List<ReadItem>();
 
 
             static List<_AkClient> AkClients = new List<_AkClient>();

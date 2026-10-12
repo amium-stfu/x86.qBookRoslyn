@@ -1,4 +1,4 @@
-﻿
+
 using Google.Protobuf.WellKnownTypes;
 using QB.Amium.Controls;
 using System;
@@ -307,7 +307,6 @@ namespace QB.Controls
                 control._Text = null;
                 control.BackgroundImage = null;
                 control.LeftIcon = control.RightIcon = null;
-                control.img = null;
             }
             if (errors.Count != 0) throw new AggregateException("One or more controls could not be cleaned up.", errors);
         }
@@ -395,7 +394,6 @@ namespace QB.Controls
 
         public Image BackgroundImage = null;
         //public string BackgroundImageName = null;
-        string lastBackgroundImageFileName = null;
 
         public Icon LeftIcon = null;
         public Icon RightIcon = null;
@@ -493,6 +491,10 @@ namespace QB.Controls
             {
                 QB.Logger.Error("#EX in OnClick: " + ex.Message);
             }
+        }
+
+        internal virtual void RaiseOnRightClick(PointF point)
+        {
         }
 
         public delegate void WheelEventHandler(Control s, int delta);
@@ -677,7 +679,6 @@ namespace QB.Controls
             }
         }
 
-        private System.Drawing.Image img = null;
         // private string imgData = null;
 
         public Pen BorderPen = System.Drawing.Pens.DarkGray;
