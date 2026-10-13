@@ -859,6 +859,9 @@ using System.Text.Json;
                 Core.ThisBook.TempDirectory = null;
                 Core.ThisBook.Directory = directory;
 
+                RoslynService.EnsureLibsDirectory();
+                Core.Roslyn?.RefreshLibReferences();
+
                 QB.Root.ActiveQbook = ThisBook;
                 qbook.Core.ActualMain = qbook.Core.ThisBook.Main;
                 qbook.Core.ThisBook.Init();

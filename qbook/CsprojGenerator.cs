@@ -50,9 +50,12 @@ public static class CsprojGenerator
             .Select(path =>
             {
                 string fileName = Path.GetFileNameWithoutExtension(path);
+                bool isLib = path.StartsWith(projectDlls + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+                string hintPath = isLib ? Path.GetRelativePath(projectRoot, path) : path;
+                string privateXml = isLib ? "\r\n    <Private>true</Private>" : string.Empty;
                 return $@"
 <Reference Include=""{XmlEscape(fileName)}"">
-    <HintPath>{XmlEscape(path)}</HintPath>
+    <HintPath>{XmlEscape(hintPath)}</HintPath>{privateXml}
 </Reference>";
             });
 

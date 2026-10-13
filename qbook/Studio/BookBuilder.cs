@@ -152,13 +152,26 @@ namespace qbook.Studio
             sb.AppendLine("  <ItemGroup>");
 
             var refs = Core.Roslyn.GetProject?.MetadataReferences.OfType<PortableExecutableReference>() ?? Enumerable.Empty<PortableExecutableReference>();
+            string localLibs = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(file)) ?? string.Empty, "libs");
+            var localLibDlls = System.IO.Directory.Exists(localLibs)
+                ? System.IO.Directory.GetFiles(localLibs, "*.dll")
+                : Array.Empty<string>();
             var referencePaths = RoslynService.GetProjectReferencePaths(RoslynService.GetBookReferencePaths()
+                .Concat(localLibDlls)
                 .Concat(refs.Select(reference => reference.FilePath).Where(path => !string.IsNullOrWhiteSpace(path))));
             foreach (var path in referencePaths)
             {
                 string fileName = System.IO.Path.GetFileNameWithoutExtension(path);
                 sb.AppendLine($"    <Reference Include=\"{System.Security.SecurityElement.Escape(fileName)}\">");
-                sb.AppendLine($"      <HintPath>{System.Security.SecurityElement.Escape(path)}</HintPath>");
+                string hintPath = path;
+                string projectDir = System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(file));
+                string libsPath = System.IO.Path.Combine(projectDir, "libs") + System.IO.Path.DirectorySeparatorChar;
+                bool isLib = path.StartsWith(libsPath, StringComparison.OrdinalIgnoreCase);
+                if (isLib)
+                    hintPath = System.IO.Path.GetRelativePath(projectDir, path);
+                sb.AppendLine($"      <HintPath>{System.Security.SecurityElement.Escape(hintPath)}</HintPath>");
+                if (isLib)
+                    sb.AppendLine("      <Private>true</Private>");
                 sb.AppendLine("    </Reference>");
             }
 
@@ -284,6 +297,10 @@ namespace qbook.Studio
             string codeDir = uri.Replace(".qbook", ".code");
             if (!Directory.Exists(codeDir))
                 Directory.CreateDirectory(codeDir);
+
+            string libsDir = Path.Combine(codeDir, "libs");
+            if (!Directory.Exists(libsDir))
+                Directory.CreateDirectory(libsDir);
 
             string link = "Created: " + System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             File.WriteAllText(Path.Combine(uri), link);

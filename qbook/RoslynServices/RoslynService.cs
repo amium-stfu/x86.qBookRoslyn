@@ -196,15 +196,137 @@ namespace qbook
             return string.Empty;
         }
 
+        /// <summary>
+        /// Gets the path of the "libs" directory of the currently opened book (inside its .code directory).
+        /// </summary>
+        /// <returns>The libs directory path, or an empty string if no book is open.</returns>
+        public static string GetLibsDirectoryPath()
+        {
+            var book = Core.ThisBook;
+            if (book == null || string.IsNullOrWhiteSpace(book.Directory))
+                return string.Empty;
+            var candidates = new List<string>();
+            void AddCandidate(Func<string?> getter)
+            {
+                try
+                {
+                    var dir = getter();
+                    if (!string.IsNullOrWhiteSpace(dir))
+                        candidates.Add(Path.Combine(dir, "libs"));
+                }
+                catch { }
+            }
+
+            AddCandidate(() => book.CodeDirectory);
+            AddCandidate(() => Path.Combine(book.Directory, book.Filename.Replace(".qbook", ".code")));
+            AddCandidate(() => book.DataDirectory?.Replace(".data", ".code"));
+
+            return candidates.FirstOrDefault(Directory.Exists) ?? candidates.First();
+        }
+
+        /// <summary>
+        /// Creates the "libs" directory of the currently opened book if it does not exist.
+        /// </summary>
+        /// <returns>The libs directory path, or an empty string if it could not be determined or created.</returns>
+        public static string EnsureLibsDirectory()
+        {
+            var libs = GetLibsDirectoryPath();
+            if (string.IsNullOrEmpty(libs))
+                return string.Empty;
+            try
+            {
+                Directory.CreateDirectory(libs);
+                return libs;
+            }
+            catch (Exception ex)
+            {
+                QB.Logger.Warn($"[Roslyn] Could not create libs directory '{libs}': {ex.Message}");
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Gets all managed assemblies located in the libs directory of the current book.
+        /// </summary>
+        /// <returns>Full paths of the managed DLLs.</returns>
+        public static IReadOnlyList<string> GetLibReferencePaths()
+        {
+            var libs = GetLibsDirectoryPath();
+            if (string.IsNullOrEmpty(libs) || !Directory.Exists(libs))
+                return Array.Empty<string>();
+
+            var result = new List<string>();
+            foreach (var path in Directory.EnumerateFiles(libs, "*.dll", SearchOption.TopDirectoryOnly))
+            {
+                var name = Path.GetFileNameWithoutExtension(path);
+                if (name.Equals("Book", StringComparison.OrdinalIgnoreCase) || PlatformReferenceNames.Contains(name))
+                    continue;
+                if (IsManagedAssembly(path))
+                    result.Add(path);
+            }
+            return result;
+        }
+
+        private static List<MetadataReference> BuildReferencesWithLibs()
+        {
+            var references = new List<MetadataReference>(GetOrBuildDefaultReferences());
+            var known = new HashSet<string>(
+                references.OfType<PortableExecutableReference>()
+                    .Select(r => Path.GetFileNameWithoutExtension(r.FilePath ?? string.Empty)),
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (var path in GetLibReferencePaths())
+            {
+                if (known.Add(Path.GetFileNameWithoutExtension(path)))
+                    references.Add(MetadataReference.CreateFromFile(path));
+            }
+            return references;
+        }
+
+        /// <summary>
+        /// Ensures the libs directory exists and updates the metadata references of the current project with the DLLs found there.
+        /// </summary>
+        public void RefreshLibReferences()
+        {
+            EnsureLibsDirectory();
+            if (_adhocWs == null || _projectId == null)
+                return;
+
+            var project = _adhocWs.CurrentSolution.GetProject(_projectId);
+            if (project == null)
+                return;
+
+            var solution = _adhocWs.CurrentSolution.WithProjectMetadataReferences(_projectId, BuildReferencesWithLibs());
+            if (_adhocWs.TryApplyChanges(solution))
+                _project = _adhocWs.CurrentSolution.GetProject(_projectId);
+        }
 
         private sealed class BookLoadContext : System.Runtime.Loader.AssemblyLoadContext
         {
-            public BookLoadContext() : base("qbook-book-" + Guid.NewGuid(), isCollectible: true) { }
+            private readonly string? _libsDirectory;
+
+            public BookLoadContext(string? libsDirectory = null) : base("qbook-book-" + Guid.NewGuid(), isCollectible: true)
+            {
+                _libsDirectory = libsDirectory;
+            }
 
             protected override Assembly? Load(AssemblyName assemblyName)
             {
                 // Host and QB dependencies always share the default context's type identity.
-                return Default.LoadFromAssemblyName(assemblyName);
+                try
+                {
+                    return Default.LoadFromAssemblyName(assemblyName);
+                }
+                catch (FileNotFoundException)
+                {
+                    if (!string.IsNullOrEmpty(_libsDirectory) && assemblyName.Name != null)
+                    {
+                        var candidate = Path.Combine(_libsDirectory, assemblyName.Name + ".dll");
+                        if (File.Exists(candidate))
+                            return LoadFromAssemblyPath(candidate);
+                    }
+                    throw;
+                }
             }
         }
 
@@ -218,7 +340,7 @@ namespace qbook
         private Assembly LoadRuntimeAssembly(byte[] peImage, byte[] pdbImage)
         {
             UnloadRuntimeAssembly();
-            var context = new BookLoadContext();
+            var context = new BookLoadContext(GetLibsDirectoryPath());
             try
             {
                 using var pe = new MemoryStream(peImage, writable: false);
@@ -444,7 +566,7 @@ namespace qbook
         public static IReadOnlyList<string> GetProjectReferencePaths(IEnumerable<string> references)
         {
             var paths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var reference in references.Where(path => !string.IsNullOrWhiteSpace(path)))
+            foreach (var reference in references.Concat(GetLibReferencePaths()).Where(path => !string.IsNullOrWhiteSpace(path)))
             {
                 string path = Path.GetFullPath(reference);
                 if (IsFrameworkReference(path) || !IsManagedAssembly(path))
@@ -588,9 +710,9 @@ namespace qbook
 
             Debug.WriteLine("[Roslyn] Building references...");
 
-            references = GetOrBuildDefaultReferences();
+            references = BuildReferencesWithLibs();
 
-           // EnsureOutputPaths(sender: "CreateProject", assemblyName: "InMemoryAssembly");
+           // EnsureOutputPaths(sender
             var parseOptions = new CSharpParseOptions(LanguageVersion.Preview);
             var compilationOptions = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
                 .WithOptimizationLevel(OptimizationLevel.Debug);
