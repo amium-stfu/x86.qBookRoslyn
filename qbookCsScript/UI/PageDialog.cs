@@ -1,4 +1,5 @@
-﻿using System;
+using System.ComponentModel;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -38,7 +39,9 @@ namespace QB.UI
             //}
         }
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Result { get; set; } = null;
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Title { get => this.Text; set => this.Text = value; }
 
         public object MyPage;
@@ -47,10 +50,12 @@ namespace QB.UI
         public double? PageW = null;
         public double? PageH = null;
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public Guid Id { get; set; }
         public bool IsModal = false;
 
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string ButtonList
         {
             set

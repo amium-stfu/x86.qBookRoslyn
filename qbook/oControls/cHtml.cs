@@ -26,7 +26,6 @@ namespace qbook
 
         static cHtml()
         {
-            CefSharpSettings.WcfEnabled = false;
             var settings = new CefSettings();
             settings.IgnoreCertificateErrors = true;
             settings.PersistSessionCookies = false;

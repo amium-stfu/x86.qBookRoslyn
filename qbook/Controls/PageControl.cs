@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using QB; //qbookCsScript
 using QB.Controls;
 using System;
@@ -103,6 +104,7 @@ namespace qbook
             base.WndProc(ref m);
         }
         bool _Popout = false;
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public bool Popout
         {
             get { return _Popout; }
@@ -117,6 +119,7 @@ namespace qbook
 
         public bool Frame = true;
         public oPage _DialogPage = null;
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public oPage DialogPage
         {
             get { return _DialogPage; }

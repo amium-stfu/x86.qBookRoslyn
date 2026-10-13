@@ -1,4 +1,4 @@
-﻿using CSScripting;
+using CSScripting;
 using Newtonsoft.Json.Schema;
 using QB;
 using System;
@@ -20,26 +20,31 @@ namespace qbook.Studio
 
         static int ErrorCounter = 0;
 
-        static bool isRunning = false;
+        private static System.Threading.CancellationTokenSource cancellation;
 
         public static void Stop()
         {
-            isRunning = false;
-            monitoringTask?.Wait(500);
+            cancellation?.Cancel();
+            if (monitoringTask != null && !monitoringTask.Wait(2000))
+                throw new InvalidOperationException("The runtime watchdog has not stopped.");
             monitoringTask = null;
+            cancellation?.Dispose();
+            cancellation = null;
         }
-
         public static void Start()
         {
             ErrorCounter = GlobalExceptions.ErrorCounter;
-            isRunning = true;
+            Stop();
+            cancellation = new System.Threading.CancellationTokenSource();
+            var token = cancellation.Token;
 
             monitoringTask = Task.Run(async () =>
             {
-                while (isRunning)
+                while (!token.IsCancellationRequested)
                 {
                     //Debug.WriteLine("E " + GlobalExceptions.ErrorCounter);
-                    await Task.Delay(1000);
+                    try { await Task.Delay(1000, token); }
+                    catch (OperationCanceledException) when (token.IsCancellationRequested) { return; }
                     if (ErrorCounter != GlobalExceptions.ErrorCounter)
                     {
                         List<string> errors = null;

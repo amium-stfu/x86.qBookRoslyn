@@ -54,6 +54,11 @@ namespace qbook
         [STAThread]
         static void Main(string[] args)
         {
+            System.Data.Common.DbProviderFactories.RegisterFactory(
+                "System.Data.SQLite", "System.Data.SQLite.SQLiteFactory, System.Data.SQLite");
+            System.Data.Common.DbProviderFactories.RegisterFactory(
+                "System.Data.SQLite.EF6", "System.Data.SQLite.EF6.SQLiteProviderFactory, System.Data.SQLite.EF6");
+
             CurrentProcessId = Process.GetCurrentProcess().Id;
             RegisterProcessDiagnostics();
 

@@ -1,7 +1,7 @@
-﻿using AForge.Video;
-using AForge.Video.DirectShow;
-using CefSharp.DevTools.DOM;
-using Org.BouncyCastle.Tls;
+using System.Threading;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+using OpenCvSharp;
 using QB;
 using QB.Net;
 using System;
@@ -11,7 +11,6 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Interop;
 
 namespace QB.Controls
 {
@@ -49,15 +48,7 @@ namespace QB.Controls
         {
             lock (updateGate) OnUpdate = null;
             _startRequested = false;
-            var source = videoSource;
-            videoSource = null;
-            if (source != null)
-            {
-                TryCleanup(errors, () => source.NewFrame -= VideoSource_NewFrame);
-                TryCleanup(errors, source.SignalToStop);
-                TryCleanup(errors, source.WaitForStop);
-                TryCleanup(errors, source.Stop);
-            }
+            TryCleanup(errors, StopCamera);
             var image = BackgroundImage;
             BackgroundImage = null;
             if (image != null) TryCleanup(errors, image.Dispose);
@@ -65,8 +56,10 @@ namespace QB.Controls
             base.PrepareRemoval(errors);
         }
 
-        public FilterInfoCollection VideoDevices;
-        private VideoCaptureDevice videoSource;
+        public IReadOnlyList<CameraDevice> VideoDevices;
+        private CameraCapture videoSource;
+        private int captureGeneration;
+        private int framePending;
 
         int _frameCounter = 0;
         public Dictionary<string, int> Devices = new Dictionary<string, int>();
@@ -78,7 +71,11 @@ namespace QB.Controls
             get => _selectedDeviceId;
             set
             {
+                if (_selectedDeviceId == value) return;
+                bool restart = init;
+                if (restart) StopCamera();
                 _selectedDeviceId = value;
+                if (restart) StartCamera();
                Debug.WriteLine($"Selected video device: {value}");
             }
         }
@@ -107,13 +104,13 @@ namespace QB.Controls
             Clickable = false;
             init = false;
 
-            VideoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice);
+            VideoDevices = CameraDevice.Enumerate();
 
             int c = 0;
-            foreach (FilterInfo device in VideoDevices)
+            foreach (CameraDevice device in VideoDevices)
             {
                 int d = c;
-                Devices.Add(device.Name, d);
+                Devices[device.Name] = d;
                 
                 Debug.WriteLine($"Found video device: {device.Name}");
                 QB.Logger.Info($"Found video device: {device.Name}");
@@ -177,61 +174,73 @@ namespace QB.Controls
             if (IsRemoved) return;
             _startRequested = true;
             if (init || !Visible) return;
-
-            if (videoSource != null && videoSource.IsRunning)
-            {
-                videoSource.NewFrame -= VideoSource_NewFrame;
-                videoSource.SignalToStop();
-                videoSource.WaitForStop();
-
-                foreach (VideoCaptureDevice device in VideoDevices)
-                {
-                    device.Stop();
-                }
-            }
-
-            VideoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice);
-
-            foreach (FilterInfo device in VideoDevices)
-            {
-                Debug.WriteLine($"Found video device: {device.Name}");
-                QB.Logger.Info($"Found video device: {device.Name}");
-            }
-
-            if (VideoDevices.Count > 0)
-            {
-                videoSource = new VideoCaptureDevice(VideoDevices[SelectedDeviceId].MonikerString);
-                videoSource.Start();
-                videoSource.NewFrame += VideoSource_NewFrame;
-            }
+            if (videoSource != null) StopCamera();
+            if (SelectedDeviceId < 0 || SelectedDeviceId >= VideoDevices.Count)
+                throw new InvalidOperationException("No camera is available at the selected device index.");
+            var selected = VideoDevices[SelectedDeviceId];
+            var devices = CameraDevice.Enumerate();
+            var current = devices.FirstOrDefault(device => device.MonikerString == selected.MonikerString);
+            if (current == null)
+                throw new InvalidOperationException("The selected camera is no longer available: " + selected.Name);
+            int generation = Interlocked.Increment(ref captureGeneration);
+            videoSource = new CameraCapture(current.Index, bitmap => QueueFrame(bitmap, generation));
             init = true;
         }
 
         public void StopCamera()
         {
-            if (videoSource != null && videoSource.IsRunning)
+            Interlocked.Increment(ref captureGeneration);
+            var source = videoSource;
+            source?.Dispose();
+            videoSource = null;
+            lock (updateGate)
             {
-                videoSource.NewFrame -= VideoSource_NewFrame;
-                videoSource.SignalToStop();
-                videoSource.WaitForStop();
-                videoSource.Stop();
-                videoSource = null;
-            }
-
-            if (BackgroundImage != null)
-            {
-                var oldImage = BackgroundImage;
+                var image = BackgroundImage;
                 BackgroundImage = null;
-                oldImage.Dispose();
+                image?.Dispose();
+                LastFrame?.Dispose();
+                LastFrame = null;
+                init = false;
             }
-            
-            init = false;
         }
 
+        private void QueueFrame(Bitmap bitmap, int generation)
+        {
+            if (IsRemoved || generation != captureGeneration || Interlocked.Exchange(ref framePending, 1) != 0) return;
+            var frame = (Bitmap)bitmap.Clone();
+            var form = System.Windows.Forms.Application.OpenForms.Cast<System.Windows.Forms.Form>().FirstOrDefault();
+            if (form == null || !form.IsHandleCreated || form.IsDisposed)
+            {
+                frame.Dispose();
+                Interlocked.Exchange(ref framePending, 0);
+                return;
+            }
+            try
+            {
+                form.BeginInvoke(new System.Action(() =>
+                {
+                    try
+                    {
+                        if (!IsRemoved && generation == captureGeneration) ProcessFrame(frame);
+                    }
+                    finally
+                    {
+                        frame.Dispose();
+                        Interlocked.Exchange(ref framePending, 0);
+                    }
+                }));
+            }
+            catch (InvalidOperationException)
+            {
+                frame.Dispose();
+                Interlocked.Exchange(ref framePending, 0);
+            }
+        }
         bool _deviceMenuVisible = false;
         void ShowDeviceList(bool visible)
         {
             if (IsRemoved) return;
+            if (BackgroundImage == null) return;
             double imageWidth = BackgroundImage.Width;
             double imageHeight = BackgroundImage.Height;
             double offsetX = (Bounds.W - imageWidth / Draw.mmToPx) / 2;
@@ -267,66 +276,50 @@ namespace QB.Controls
 
 
 
-        private void VideoSource_NewFrame(object sender, NewFrameEventArgs eventArgs)
+        private void ProcessFrame(Bitmap sourceFrame)
         {
             lock (updateGate)
             {
                 if (IsRemoved) return;
-                LastFrame?.Dispose();
-
                 _frameCounter++;
-
                 if (SnapshotCounter != 0)
                 {
                     _lastSnapshotCounter++;
                     if (_lastSnapshotCounter == _frameCounter) SaveFrames = true;
                 }
+                if (_frameCounter < Math.Max(1, FrameRate)) return;
 
-
-                if (_frameCounter < FrameRate) return;
-
-                Bitmap frame = (Bitmap)eventArgs.Frame.Clone();
-
-                LastFrame = (Bitmap)eventArgs.Frame.Clone();
-
-                Bitmap smallFrame = ResizeBitmap(frame, frame.Width / 4, frame.Height / 4); // Zielgröße
-
-                OnUpdate?.Invoke(this, new UpdateEventArgs { Bitmap = smallFrame });
-
-
-
-                if (SaveFrames)
-                {
-                    string fileName = $"frame_{DateTime.Now:yyyyMMdd_HHmmssfff}.jpg";
-                    smallFrame.Save(System.IO.Path.Combine(QB.Book.DataDirectory,fileName), System.Drawing.Imaging.ImageFormat.Jpeg);
-                    SaveFrames = false;
-                    _lastSnapshotCounter = 0;
-                }
-
-                Image oldImage = null;
-                if (BackgroundImage != null)
-                {
-                    oldImage = BackgroundImage;
-                    BackgroundImage = null;  
-                }
-
+                using var frame = (Bitmap)sourceFrame.Clone();
+                var previousFrame = LastFrame;
+                LastFrame = (Bitmap)sourceFrame.Clone();
+                previousFrame?.Dispose();
+                var smallFrame = ResizeBitmap(frame, frame.Width / 4, frame.Height / 4);
+                var previousImage = BackgroundImage;
                 BackgroundImage = smallFrame;
-
-                oldImage?.Dispose();
+                previousImage?.Dispose();
                 _frameCounter = 0;
-                frame.Dispose();
-
+                try
+                {
+                    if (SaveFrames)
+                    {
+                        string fileName = $"frame_{DateTime.Now:yyyyMMdd_HHmmssfff}.jpg";
+                        smallFrame.Save(System.IO.Path.Combine(QB.Book.DataDirectory, fileName), System.Drawing.Imaging.ImageFormat.Jpeg);
+                        SaveFrames = false;
+                        _lastSnapshotCounter = 0;
+                    }
+                    OnUpdate?.Invoke(this, new UpdateEventArgs { Bitmap = smallFrame });
+                }
+                catch (Exception ex) { QB.Logger.Error("Camera frame update failed: " + ex.Message); }
             }
         }
-
-
         public void CreateMenu(object sender, UpdateEventArgs e)
         {
             lock (updateGate)
             {
                 if (IsRemoved) return;
                 if(BackgroundImage == null) return;
-                double imageWidth = BackgroundImage.Width;
+                if (BackgroundImage == null) return;
+            double imageWidth = BackgroundImage.Width;
                 double imageHeight = BackgroundImage.Height;
                 double offsetX = (Bounds.W - imageWidth / Draw.mmToPx) / 2 ;
                 double offsetY = (Bounds.H - (imageHeight / (imageWidth/Bounds.W))) / 2;
@@ -376,13 +369,14 @@ namespace QB.Controls
 
         public override void Destroy()
         {
+            _startRequested = false;
             StopCamera();
-
+            base.Destroy();
         }
 
         private Bitmap ResizeBitmap(Bitmap source, int width, int height)
         {
-            Bitmap small = new Bitmap(width, height);
+            Bitmap small = new Bitmap(Math.Max(1, width), Math.Max(1, height));
 
             using (Graphics g = Graphics.FromImage(small))
             {
@@ -390,7 +384,7 @@ namespace QB.Controls
                 g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
                 g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
 
-                g.DrawImage(source, 0, 0, width, height);
+                g.DrawImage(source, 0, 0, Math.Max(1, width), Math.Max(1, height));
 
                 // Zeitstempel
                 string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
@@ -408,6 +402,139 @@ namespace QB.Controls
             }
 
             return small;
+        }
+    }
+}
+
+namespace QB.Controls
+{
+    public sealed class CameraDevice
+    {
+        public string Name { get; }
+        public string MonikerString { get; }
+        public int Index { get; }
+        private CameraDevice(string name, string moniker, int index)
+        {
+            Name = name;
+            MonikerString = moniker;
+            Index = index;
+        }
+
+        [ComImport, Guid("29840822-5B84-11D0-BD3B-00A0C911CE86"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        private interface ICreateDevEnum
+        {
+            [PreserveSig] int CreateClassEnumerator(ref Guid category, out IEnumMoniker enumerator, int flags);
+        }
+
+        [ComImport, Guid("55272A00-42CB-11CE-8135-00AA004BB851"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        private interface IPropertyBag
+        {
+            [PreserveSig] int Read([MarshalAs(UnmanagedType.LPWStr)] string name,
+                [MarshalAs(UnmanagedType.Struct)] out object value, IntPtr errorLog);
+            [PreserveSig] int Write([MarshalAs(UnmanagedType.LPWStr)] string name,
+                [MarshalAs(UnmanagedType.Struct)] ref object value);
+        }
+
+        public static IReadOnlyList<CameraDevice> Enumerate()
+        {
+            var devices = new List<CameraDevice>();
+            object devEnum = Activator.CreateInstance(Type.GetTypeFromCLSID(new Guid("62BE5D10-60EB-11D0-BD3B-00A0C911CE86")));
+            IEnumMoniker enumerator = null;
+            try
+            {
+                var category = new Guid("860BB310-5D01-11D0-BD3B-00A0C911CE86");
+                int result = ((ICreateDevEnum)devEnum).CreateClassEnumerator(ref category, out enumerator, 0);
+                if (result == 1) return devices;
+                Marshal.ThrowExceptionForHR(result);
+                var monikers = new IMoniker[1];
+                int index = 0;
+                while (enumerator.Next(1, monikers, IntPtr.Zero) == 0)
+                {
+                    object bag = null;
+                    try
+                    {
+                        var bagId = typeof(IPropertyBag).GUID;
+                        monikers[0].BindToStorage(null, null, ref bagId, out bag);
+                        Marshal.ThrowExceptionForHR(((IPropertyBag)bag).Read("FriendlyName", out object name, IntPtr.Zero));
+                        monikers[0].GetDisplayName(null, null, out string moniker);
+                        devices.Add(new CameraDevice(Convert.ToString(name), moniker, index));
+                    }
+                    finally
+                    {
+                        if (bag != null) Marshal.ReleaseComObject(bag);
+                        Marshal.ReleaseComObject(monikers[0]);
+                        index++;
+                    }
+                }
+                return devices;
+            }
+            finally
+            {
+                if (enumerator != null) Marshal.ReleaseComObject(enumerator);
+                Marshal.ReleaseComObject(devEnum);
+            }
+        }
+    }
+
+    internal sealed class CameraCapture : IDisposable
+    {
+        private readonly CancellationTokenSource cancellation = new CancellationTokenSource();
+        private readonly Thread worker;
+        private readonly VideoCapture capture;
+        private bool disposed;
+
+        public CameraCapture(int index, System.Action<Bitmap> onFrame, bool preferDialogResolution = false)
+        {
+            capture = new VideoCapture();
+            try
+            {
+                // Device names and indices both use the DirectShow video-input enumeration.
+                if (!capture.Open(index, VideoCaptureAPIs.DSHOW))
+                    throw new InvalidOperationException("Cannot open the selected DirectShow camera.");
+                if (preferDialogResolution && !capture.Set(VideoCaptureProperties.FrameHeight, 600))
+                    if (!capture.Set(VideoCaptureProperties.FrameHeight, 1080)) capture.Set(VideoCaptureProperties.FrameWidth, 1920);
+                worker = new Thread(() =>
+                {
+                    try
+                    {
+                        using var mat = new Mat();
+                        while (!cancellation.IsCancellationRequested)
+                        {
+                            if (!capture.Read(mat) || mat.Empty())
+                            {
+                                if (cancellation.Token.WaitHandle.WaitOne(50)) break;
+                                continue;
+                            }
+                            using var bitmap = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(mat);
+                            if (!cancellation.IsCancellationRequested) onFrame(bitmap);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        if (!cancellation.IsCancellationRequested) QB.Logger.Error("Camera capture failed: " + ex.Message);
+                    }
+                    finally { capture.Dispose(); }
+                }) { IsBackground = true, Name = "qbook-camera" };
+                worker.Start();
+            }
+            catch
+            {
+                capture.Dispose();
+                cancellation.Dispose();
+                throw;
+            }
+        }
+
+        public void Dispose()
+        {
+            if (disposed) return;
+            cancellation.Cancel();
+            if (worker == Thread.CurrentThread)
+                throw new InvalidOperationException("Camera capture cannot synchronously stop itself.");
+            if (!worker.Join(2000))
+                throw new InvalidOperationException("The camera has not stopped cooperatively; restart is unavailable until capture exits.");
+            cancellation.Dispose();
+            disposed = true;
         }
     }
 }

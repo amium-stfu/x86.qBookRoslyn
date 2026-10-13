@@ -2,7 +2,7 @@
 
 - Session Title: Framework wechsel - 20261012-161310
 - Session Id: 65f2cdd0-98c2-4a72-b085-7a3ffdb1fda5
-- Exported At: 2026-10-12T14:51:20.6725309+00:00
+- Exported At: 2026-10-12T21:00:26.4939255+00:00
 - WorkItem Path: .ai-flow/workitems/2026.10.12.1613-framework_wechsel_20261012_161310
 
 ## 2026-10-12T14:13:10.6847064+00:00 | User | a2497900-e044-4de6-81ce-646bb128beeb
@@ -311,3 +311,131 @@ Der [Implementierungsplan](B:/x86.qBookRoslyn/.ai-flow/workitems/2026.10.12.1613
 Er enthält Dateiumfang, Umsetzungsschritte, Schutzregeln, Abnahmekriterien sowie den verbindlichen Worker-Build und die Launch-Anpassung.
 
 `planning_ready: true` bleibt erhalten. Nur das Handoff wurde geschrieben; Quellcodeänderungen und Builds wurden nicht ausgeführt.
+
+
+## 2026-10-12T14:52:49.8304389+00:00 | User | 53a8ef71-c8eb-4e3c-8f03-1c242cf7d38d
+
+Implement with gpt-6.1-sol • Medium
+
+
+## 2026-10-12T15:12:20.6495286+00:00 | Assistant | 602335cb-bba9-4fbb-bc3b-7d82d876faab
+
+Die Migration wurde in den Projekt-, Quell- und Konfigurationsdateien umgesetzt: `.NET 10`/x64, moderne Buchreferenzen, kooperative Abbrüche, OpenCvSharp und `coreclr`-Launch.
+
+Der Worker-Build wurde noch nicht ausgeführt: Für beide Anwendungsprojekte fehlen Restore-Artefakte. Buchabläufe, Kamera und SQLite sind noch nicht zur Laufzeit geprüft. Der Handoff bleibt für die Fortsetzung aktiv.
+
+Gemäß Handoff muss der Benutzer/Host den NuGet-Restore ausführen; ich darf ihn nicht autonom starten.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "dependency_restore",
+      "type": "text",
+      "text": "Bitte führe den NuGet-Restore für qbookStudio.sln mit den aktualisierten PackageReferences aus und teile das Ergebnis mit.",
+      "required": true
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-10-12T15:15:47.8726810+00:00 | User | e7208444-e14a-4243-9ce7-530c1100fca6
+
+Bitte führe den NuGet-Restore für qbookStudio.sln mit den aktualisierten PackageReferences aus und teile das Ergebnis mit.: Severity	Code	Description	Project	File	Line	Suppression State	Details
+Error (active)	WFO1000	Property 'Result' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\CameraDialog.cs	56		
+Error (active)	WFO1000	Property 'Title' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\CameraDialog.cs	57		
+Error (active)	WFO1000	Property 'Value' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\CameraDialog.cs	58		
+Error (active)	WFO1000	Property 'Result' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\InputDialog.cs	13		
+Error (active)	WFO1000	Property 'Title' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\InputDialog.cs	14		
+Error (active)	WFO1000	Property 'Info' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\InputDialog.cs	15		
+Error (active)	WFO1000	Property 'Value' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\InputDialog.cs	17		
+Error (active)	WFO1000	Property 'PasswordChar' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\InputDialog.cs	19		
+Error (active)	WFO1000	Property 'ValueD' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\InputDialog.cs	22		
+Error (active)	WFO1000	Property 'Result' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\PageDialog.cs	41		
+Error (active)	WFO1000	Property 'Title' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\PageDialog.cs	42		
+Error (active)	WFO1000	Property 'Id' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\PageDialog.cs	50		
+Error (active)	WFO1000	Property 'ButtonList' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\PageDialog.cs	54		
+Error (active)	WFO1000	Property 'ValueString' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\ParameterControl.cs	75		
+Error (active)	WFO1000	Property 'Value' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\ParameterControl.cs	87		
+Error (active)	WFO1000	Property 'Precision' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\ParameterControl.cs	105		
+Error (active)	WFO1000	Property 'LargeChange' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\ParameterControl.cs	114		
+Error (active)	WFO1000	Property 'Maximum' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\ParameterControl.cs	116		
+Error (active)	WFO1000	Property 'Minimum' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\ParameterControl.cs	118		
+Error (active)	WFO1000	Property 'SmallChange' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\ParameterControl.cs	120		
+Error (active)	WFO1000	Property 'Value' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\ParameterControl.cs	122		
+Error (active)	WFO1000	Property 'Signal' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\TagsDialog.cs	15		
+Error (active)	WFO1000	Property 'Result' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\TextDialog.cs	13		
+Error (active)	WFO1000	Property 'Title' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\TextDialog.cs	14		
+Error (active)	WFO1000	Property 'Info' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\TextDialog.cs	15		
+Error (active)	WFO1000	Property 'Value' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\TextDialog.cs	17		
+Error (active)	WFO1000	Property 'Title' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\ToastDialog.cs	15		
+Error (active)	WFO1000	Property 'Text' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\ToastDialog.cs	38		
+Error (active)	WFO1000	Property 'TextColor' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\ToastDialog.cs	51		
+Error (active)	WFO1000	Property 'AutocloseSeconds' does not configure the code serialization for its property content (https://aka.ms/winforms-warnings/wfo1000)	qbookCsScript	B:\x86.qBookRoslyn\qbookCsScript\UI\ToastDialog.cs	66		
+Error (active)	CS0006	Metadata file 'B:\x86.qBookRoslyn\qbookCsScript\obj\x64\Release\ref\qbookCsScript.dll' could not be found	qbook	B:\x86.qBookRoslyn\qbook\CSC	1
+
+
+## 2026-10-12T15:19:17.4693206+00:00 | Assistant | ff1ec1e2-dae4-4968-9ce2-bc2a1045e988
+
+Implement completed with errors. Die gemeldeten WFO1000-Fehler und die mehrdeutigen `MethodInvoker`-Verweise sind behoben.
+
+Der zweite Worker-Build endet mit Exitcode **1**: `CefSharpSettings.WcfEnabled` ist in `qbook/oControls/cHtml.cs:29` nicht verfügbar. Details stehen in `.ai-flow/BuildReport.txt`.
+
+Die erlaubte Korrektur und Wiederholung sind ausgeschöpft. Der Workitem steht auf `failed`; der Handoff wurde archiviert. Nächster Schritt ist **DEBUG**. Buch-, Kamera- und SQLite-Laufzeitprüfungen wurden nicht durchgeführt.
+Required validation failed: The Build process exited with a nonzero exit code.
+
+
+## 2026-10-12T15:20:48.7549337+00:00 | User | bc384574-59d6-4010-a281-fc3a1878c6cf
+
+Debug with gpt-6.1-sol • Medium
+
+
+## 2026-10-12T15:22:24.3970428+00:00 | Assistant | 3e0bda30-0f4a-4285-b86d-114fa3c5e8a8
+
+CS0117 wurde behoben: Die Zuweisung `CefSharpSettings.WcfEnabled = false` in `qbook/oControls/cHtml.cs` wurde entfernt. Diese Eigenschaft existiert in CefSharp für .NET Core nicht.
+
+Der vollständige Release/x64-Build von `qbookStudio.sln` über RunWorker war erfolgreich: `Success: true`, `success: true`, Exitcode `0`. Bericht: `.ai-flow/BuildReport.txt`.
+
+Annahme: WCF soll weiterhin deaktiviert bleiben; dafür ist kein Ersatz erforderlich. Browser-Laufzeitverhalten und weitere Migrationsfunktionen wurden nicht geprüft. Der Debug-Handoff wurde aktualisiert.
+
+
+## 2026-10-12T15:24:07.2098248+00:00 | User | fd850621-d3e0-4b78-9034-4bf85c232a36
+
+Debug with gpt-6.1-sol • Medium
+
+
+## 2026-10-12T15:25:47.1499185+00:00 | Assistant | bf510ad9-e847-484c-86bd-2031c409fd3c
+
+Die Ursache des gemeldeten Konfigurationsfehlers wurde korrigiert:
+
+- `<system.data>` aus `qbook/App.config` und `qbookCsScript/app.config` entfernt.
+- Die bisherigen SQLite-Provider werden jetzt in `Program.Main` über die [moderne Registrierungs-API](https://learn.microsoft.com/en-us/dotnet/api/system.data.common.dbproviderfactories.registerfactory?view=net-10.0) registriert. Einstellungen und EF-Konfiguration bleiben erhalten.
+- Worker-Build der gesamten `qbookStudio.sln` in Release/x64 erfolgreich: `Success: true`, `exitCode: 0`. Bericht: `.ai-flow/BuildReport.txt`.
+- Die erzeugte Anwendungskonfiguration enthält den beanstandeten Abschnitt nicht mehr. Debug-Handoff aktualisiert.
+
+Annahme: Die bisherigen SQLite-Provider bleiben erforderlich. Anwendungsstart und SQLite-Zugriffe wurden nicht ausgeführt; deren Laufzeitverhalten ist noch unbestätigt.
+
+
+## 2026-10-12T20:57:06.2964876+00:00 | User | f4f66e36-10a9-430e-83ec-343440582756
+
+Debug with gpt-6.1-sol • Medium
+
+
+## 2026-10-12T21:00:26.4739563+00:00 | Assistant | 86f70f6b-6a0b-47e5-94d4-a6f58939cfc5
+
+Die Generatorlogik wurde in `CsprojGenerator.cs`, `Studio/BookBuilder.cs`, `Controls/MainForm.cs` und `RoslynServices/RoslynService.cs` korrigiert.
+
+- Einheitliches Ziel: `net10.0-windows`.
+- SDK-Systemassemblies werden anhand ihrer Assemblynamen ausgeschlossen; Referenzen nach Assemblyidentität dedupliziert.
+- QBook- und Drittanbieterreferenzen behalten absolute Pfade. Die pauschale Roslyn-Ausnahme wurde entfernt.
+- Nicht ersetzbare alte Frameworkreferenzen erzeugen eine konkrete Fehlermeldung.
+- Der fehlerhafte Projektdateiparameter beim Anlegen neuer Bücher wurde korrigiert.
+
+Die ursprüngliche Filterung erkannte nur exakte Laufzeitpfade. Der frühere `BookBuilder` und eine vorhandene GO83P05-Kopie unter `.data` enthalten außerdem `net8.0`. Welche Datei der frühere Build tatsächlich verwendete, bleibt ungeklärt.
+
+**Validierung:** Der abschließende Worker-Build von `qbookStudio.sln`, Release/x64, war erfolgreich: Exitcode **0**, keine Fehler; Warnungen bleiben bestehen. VS-Code-Debugkonfiguration und Assemblyausgabe wurden beibehalten.
+
+**Offen:** Externer `dotnet build`, frischer Projektexport und Roslyn-Buchkompilierung wurden nicht ausgeführt. Die verbindlichen Hosted-Regeln erlauben hier ausschließlich den ausgewählten Solution-Worker-Build; eine zusätzliche Projektvalidierung benötigt einen neuen PLAN. Externe Kompilierung setzt weiterhin verfügbare DLLs an den exportierten Pfaden voraus.
+
+Ursachen, Änderungen und Validierungsgrenzen sind im kumulativen Debug-Handoff dokumentiert.

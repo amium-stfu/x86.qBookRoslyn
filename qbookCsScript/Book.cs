@@ -1,4 +1,3 @@
-﻿using ActiproSoftware.UI.WinForms.Controls.Wizard;
 using QB; //qbookCsScript
 using System;
 using System.Collections.Generic;

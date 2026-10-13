@@ -1,4 +1,5 @@
-﻿﻿using QB.Controls;
+using System.ComponentModel;
+using QB.Controls;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
@@ -52,7 +53,9 @@ namespace qbook
 
         }
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public Image RawImage { get; set; }
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public Image DrawingImage { get; set; }
 
 

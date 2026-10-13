@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "AiFlow Launch: qbook",
-      "type": "clr",
+      "type": "coreclr",
       "request": "launch",
       "program": "${workspaceFolder}/qbook/bin/x64/Release/qbookStudio.exe",
       "args": [],

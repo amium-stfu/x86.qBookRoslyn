@@ -1,4 +1,5 @@
-﻿using System;
+using System.ComponentModel;
+using System;
 using System.Windows.Forms;
 
 namespace QB.UI
@@ -10,10 +11,14 @@ namespace QB.UI
             InitializeComponent();
         }
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Result { get; set; } = null;
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Title { get => this.Text; set => this.Text = value; }
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Info { get => labelInfo.Text; set => this.labelInfo.Text = value; }
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Value { get => richTextBoxEx1.Text; set => this.richTextBoxEx1.Text = value; }
 
 

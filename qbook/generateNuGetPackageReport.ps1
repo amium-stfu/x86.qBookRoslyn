@@ -31,6 +31,9 @@ function Get-PackageLicense {
 
     $packageFolder = Join-Path $PackagesRoot "$PackageId.$PackageVersion"
     if (-not (Test-Path -Path $packageFolder)) {
+        $packageFolder = Join-Path $PackagesRoot ($PackageId.ToLowerInvariant() + "\" + $PackageVersion.ToLowerInvariant())
+    }
+    if (-not (Test-Path -Path $packageFolder)) {
         return ""
     }
 
@@ -71,21 +74,27 @@ if ([string]::IsNullOrWhiteSpace($OutputPath)) {
 }
 
 $solutionRoot = Split-Path -Parent $PSScriptRoot
-$packagesRoot = Join-Path $solutionRoot "packages"
-$packagesConfigFiles = Get-ChildItem -Path $solutionRoot -Filter "packages.config" -Recurse -File | Sort-Object FullName
-
-$rows = foreach ($packagesConfigFile in $packagesConfigFiles) {
-    $packageConfigXml = [xml](Get-Content -Path $packagesConfigFile.FullName -Raw)
-    $projectPath = Get-RelativePath -BasePath $solutionRoot -Path $packagesConfigFile.FullName
-
-    foreach ($package in $packageConfigXml.packages.package) {
+$projectFiles = @("qbook\qbook.csproj", "qbookCsScript\qbookCsScript.csproj")
+$rows = foreach ($projectFile in $projectFiles) {
+    $projectFullPath = Join-Path $solutionRoot $projectFile
+    $projectXml = [xml](Get-Content -LiteralPath $projectFullPath -Raw)
+    $assetsPath = Join-Path (Split-Path $projectFullPath) "obj\project.assets.json"
+    if (-not (Test-Path -LiteralPath $assetsPath)) {
+        throw "Dependency restore is required for $projectFile before generating the package report."
+    }
+    $assets = Get-Content -LiteralPath $assetsPath -Raw | ConvertFrom-Json
+    $packagesRoot = @($assets.packageFolders.PSObject.Properties.Name)[0]
+    foreach ($library in $assets.libraries.PSObject.Properties) {
+        if ($library.Value.type -ne "package") { continue }
+        $packageId, $packageVersion = $library.Name -split '/', 2
+        $direct = $projectXml.SelectNodes('//PackageReference') | Where-Object { $_.Include -eq $packageId }
         [PSCustomObject]@{
-            Project = $projectPath
-            PackageId = $package.id
-            Version = $package.version
-            TargetFramework = $package.targetFramework
-            DevelopmentDependency = if ($package.developmentDependency -eq "true") { "true" } else { "false" }
-            License = Get-PackageLicense -PackagesRoot $packagesRoot -PackageId $package.id -PackageVersion $package.version
+            Project = $projectFile
+            PackageId = $packageId
+            Version = $packageVersion
+            TargetFramework = [string]$projectXml.Project.PropertyGroup.TargetFramework
+            DevelopmentDependency = if ($direct -and $direct.PrivateAssets -eq "all") { "true" } else { "false" }
+            License = Get-PackageLicense -PackagesRoot $packagesRoot -PackageId $packageId -PackageVersion $packageVersion
         }
     }
 }

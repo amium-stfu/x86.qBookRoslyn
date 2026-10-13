@@ -1,4 +1,4 @@
-﻿#nullable enable annotations
+#nullable enable annotations
 
 using log4net;
 using log4net.Appender;
@@ -179,122 +179,41 @@ namespace qbook
         }
         public static void DestroyAll()
         {
-
-            _loggedInitPages.Clear();
-            _loggedRenderPages.Clear();
-
+            Core.StatusText = "Status:Stop";
+            RuntimeWatchdog.Stop();
             if (Core.ThisBook == null) return;
 
-            Core.StatusText = "Status:Stop";
-            QB.Logger.Debug("=== PageRuntime.DestroyAll() start ===");
-
-            // 1️⃣ Altes Script-System stoppen (CSScript)
-            //try
-            //{
-            //    Core.CsScript_Destroy();
-            //    QB.Logger.Debug("Core.CsScript_Destroy() executed successfully.");
-            //    RuntimeWatchdog.Stop();
-            //    Core.Roslyn?.ClearBuildArtifacts();
-            //}
-            //catch (Exception ex)
-            //{
-            //    QB.Logger.Error($"Core.CsScript_Destroy() failed: {ex.Message}");
-            //    Core.StatusText = "Alert:Stop";
-            //}
-
-            //// 2️⃣ Wenn QB.Program existiert, dessen statische Destroy() aufrufen
             try
             {
-                _programType?.GetMethod("Destroy", BindingFlags.Public | BindingFlags.Static)
-                            ?.Invoke(null, null);
-                QB.Logger.Debug("QB.Program.Destroy() executed.");
-            }
-            catch (Exception ex)
-            {
-                QB.Logger.Debug($"QB.Program.Destroy() failed: {ex.Message}");
-                Core.StatusText = "Alert:Stop";
-            }
-
-
-
-            // 3️⃣ Fallback: Alle Klassen im Script-Assembly nach Destroy() durchsuchen
-            try
-            {
-                var asm = qbook.Core.ActiveCsAssembly;
-
-                ItemDestroyHandler.DestroyAll(); // Alle registrierten Destroyer aufrufen (z.B. von Controls)
-                if (asm != null)
+                var destroy = _programType?.GetMethod("Destroy", BindingFlags.Public | BindingFlags.Static);
+                if (destroy != null) destroy.Invoke(null, null);
+                else
                 {
-                    foreach (var type in asm.GetTypes())
-                    {
-                        // Nur konkrete, nicht-generische Typen mit parameterloser Destroy-Methode
-                        var destroyMethod = type.GetMethod("Destroy",
-                            BindingFlags.Public | BindingFlags.Instance,
-                            Type.DefaultBinder,
-                            Type.EmptyTypes,
-                            null);
-
-                        if (destroyMethod == null)
-                            continue;
-
-                        object? instance = null;
-
-                        try
-                        {
-                            // 🧩 versuchen, vorhandene Instanz aus QB.Program zu holen
-                            var prop = _programType?
-                                .GetProperties(BindingFlags.Public | BindingFlags.Static)
-                                .FirstOrDefault(p => p.PropertyType == type);
-                            if (prop != null)
-                                instance = prop.GetValue(null);
-
-                            // 🧩 andernfalls selbst erzeugen (nur wenn erlaubt)
-                            if (instance == null && !type.IsAbstract && type.GetConstructor(Type.EmptyTypes) != null)
-                                instance = Activator.CreateInstance(type);
-                        }
-                        catch
-                        {
-                            continue; // wenn Instanzierung fehlschlägt, Typ überspringen
-                        }
-
-                        // 🧩 Destroy aufrufen
-                        if (instance != null)
-                        {
-                            try
-                            {
-                                destroyMethod.Invoke(instance, null);
-                                QB.Logger.Debug($"Destroyed instance: {type.FullName}");
-                            }
-                            catch (Exception ex)
-                            {
-                                QB.Logger.Error($"Destroy failed for {type.FullName}: {ex.Message}");
-                            }
-                        }
-                    }
+                    foreach (var page in Core.ThisBook.Main.Objects.OfType<oPage>())
+                        page.DynInstance?.GetType().GetMethod("Destroy", Type.EmptyTypes)?.Invoke(page.DynInstance, null);
                 }
+                ItemDestroyHandler.DestroyAll();
+                foreach (var control in QB.Root.ControlDict.Values.ToArray()) control.Remove();
             }
             catch (Exception ex)
             {
-                QB.Logger.Warn($"Global Destroy scan failed: {ex.Message}");
+                Core.StatusText = "Alert:Stop";
+                QB.Logger.Error("Book stop failed; reload cancelled: " + ex.Message);
+                throw;
             }
 
-            // 4️⃣ QBook-Projektwurzel neu erzeugen
-            try
+            foreach (var page in Core.ThisBook.Main.Objects.OfType<oPage>())
             {
-        
-                QB.Logger.Info("Core.UpdateProjectAssemblyQbRoot() executed.");
+                page.DynInstance = null;
+                page.DynInitialized = false;
             }
-            catch (Exception ex)
-            {
-                QB.Logger.Warn($"UpdateProjectAssemblyQbRoot failed: {ex.Message}");
-            }
-
+            _programType = null;
+            Core.ActiveCsAssembly = null;
+            _loggedInitPages.Clear();
+            _loggedRenderPages.Clear();
             QB.Root.ResetAllDicts();
-            QB.Logger.Info("=== PageRuntime.DestroyAll() completed ===");
+            Core.Roslyn?.UnloadRuntimeAssembly();
         }
-
-
-
         public static List<string> ErrorFiles = new List<string>();
         static Stopwatch buildWatch = new Stopwatch();
         public static int BuildDuration = 0;

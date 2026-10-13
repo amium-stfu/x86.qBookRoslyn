@@ -1,4 +1,5 @@
-﻿using System;
+using System.ComponentModel;
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -12,6 +13,7 @@ namespace QB.UI
         }
 
         protected override bool ShowWithoutActivation => true;
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Title
         {
             get
@@ -35,6 +37,7 @@ namespace QB.UI
             }
         }
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Text
         {
             get
@@ -48,6 +51,7 @@ namespace QB.UI
         }
 
         public override Color BackColor { get => panelMain.BackColor; set => panelMain.BackColor = value; }
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public Color TextColor
         {
             get
@@ -63,6 +67,7 @@ namespace QB.UI
 
         System.Timers.Timer _AutocloseTimer = null;
         double _AutocloseSeconds = 0;
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public double AutocloseSeconds
         {
             get

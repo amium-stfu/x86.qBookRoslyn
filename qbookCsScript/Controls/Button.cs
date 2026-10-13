@@ -1,4 +1,3 @@
-﻿using System.Web.UI.WebControls;
 
 namespace QB.Controls
 {

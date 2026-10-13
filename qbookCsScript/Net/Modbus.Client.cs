@@ -1,4 +1,4 @@
-﻿//using CefSharp.DevTools.DOM;
+//using CefSharp.DevTools.DOM;
 using QB.Automation;
 using System;
 using System.Collections.Generic;
@@ -34,6 +34,28 @@ namespace QB.Net
             public string Uri;
 
             System.Threading.Thread idleThread;
+            private CancellationTokenSource idleCancellation = new CancellationTokenSource();
+            private bool idleCancellationDisposed;
+
+            private void WaitIdle(int milliseconds)
+            {
+                if (idleCancellation.Token.WaitHandle.WaitOne(milliseconds))
+                    throw new OperationCanceledException(idleCancellation.Token);
+            }
+
+            private void StopIdle()
+            {
+                if (!idleCancellationDisposed) idleCancellation.Cancel();
+
+                var worker = idleThread;
+                if (worker == Thread.CurrentThread) return;
+                if (worker != null && worker.IsAlive && !worker.Join(2000))
+                    throw new InvalidOperationException("The previous network worker has not stopped cooperatively.");
+                idleThread = null;
+                if (!idleCancellationDisposed) idleCancellation.Dispose();
+                idleCancellationDisposed = true;
+            }
+
             public string socket;
             _ModbusClient modbusClient;
 
@@ -45,21 +67,28 @@ namespace QB.Net
                 if (modbusClient != null)
                     modbusClient.Abort();
                 if (idleThread != null)
-                    idleThread.Abort();
+                    StopIdle();
                 modbusClient = null;
             //    akQueries.Clear();
             }
 
             public void Connect(string socket)
             {
-                //Close();
+                StopIdle();
+                if (idleThread == Thread.CurrentThread)
+                    throw new InvalidOperationException("A network worker cannot replace itself.");
+                modbusClient?.Abort();
+                idleCancellation = new CancellationTokenSource();
+                idleCancellationDisposed = false;
                 this.socket = socket;
                 modbusClient = new _ModbusClient(Name, socket);
 
-                if (idleThread != null)
-                    idleThread.Abort();
-
-                idleThread = new System.Threading.Thread(Idle);
+                idleThread = new System.Threading.Thread(() =>
+                {
+                    try { Idle(); }
+                    catch (OperationCanceledException) when (idleCancellation.IsCancellationRequested) { }
+                    catch (Exception) when (idleCancellation.IsCancellationRequested) { }
+                });
                 idleThread.IsBackground = true;
                 idleThread.Start();
             }
@@ -127,7 +156,7 @@ namespace QB.Net
 
             private void Idle()
             {
-                while (true)
+                while (!idleCancellation.IsCancellationRequested)
                 {
                     /*
                     foreach (Query query in akQueries)
@@ -209,7 +238,7 @@ namespace QB.Net
                     }
                     */
                     // astz = transfer(" ASTZ K0");
-                    System.Threading.Thread.Sleep(100);
+                    WaitIdle(100);
                 }
             }
 
@@ -260,23 +289,20 @@ namespace QB.Net
                 }
 
 
-                idleThread = new System.Threading.Thread(Idle);
+                idleThread = new System.Threading.Thread(() =>
+                {
+                    try { Idle(); }
+                    catch (OperationCanceledException) when (idleCancellation.IsCancellationRequested) { }
+                    catch (Exception) when (idleCancellation.IsCancellationRequested) { }
+                });
                 idleThread.IsBackground = true;
                 idleThread.Start();
             }
 
             public void Close()
             {
-                if (idleThread != null)
-                    idleThread.Abort();
-
-                if (tcpClient != null)
-                    tcpClient.Close();
-
-                if (serialPort != null)
-                    serialPort.Close();
+                StopIdle();
             }
-
 
             public string Socket;
 
@@ -290,6 +316,32 @@ namespace QB.Net
 
             private TcpClient tcpClient = null;
             private Thread idleThread;
+            private CancellationTokenSource idleCancellation = new CancellationTokenSource();
+            private bool idleCancellationDisposed;
+
+            private void WaitIdle(int milliseconds)
+            {
+                if (idleCancellation.Token.WaitHandle.WaitOne(milliseconds))
+                    throw new OperationCanceledException(idleCancellation.Token);
+            }
+
+            private void StopIdle()
+            {
+                if (!idleCancellationDisposed) idleCancellation.Cancel();
+                try { tcpClient?.Close(); } catch (ObjectDisposedException) { }
+                try { serialPort?.Close(); } catch (ObjectDisposedException) { }
+                var worker = idleThread;
+                if (worker == Thread.CurrentThread)
+                    throw new InvalidOperationException("A network callback cannot synchronously stop or replace its own transport.");
+                if (worker != null && worker.IsAlive && !worker.Join(2000))
+                    throw new InvalidOperationException("The previous network worker has not stopped cooperatively.");
+                tcpClient?.Close();
+                serialPort?.Dispose();
+                idleThread = null;
+                if (!idleCancellationDisposed) idleCancellation.Dispose();
+                idleCancellationDisposed = true;
+            }
+
             IPEndPoint IpEndPoint;
             public string Status { get; set; }
 
@@ -300,25 +352,12 @@ namespace QB.Net
                     LogEvent(sender, message);
             }
 
-            public void Abort()
-            {
-                try
-                {
-                    idleThread.Abort();
-                }
-                catch { }
-
-                try
-                {
-                    if (tcpClient != null)
-                        tcpClient.Close();
-                }
-                catch { }
-            }
+            public void Abort() => Close();
 
             bool _isDisconnecting = false;
             public void Disconnect(string message)
             {
+                if (idleCancellation.IsCancellationRequested) return;
                 if (_isDisconnecting) return;
                 //  log.Info($"disconnecting Client '{Name}': info:{message}");
                 _isDisconnecting = true;
@@ -330,8 +369,10 @@ namespace QB.Net
                         if (tcpClient != null)
                             tcpClient.Close();
                     }
+                    catch (OperationCanceledException) when (idleCancellation.IsCancellationRequested) { throw; }
                     catch
                     {
+                        if (idleCancellation.IsCancellationRequested) throw new OperationCanceledException();
                         exceptionCounter++;
                     }
 
@@ -397,8 +438,10 @@ namespace QB.Net
                         }
 
                     }
+                    catch (OperationCanceledException) when (idleCancellation.IsCancellationRequested) { throw; }
                     catch
                     {
+                        if (idleCancellation.IsCancellationRequested) throw new OperationCanceledException();
                         exceptionCounter += 1000;
                     }
                     return true;
@@ -417,7 +460,7 @@ namespace QB.Net
 
             public void Idle()
             {
-                while (true)
+                while (!idleCancellation.IsCancellationRequested)
                 {
                     try
                     {
@@ -437,14 +480,15 @@ namespace QB.Net
                                 {
 
 
-                                    SocketAsyncEventArgs m_socketConnectionArgs = new SocketAsyncEventArgs();
+                                    using SocketAsyncEventArgs m_socketConnectionArgs = new SocketAsyncEventArgs();
                                     m_socketConnectionArgs.RemoteEndPoint = IpEndPoint;
                                     m_socketConnectionArgs.Completed += M_socketConnectionArgs_Completed;
-                                    tcpClient.ConnectAsync(Socket.Split(':')[0], int.Parse(Socket.Split(':')[1]));
+                                    tcpClient.ConnectAsync(Socket.Split(':')[0], int.Parse(Socket.Split(':')[1]), idleCancellation.Token)
+                                        .AsTask().WaitAsync(TimeSpan.FromSeconds(5), idleCancellation.Token).GetAwaiter().GetResult();
                                     DateTime dateTime = DateTime.Now.AddSeconds(5);
-                                    while (!tcpClient.Connected)
+                                    while (!idleCancellation.IsCancellationRequested && !tcpClient.Connected)
                                     {
-                                        Thread.Sleep(500);
+                                        WaitIdle(500);
                                         if (DateTime.Now > dateTime)
                                             break;
                                     }
@@ -456,11 +500,13 @@ namespace QB.Net
                                         connectionEstablished = true;
                                     }
                                 }
+                                catch (OperationCanceledException) when (idleCancellation.IsCancellationRequested) { throw; }
                                 catch (Exception ex)
                                 {
+                                    if (idleCancellation.IsCancellationRequested) throw new OperationCanceledException();
                                     //    log.Error($"{Name}/{IpEndPoint.Address}: {IpEndPoint.Port} retry ({ex.Message})");
                                     Log(this, Text + "/" + IpEndPoint.Address + ":" + IpEndPoint.Port + " retry " + ex.Message);
-                                    Thread.Sleep(4000);
+                                    WaitIdle(4000);
                                     connectionEstablished = false;
                                 }
                             }
@@ -472,13 +518,15 @@ namespace QB.Net
                             }
                         }
                     }
+                    catch (OperationCanceledException) when (idleCancellation.IsCancellationRequested) { throw; }
                     catch
                     {
+                        if (idleCancellation.IsCancellationRequested) throw new OperationCanceledException();
                         exceptionCounter++;
                         Disconnect("!!!! c1");
                     }
 
-                    Thread.Sleep(1000);
+                    WaitIdle(1000);
 
                     if (tcpClient != null)
                     {
@@ -491,11 +539,13 @@ namespace QB.Net
 
                             }
                         }
+                        catch (OperationCanceledException) when (idleCancellation.IsCancellationRequested) { throw; }
                         catch (Exception ex)
                         {
+                            if (idleCancellation.IsCancellationRequested) throw new OperationCanceledException();
                             exceptionCounter++;
                             Disconnect("!!!! c2 " + ex.ToString());
-                            Thread.Sleep(2000);
+                            WaitIdle(2000);
                         }
                         try
                         {
@@ -507,11 +557,13 @@ namespace QB.Net
 
                             }
                         }
+                        catch (OperationCanceledException) when (idleCancellation.IsCancellationRequested) { throw; }
                         catch (Exception ex)
                         {
+                            if (idleCancellation.IsCancellationRequested) throw new OperationCanceledException();
                             exceptionCounter++;
                             Disconnect("!!!! c3 " + ex.ToString());
-                            Thread.Sleep(2000);
+                            WaitIdle(2000);
                         }
                     }
                 }
@@ -546,12 +598,14 @@ namespace QB.Net
 
                     try
                     {
-                        while (tcpClient.Client.Available > 0)
+                        while (!idleCancellation.IsCancellationRequested && tcpClient.Client.Available > 0)
                             tcpClient.Client.Receive(receiveBytes, 4096, SocketFlags.None);
                         receivBufferIndex = 0;
                     }
+                    catch (OperationCanceledException) when (idleCancellation.IsCancellationRequested) { throw; }
                     catch
                     {
+                        if (idleCancellation.IsCancellationRequested) throw new OperationCanceledException();
                         exceptionCounter++;
                         Disconnect("$dummy");
                         return null;
@@ -582,8 +636,10 @@ namespace QB.Net
 
                     TxMsgCount++;
                 }
+                catch (OperationCanceledException) when (idleCancellation.IsCancellationRequested) { throw; }
                 catch
                 {
+                    if (idleCancellation.IsCancellationRequested) throw new OperationCanceledException();
                     exceptionCounter++;
                     Disconnect("send");
                     return null;
@@ -596,11 +652,11 @@ namespace QB.Net
                 int counter = duration / 10;
                 try
                 {
-                    while (counter > 0)
+                    while (!idleCancellation.IsCancellationRequested && counter > 0)
                     {
                         if ((tcpClient != null) && (tcpClient.Client != null))
                         {
-                            while (tcpClient.Client.Available > 0)
+                            while (!idleCancellation.IsCancellationRequested && tcpClient.Client.Available > 0)
                             {
                                 int readBytes = tcpClient.Client.Receive(receiveBytes, 4096, SocketFlags.None);
                                 if (readBytes > 0)
@@ -629,7 +685,7 @@ namespace QB.Net
 
                         if (serialPort != null)
                         {
-                            while (serialPort.BytesToRead > 0)
+                            while (!idleCancellation.IsCancellationRequested && serialPort.BytesToRead > 0)
                             {
                                 int readBytes = serialPort.Read(receiveBytes, 0, serialPort.BytesToRead);
                                 if (readBytes > 0)
@@ -658,7 +714,7 @@ namespace QB.Net
 
 
 
-                        Thread.Sleep(7); // -> ca. 10ms
+                        WaitIdle(7); // -> ca. 10ms
                         counter--;
                     }
                     if (duration > 0)
@@ -670,8 +726,10 @@ namespace QB.Net
                         }
                     }
                 }
+                catch (OperationCanceledException) when (idleCancellation.IsCancellationRequested) { throw; }
                 catch
                 {
+                    if (idleCancellation.IsCancellationRequested) throw new OperationCanceledException();
                     exceptionCounter++;
                     Disconnect("receive");
                 }

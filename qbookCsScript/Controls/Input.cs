@@ -1,6 +1,5 @@
-﻿using QB.UI;
+using QB.UI;
 using System.Text;
-using System.Web.UI.WebControls;
 
 namespace QB.Controls
 {

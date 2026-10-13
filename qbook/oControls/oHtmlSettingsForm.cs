@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Windows.Forms;
 
@@ -11,8 +11,11 @@ namespace qbook.oControls
             InitializeComponent();
         }
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string CodeHtml { get => textBoxHtml.Text; set => textBoxHtml.Text = value; }
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string CodeCss { get => textBoxCss.Text; set => textBoxCss.Text = value; }
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string CodeSettings { get => textBoxSettings.Text; set => textBoxSettings.Text = value; }
         private void oHtmlSettingsForm_Load(object sender, EventArgs e)
         {

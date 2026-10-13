@@ -1,4 +1,4 @@
-﻿using QB.Controls;
+using QB.Controls;
 using QB.UI;
 using System;
 using System.Collections.Generic;
@@ -805,53 +805,60 @@ namespace QB
 
 
 
-    // under construction
     public class ThreadObject : Item
     {
-        System.Threading.Thread idleThread = null;
+        private Thread idleThread;
+        private CancellationTokenSource cancellation = new CancellationTokenSource();
+        private bool cancellationDisposed;
         public int Interval = 1000;
+        public CancellationToken CancellationToken => cancellation.Token;
 
-        public ThreadObject(string text) : base(text)
-        { }
+        public ThreadObject(string text) : base(text) { }
 
-        /// <summary>
-        /// Starts the timer
-        /// </summary>
         public virtual void Resume()
         {
-
-
-            if (Interval < 1)
-                Stop();
-            else
+            Stop();
+            if (Interval < 1) return;
+            if (idleThread == Thread.CurrentThread)
+                throw new InvalidOperationException("A worker cannot replace itself.");
+            cancellation = new CancellationTokenSource();
+            cancellationDisposed = false;
+            idleThread = new Thread(() =>
             {
-                if (idleThread != null)
-                    idleThread.Abort();
-
-                idleThread = new System.Threading.Thread(_idle);
-                idleThread.IsBackground = true;
-                idleThread.Start();
-            }
+                try { _idle(); }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+                catch (Exception ex) { QB.Logger.Error($"ThreadObject '{Name}' failed: {ex.Message}"); }
+            }) { IsBackground = true };
+            idleThread.Start();
         }
 
         public virtual void Stop()
         {
-            if (idleThread != null)
-                idleThread.Abort();
+            if (!cancellationDisposed) cancellation.Cancel();
+            var worker = idleThread;
+            if (worker == Thread.CurrentThread) return;
+            if (worker != null && worker.IsAlive && !worker.Join(2000))
+                throw new InvalidOperationException("The previous worker has not stopped. Its callback must observe CancellationToken.");
+            idleThread = null;
+            if (!cancellationDisposed) cancellation.Dispose();
+            cancellationDisposed = true;
         }
 
+        public override void Destroy()
+        {
+            Stop();
+            base.Destroy();
+        }
 
         protected virtual void _idle()
         {
-            while (true)
+            while (!cancellation.IsCancellationRequested)
             {
                 Idle(this);
+                if (cancellation.Token.WaitHandle.WaitOne(Math.Max(1, Interval))) return;
             }
         }
 
-        public virtual void Idle(ThreadObject s)
-        {
-
-        }
+        public virtual void Idle(ThreadObject s) { }
     }
 }

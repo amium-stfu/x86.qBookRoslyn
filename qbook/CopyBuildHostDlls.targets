@@ -1,13 +1,10 @@
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Target Name="CopyBuildHostDlls" AfterTargets="Build">
-    <!-- Quelle: BuildHost DLL im Output -->
+<Project>
+  <Target Name="CopyBuildHostDlls" AfterTargets="CopyFilesToOutputDirectory" BeforeTargets="PostBuildEvent">
     <ItemGroup>
-      <BuildHostDlls Include="$(TargetDir)BuildHost-netcore\Microsoft.CodeAnalysis.Workspaces.MSBuild.4.14.0\Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll" />
+      <BuildHostFiles Include="$(PkgMicrosoft_CodeAnalysis_Workspaces_MSBuild)\contentFiles\any\any\BuildHost-netcore\**\*" />
     </ItemGroup>
-
-    <!-- Ziel: libs\BuildHost-netcore -->
-    <MakeDir Directories="$(TargetDir)libs\BuildHost-netcore" />
-
-    <Copy SourceFiles="@(BuildHostDlls)" DestinationFolder="$(TargetDir)libs\BuildHost-netcore" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(BuildHostFiles)"
+          DestinationFiles="@(BuildHostFiles->'$(TargetDir)libs\BuildHost-netcore\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
   </Target>
 </Project>

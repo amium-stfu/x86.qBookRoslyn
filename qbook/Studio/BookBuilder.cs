@@ -1,4 +1,4 @@
-﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis;
 using Microsoft.Office.Interop.Outlook;
 using Newtonsoft.Json;
 using QB;
@@ -82,7 +82,7 @@ namespace qbook.Studio
           
             string bookJson = CreateBookJson(folder:book,name: name);
             string programCs = CreateProgramCs(System.IO.Path.Combine(book, "Program.cs"));
-            string csproj = CreateCsproj("InMemoryProject", "net8.0", System.IO.Path.Combine(book, name+ ".csproj"));
+            string csproj = CreateCsproj("InMemoryProject", file: System.IO.Path.Combine(book, name+ ".csproj"));
             string globalUsings = CreateGlobalUsing(System.IO.Path.Combine(book, "GlobalUsings.cs"));
             System.IO.Directory.CreateDirectory(System.IO.Path.Combine(book, "Pages"));
             SaveAllPages(book);
@@ -136,50 +136,35 @@ namespace qbook.Studio
 
             return sbProgram.ToString();
         }
-        private static string CreateCsproj(string projectName = "InMemoryProject", string targetFramework = "net8.0", string file = "T:\\qbooksave\\Program.csproj")
+        private static string CreateCsproj(string projectName = "InMemoryProject", string file = "T:\\qbooksave\\Program.csproj")
         {
             var sb = new StringBuilder();
             sb.AppendLine("<Project Sdk=\"Microsoft.NET.Sdk\">");
             sb.AppendLine("  <PropertyGroup>");
             sb.AppendLine($"    <OutputType>Library</OutputType>");
-            sb.AppendLine($"    <TargetFramework>{targetFramework}</TargetFramework>");
+            sb.AppendLine($"    <TargetFramework>{CsprojGenerator.BookTargetFramework}</TargetFramework>");
             sb.AppendLine($"    <UseWindowsForms>true</UseWindowsForms>");
+            sb.AppendLine("    <UseWPF>true</UseWPF>");
+            sb.AppendLine("    <PlatformTarget>x64</PlatformTarget>");
             sb.AppendLine($"    <AssemblyName>{projectName}</AssemblyName>");
             sb.AppendLine("  </PropertyGroup>");
 
             sb.AppendLine("  <ItemGroup>");
 
             var refs = Core.Roslyn.GetProject?.MetadataReferences.OfType<PortableExecutableReference>() ?? Enumerable.Empty<PortableExecutableReference>();
-            foreach (var r in refs)
+            var referencePaths = RoslynService.GetProjectReferencePaths(RoslynService.GetBookReferencePaths()
+                .Concat(refs.Select(reference => reference.FilePath).Where(path => !string.IsNullOrWhiteSpace(path))));
+            foreach (var path in referencePaths)
             {
-                if (string.IsNullOrWhiteSpace(r.FilePath))
-                    continue;
-
-                string fileName = System.IO.Path.GetFileNameWithoutExtension(r.FilePath);
-                if (string.Equals(fileName, "System.Drawing", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue; // nicht das alte Framework-Assembly einbetten
-                }
-
-                if (string.Equals(fileName, "System.IO.Ports", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue; // nicht das alte Framework-Assembly einbetten
-                }
-
-                sb.AppendLine($"    <Reference Include=\"{fileName}\">");
-                sb.AppendLine($"      <HintPath>{r.FilePath}</HintPath>");
+                string fileName = System.IO.Path.GetFileNameWithoutExtension(path);
+                sb.AppendLine($"    <Reference Include=\"{System.Security.SecurityElement.Escape(fileName)}\">");
+                sb.AppendLine($"      <HintPath>{System.Security.SecurityElement.Escape(path)}</HintPath>");
                 sb.AppendLine("    </Reference>");
             }
 
             sb.AppendLine("  </ItemGroup>");
 
         
-                sb.AppendLine("  <ItemGroup>");
-                sb.AppendLine("    <PackageReference Include=\"System.Drawing.Common\" Version=\"8.0.0\" />");
-                sb.AppendLine("  </ItemGroup>");
-                sb.AppendLine("  <ItemGroup>");
-                sb.AppendLine("    <PackageReference Include=\"System.IO.Ports\" Version=\"8.0.0\" />");
-                sb.AppendLine("  </ItemGroup>");
        
 
             sb.AppendLine("</Project>");
@@ -413,7 +398,7 @@ namespace qbook.Studio
 
 
            
-            BookBuilder.CreateCsproj(projectName: name, Path.Combine(codeDir, name + ".csproj"));
+            BookBuilder.CreateCsproj(projectName: name, file: Path.Combine(codeDir, name + ".csproj"));
           
 
             await Core.OpenQbookAsync(uri);
@@ -539,7 +524,7 @@ namespace qbook.Studio
             Core.Roslyn.AddCodeDocument("GlobalUsing.cs", "global using static QB.Program;", true);
 
             string name = newBook.Filename.Replace(".qbook", "");
-            CreateCsproj("QbookStudioRoslyn", "net8.0", System.IO.Path.Combine(folderPath, name + ".csproj"));
+            CreateCsproj("QbookStudioRoslyn", file: System.IO.Path.Combine(folderPath, name + ".csproj"));
 
             QB.Root.ActiveQbook = newBook;
             return newBook;

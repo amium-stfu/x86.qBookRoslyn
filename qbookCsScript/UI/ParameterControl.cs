@@ -1,4 +1,5 @@
-﻿using System;
+using System.ComponentModel;
+using System;
 using System.Drawing;
 using System.Globalization;
 using System.Text.RegularExpressions;
@@ -72,6 +73,7 @@ namespace QB.UI
             labelDescription.Text = description;
         }
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string ValueString
         {
             get
@@ -84,6 +86,7 @@ namespace QB.UI
             }
         }
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public double Value
         {
             get
@@ -102,6 +105,7 @@ namespace QB.UI
         {
             private double precision = 0.01f;
 
+            [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
             public double Precision
             {
                 get { return precision; }
@@ -111,14 +115,19 @@ namespace QB.UI
                     // todo: update the 5 properties below
                 }
             }
+            [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
             public new double LargeChange
             { get { return base.LargeChange * precision; } set { base.LargeChange = (int)(value / precision); } }
+            [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
             public new double Maximum
             { get { return base.Maximum * precision; } set { base.Maximum = (int)(value / precision); } }
+            [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
             public new double Minimum
             { get { return base.Minimum * precision; } set { base.Minimum = (int)(value / precision); } }
+            [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
             public new double SmallChange
             { get { return base.SmallChange * precision; } set { base.SmallChange = (int)(value / precision); } }
+            [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
             public new double Value
             { get { return base.Value * precision; } set { base.Value = (int)(value / precision); } }
         }

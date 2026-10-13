@@ -23,18 +23,22 @@ namespace QB.Controls
 
         public static void DestroyAll()
         {
+            var errors = new List<Exception>();
             foreach (System.Action dest in Destroyers.ToArray())
             {
                 try
                 {
                     dest();
+                    Destroyers.Remove(dest);
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Error executing destroyer: {ex.Message}");
+                    errors.Add(ex);
                 }
             }
-            Destroyers.Clear();
+            if (errors.Count != 0)
+                throw new AggregateException("Book workers could not be stopped. Reload has been cancelled.", errors);
         }
     }
 }

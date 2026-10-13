@@ -1,11 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Web.UI.WebControls;
 using System.Windows.Forms;
 
 namespace qbook

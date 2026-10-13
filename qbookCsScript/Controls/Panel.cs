@@ -1,11 +1,8 @@
-﻿using AForge;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
-using AForge.Video;
-using AForge.Video.DirectShow;
 
 namespace QB.Controls
 {

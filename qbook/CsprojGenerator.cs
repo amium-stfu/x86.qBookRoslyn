@@ -1,4 +1,4 @@
-﻿#nullable enable annotations
+#nullable enable annotations
 
 using System;
 using System.IO;
@@ -9,6 +9,7 @@ using System.Diagnostics;
 
 public static class CsprojGenerator
 {
+    public const string BookTargetFramework = "net10.0-windows";
     public static string GetSolutionDirectory()
     {
         var directory = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
@@ -42,19 +43,10 @@ public static class CsprojGenerator
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
 
         // === Collect DLL references ===
-        var dllFiles = Directory.GetFiles(baseDir, "*.dll")
-            .Concat(Directory.Exists(projectDlls) ? Directory.GetFiles(projectDlls, "*.dll") : Array.Empty<string>())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-        string[] excludePrefixes = { "Microsoft.CodeAnalysis" }; // add more if needed
+        var dllFiles = qbook.RoslynService.GetProjectReferencePaths(qbook.RoslynService.GetBookReferencePaths()
+            .Concat(Directory.Exists(projectDlls) ? Directory.GetFiles(projectDlls, "*.dll") : Array.Empty<string>()));
 
         var referenceItems = dllFiles
-            .Where(path =>
-            {
-                string fileName = Path.GetFileNameWithoutExtension(path);
-                return !excludePrefixes.Any(prefix => fileName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
-            })
             .Select(path =>
             {
                 string fileName = Path.GetFileNameWithoutExtension(path);
@@ -120,8 +112,10 @@ public static class CsprojGenerator
 <Project Sdk=""Microsoft.NET.Sdk"">  
     <PropertyGroup>   
         <OutputType>Exe</OutputType>
-        <TargetFramework>net9.0-windows</TargetFramework> 
+        <TargetFramework>{BookTargetFramework}</TargetFramework> 
         <UseWindowsForms>true</UseWindowsForms>
+        <UseWPF>true</UseWPF>
+        <PlatformTarget>x64</PlatformTarget>
         <!-- We manage all items explicitly so we can include external folders/files -->
         <EnableDefaultItems>false</EnableDefaultItems>
     </PropertyGroup>

@@ -1,4 +1,4 @@
-﻿#nullable enable annotations
+#nullable enable annotations
 
 using IronPython.Compiler;
 using Microsoft.Build.Locator;
@@ -36,7 +36,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web.UI.WebControls;
 using System.Windows.Controls;
 using System.Windows.Forms;
 using static IronPython.Modules.PythonCsvModule;
@@ -137,7 +136,7 @@ namespace qbook
         private string? _assemblyOutputPath;
         private string? _pdbOutputPath;
         private int _artifactGeneration;
-        private object? _runtimeAssemblyLoadContext;
+        private System.Runtime.Loader.AssemblyLoadContext? _runtimeAssemblyLoadContext;
         private WeakReference? _runtimeAssemblyLoadContextWeakReference;
 
         // NEW: cache a single MEF host to avoid repeatedly allocating composition containers
@@ -198,96 +197,43 @@ namespace qbook
         }
 
 
-        private Assembly LoadRuntimeAssembly(byte[] peImage, byte[] pdbImage)
+        private sealed class BookLoadContext : System.Runtime.Loader.AssemblyLoadContext
         {
-            
-            
-            
-            
-            try
+            public BookLoadContext() : base("qbook-book-" + Guid.NewGuid(), isCollectible: true) { }
+
+            protected override Assembly? Load(AssemblyName assemblyName)
             {
-                var alcType = Type.GetType("System.Runtime.Loader.AssemblyLoadContext, System.Runtime.Loader", throwOnError: false);
-                if (alcType == null)
-                {
-                    return Assembly.Load(peImage, pdbImage);
-                }
-
-                if (_runtimeAssemblyLoadContext != null)
-                {
-                    try
-                    {
-                        alcType.GetMethod("Unload", BindingFlags.Instance | BindingFlags.Public)
-                            ?.Invoke(_runtimeAssemblyLoadContext, null);
-                        _runtimeAssemblyLoadContext = null;
-
-                        if (_runtimeAssemblyLoadContextWeakReference != null)
-                        {
-                            for (int i = 0; _runtimeAssemblyLoadContextWeakReference.IsAlive && i < 6; i++)
-                            {
-                                GC.Collect();
-                                GC.WaitForPendingFinalizers();
-                                GC.Collect();
-                            }
-
-                            if (_runtimeAssemblyLoadContextWeakReference.IsAlive)
-                            {
-                                QB.Logger.Warn("[Roslyn] Previous runtime load context is still alive (assembly references may still exist).");
-                            }
-                        }
-                    }
-                    catch (Exception unloadEx)
-                    {
-                        QB.Logger.Warn("[Roslyn] Unloading previous runtime load context failed: " + unloadEx.Message);
-                    }
-                }
-
-                var ctor = alcType.GetConstructor(new[] { typeof(string), typeof(bool) });
-                if (ctor == null)
-                {
-                    return Assembly.Load(peImage, pdbImage);
-                }
-
-                var context = ctor.Invoke(new object[] { $"qbook-roslyn-runtime-{DateTime.UtcNow:yyyyMMddHHmmssfff}", true });
-                if (context == null)
-                {
-                    return Assembly.Load(peImage, pdbImage);
-                }
-
-                var loadFromStreamMethod = alcType.GetMethod(
-                    "LoadFromStream",
-                    BindingFlags.Instance | BindingFlags.Public,
-                    binder: null,
-                    types: new[] { typeof(Stream), typeof(Stream) },
-                    modifiers: null
-                );
-
-                if (loadFromStreamMethod == null)
-                {
-                    return Assembly.Load(peImage, pdbImage);
-                }
-
-                using var pe = new MemoryStream(peImage, writable: false);
-                using var pdb = new MemoryStream(pdbImage, writable: false);
-
-                var loaded = loadFromStreamMethod.Invoke(context, new object[] { pe, pdb }) as Assembly;
-                if (loaded == null)
-                {
-                    return Assembly.Load(peImage, pdbImage);
-                }
-
-                _runtimeAssemblyLoadContext = context;
-                _runtimeAssemblyLoadContextWeakReference = new WeakReference(context, trackResurrection: false);
-                QB.Logger.Debug($"[Roslyn] Runtime assembly loaded in collectible runtime context. MVID={loaded.ManifestModule.ModuleVersionId}");
-                return loaded;
-            }
-            catch (Exception ex)
-            {
-                QB.Logger.Warn("[Roslyn] Collectible runtime load unavailable, fallback to Assembly.Load: " + ex.Message);
-                return Assembly.Load(peImage, pdbImage);
+                // Host and QB dependencies always share the default context's type identity.
+                return Default.LoadFromAssemblyName(assemblyName);
             }
         }
 
+        public void UnloadRuntimeAssembly()
+        {
+            var context = _runtimeAssemblyLoadContext;
+            _runtimeAssemblyLoadContext = null;
+            context?.Unload();
+        }
 
+        private Assembly LoadRuntimeAssembly(byte[] peImage, byte[] pdbImage)
+        {
+            UnloadRuntimeAssembly();
+            var context = new BookLoadContext();
+            try
+            {
+                using var pe = new MemoryStream(peImage, writable: false);
+                using var pdb = new MemoryStream(pdbImage, writable: false);
+                var assembly = context.LoadFromStream(pe, pdb);
+                _runtimeAssemblyLoadContext = context;
+                _runtimeAssemblyLoadContextWeakReference = new WeakReference(context);
+                return assembly;
+            }
+            catch
+            {
+                context.Unload();
+                throw;
+            }
+        }
         public bool IsProjectLoaded => _project != null && ((_useInMemory && _adhocWs != null) || (!_useInMemory && _ws != null));
         public async Task LoadProjectAsync(string csprojPath)
         {
@@ -482,96 +428,82 @@ namespace qbook
             }
         }
 
-        private static List<MetadataReference> AddLoadedAssembliesAsReferences()
-        {
-            var refs = new List<MetadataReference>();
-            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private static readonly HashSet<string> PlatformReferencePaths = new HashSet<string>(
+            ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? string.Empty)
+                .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+                .Where(path => string.Equals(Path.GetDirectoryName(path), Path.GetDirectoryName(typeof(object).Assembly.Location), StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(Path.GetDirectoryName(path), Path.GetDirectoryName(typeof(System.Windows.Forms.Form).Assembly.Location), StringComparison.OrdinalIgnoreCase)),
+            StringComparer.OrdinalIgnoreCase);
 
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        private static readonly HashSet<string> PlatformReferenceNames = new HashSet<string>(
+            PlatformReferencePaths.Select(Path.GetFileNameWithoutExtension), StringComparer.OrdinalIgnoreCase);
+
+        public static bool IsFrameworkReference(string path) =>
+            PlatformReferencePaths.Contains(path) || PlatformReferenceNames.Contains(Path.GetFileNameWithoutExtension(path));
+
+        public static IReadOnlyList<string> GetProjectReferencePaths(IEnumerable<string> references)
+        {
+            var paths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var reference in references.Where(path => !string.IsNullOrWhiteSpace(path)))
             {
+                string path = Path.GetFullPath(reference);
+                if (IsFrameworkReference(path) || !IsManagedAssembly(path))
+                    continue;
+
+                var assemblyName = AssemblyName.GetAssemblyName(path);
+                string name = assemblyName.Name;
+                if (string.IsNullOrEmpty(name) || PlatformReferenceNames.Contains(name))
+                    continue;
+                string normalizedPath = path.Replace('\\', '/');
+                bool legacyFrameworkLocation = normalizedPath.IndexOf("/Microsoft.NET/Framework", StringComparison.OrdinalIgnoreCase) >= 0
+                    || normalizedPath.IndexOf("/Reference Assemblies/Microsoft/Framework/.NETFramework/", StringComparison.OrdinalIgnoreCase) >= 0
+                    || normalizedPath.IndexOf("/assembly/GAC", StringComparison.OrdinalIgnoreCase) >= 0;
+                string publicKeyToken = BitConverter.ToString(assemblyName.GetPublicKeyToken() ?? Array.Empty<byte>()).Replace("-", "");
+                bool frameworkPublisher = publicKeyToken.Equals("B77A5C561934E089", StringComparison.OrdinalIgnoreCase)
+                    || publicKeyToken.Equals("B03F5F7F11D50A3A", StringComparison.OrdinalIgnoreCase)
+                    || publicKeyToken.Equals("31BF3856AD364E35", StringComparison.OrdinalIgnoreCase);
+                if (legacyFrameworkLocation && frameworkPublisher)
+                    throw new NotSupportedException($"Legacy framework reference '{name}' at '{path}' has no .NET 10 desktop framework replacement. Migrate its API or provide a compatible package before exporting the project.");
+
+                if (!name.Equals("Book", StringComparison.OrdinalIgnoreCase) && !paths.ContainsKey(name))
+                    paths.Add(name, path);
+            }
+            return paths.Values.ToArray();
+        }
+
+        public static IReadOnlyList<string> GetBookReferencePaths()
+        {
+            var paths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var path in PlatformReferencePaths)
+                paths[Path.GetFileNameWithoutExtension(path)] = path;
+
+            void AddManaged(string path)
+            {
+                if (!File.Exists(path) || Path.GetFileNameWithoutExtension(path).Equals("Book", StringComparison.OrdinalIgnoreCase))
+                    return;
                 try
                 {
-                    string? location = asm.Location;
-                    if (string.IsNullOrEmpty(location)) continue; // Dynamische oder Ref-Assemblies ohne Pfad ignorieren
-                    if (!seen.Add(location)) continue; // Duplikate vermeiden
-
-                    refs.Add(MetadataReference.CreateFromFile(location));
+                    var name = AssemblyName.GetAssemblyName(path).Name;
+                    if (name != null && !paths.ContainsKey(name)) paths.Add(name, path);
                 }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[Roslyn] Skip assembly {asm.FullName}: {ex.Message}");
-                }
+                catch (BadImageFormatException) { }
             }
 
-            return refs;
+            foreach (var path in Directory.EnumerateFiles(AppContext.BaseDirectory, "*.dll"))
+                AddManaged(path);
+            foreach (var assembly in System.Runtime.Loader.AssemblyLoadContext.Default.Assemblies)
+                if (!assembly.IsDynamic && !string.IsNullOrEmpty(assembly.Location)) AddManaged(assembly.Location);
+            AddManaged(typeof(QB.Book).Assembly.Location);
+            AddManaged(typeof(RoslynService).Assembly.Location);
+            return paths.Values.ToArray();
         }
+
         private static List<MetadataReference> GetOrBuildDefaultReferences()
         {
             lock (s_refLock)
             {
-                if (s_cachedReferences != null)
-                    return s_cachedReferences;
-
-                var refPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            typeof(object).Assembly.Location,
-            typeof(Console).Assembly.Location,
-            typeof(Enumerable).Assembly.Location,
-            typeof(System.Runtime.GCSettings).Assembly.Location
-        };
-
-                try
-                {
-                    refPaths.Add(typeof(System.Drawing.Point).Assembly.Location);
-                    refPaths.Add(typeof(System.Windows.Forms.Control).Assembly.Location);
-                }
-                catch { }
-
-                string netstandardPath = Path.Combine(RuntimeEnvironment.GetRuntimeDirectory(), "netstandard.dll");
-                if (File.Exists(netstandardPath)) refPaths.Add(netstandardPath);
-
-                string libsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libs");
-                if (Directory.Exists(libsDir))
-                {
-                    foreach (string path in Directory.GetFiles(libsDir, "*.dll"))
-                    {
-                        if (!IsManagedAssembly(path))
-                        {
-                            Debug.WriteLine($"[Roslyn] Skip unmanaged: {Path.GetFileName(path)}");
-                            continue;
-                        }
-
-                        try
-                        {
-                            refPaths.Add(path);
-                            Debug.WriteLine($"[Roslyn] +ManagedRef: {Path.GetFileName(path)}");
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"[Roslyn] Skip {Path.GetFileName(path)}: {ex.Message}");
-                        }
-                    }
-                }
-
-                var refs = new List<MetadataReference>();
-                foreach (string p in refPaths)
-                {
-                    try
-                    {
-                        refs.Add(MetadataReference.CreateFromFile(p));
-                    }
-                    catch (BadImageFormatException)
-                    {
-                        Debug.WriteLine($"[Roslyn] Bad image skipped: {p}");
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"[Roslyn] Metadata load failed: {p} → {ex.Message}");
-                    }
-                }
-
-                s_cachedReferences = refs;
-                return refs;
+                return s_cachedReferences ??= GetBookReferencePaths()
+                    .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path)).ToList();
             }
         }
         private void EnsureOutputPaths(string sender, string? assemblyName, bool force = false)
@@ -656,16 +588,7 @@ namespace qbook
 
             Debug.WriteLine("[Roslyn] Building references...");
 
-            references = new List<MetadataReference>();
-
-            // deine bisherigen Logiken (Basisreferenzen, AppDomain, netstandard usw.)
-            references.Add(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
-            references.Add(MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location));
-            references.Add(MetadataReference.CreateFromFile(typeof(System.Windows.Forms.Form).Assembly.Location));
-            references.Add(MetadataReference.CreateFromFile(typeof(System.Drawing.Point).Assembly.Location));
-            references.Add(MetadataReference.CreateFromFile(typeof(Microsoft.CSharp.RuntimeBinder.Binder).Assembly.Location));
-            references.Add(MetadataReference.CreateFromFile(typeof(System.Text.Json.Serialization.JsonAttribute).Assembly.Location));
-            references.AddRange(AddLoadedAssembliesAsReferences());
+            references = GetOrBuildDefaultReferences();
 
            // EnsureOutputPaths(sender: "CreateProject", assemblyName: "InMemoryAssembly");
             var parseOptions = new CSharpParseOptions(LanguageVersion.Preview);
@@ -1674,34 +1597,16 @@ namespace qbook
             return map;
         }
 
-        private static bool IsManagedAssembly(string path)
+        public static bool IsManagedAssembly(string path)
         {
             try
             {
-                using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read))
-                using (var br = new BinaryReader(fs))
-                {
-                    if (fs.Length < 0x3C + 4) return false;
-                    fs.Position = 0x3C;
-                    int peHeaderOffset = br.ReadInt32();
-                    if (peHeaderOffset + 0x18 + 2 > fs.Length) return false;
-                    fs.Position = peHeaderOffset + 0x18;
-                    ushort magic = br.ReadUInt16();
-                    long pos = (magic == 0x010b) ? peHeaderOffset + 0xF8 : peHeaderOffset + 0x108;
-                    if (pos + 0x70 + 8 > fs.Length) return false;
-                    fs.Position = pos + 0x70;
-                    uint cliHeaderRva = br.ReadUInt32();
-                    uint cliHeaderSize = br.ReadUInt32();
-                    return cliHeaderRva != 0 && cliHeaderSize != 0;
-                }
+                AssemblyName.GetAssemblyName(path);
+                return true;
             }
-            catch
-            {
-                return false;
-            }
+            catch (BadImageFormatException) { return false; }
+            catch (IOException) { return false; }
         }
-
-
         #region Auto-Complete
         public async Task<IReadOnlyList<string>> GetAutoCompleteSuggestionsAsync(RoslynDocument document, string text, int caretPosition, char? triggerChar = null)
         {

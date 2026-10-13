@@ -1,4 +1,5 @@
-﻿using CefSharp;
+using System.ComponentModel;
+using CefSharp;
 using ColoredTextBox;
 using CSScripting;
 using log4net;
@@ -20,8 +21,8 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web;
 using System.Windows.Forms;
+using MethodInvoker = System.Windows.Forms.MethodInvoker;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 
 
@@ -1041,7 +1042,9 @@ namespace qbook
                 Rectangle rect = new Rectangle(this.Width - 20, 1, 20, 20);
                 e.Graphics.DrawImage(Properties.Resources.delete_cross_icon2, rect);
             }
+            [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
             public int ID { get; set; }
+            [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
             public bool DeleteIconClicked { get; set; }
 
             protected override void OnMouseDown(MouseEventArgs e)
@@ -2254,6 +2257,7 @@ namespace qbook
         }
 
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public bool HidPageMenuBar
         {
             get { return PageControlBar == 0; }
@@ -2292,6 +2296,7 @@ namespace qbook
 
 
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public bool FullScreen
         {
             get { return isFullScreen; }
@@ -2422,24 +2427,16 @@ namespace qbook
             string projectDlls = Path.Combine(projectRoot, "dlls");
             string baseDir = Path.Combine(root, "qbookCsScript","bin","Debug");
 
-            var dllFiles = Directory.GetFiles(baseDir, "*.dll")
-                .Concat(Directory.Exists(projectDlls) ? Directory.GetFiles(projectDlls, "*.dll") : Array.Empty<string>())
-                .ToArray();
-
-            string[] exclude = { "Microsoft.CodeAnalysis" };
+            var dllFiles = RoslynService.GetProjectReferencePaths(RoslynService.GetBookReferencePaths()
+                .Concat(Directory.Exists(projectDlls) ? Directory.GetFiles(projectDlls, "*.dll") : Array.Empty<string>()));
 
             var referenceItems = dllFiles
-                .Where(path =>
-                {
-                    string fileName = Path.GetFileNameWithoutExtension(path);
-                    return !exclude.Any(prefix => fileName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
-                })
                 .Select(path =>
                 {
                     string fileName = Path.GetFileNameWithoutExtension(path);
                     return $@"
-    <Reference Include=""{fileName}"">
-      <HintPath>{path}</HintPath>
+    <Reference Include=""{System.Security.SecurityElement.Escape(fileName)}"">
+      <HintPath>{System.Security.SecurityElement.Escape(path)}</HintPath>
     </Reference>";
                 });
 
@@ -2452,8 +2449,10 @@ namespace qbook
 <Project Sdk=""Microsoft.NET.Sdk"">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net9.0-windows</TargetFramework>
+    <TargetFramework>{CsprojGenerator.BookTargetFramework}</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
     <EnableDefaultItems>false</EnableDefaultItems>
   </PropertyGroup>
 

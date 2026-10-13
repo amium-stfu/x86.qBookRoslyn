@@ -1,4 +1,5 @@
-﻿using System;
+using System.ComponentModel;
+using System;
 using System.Windows.Forms;
 
 namespace qbook
@@ -10,6 +11,7 @@ namespace qbook
             InitializeComponent();
             ResizePageControl();
         }
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public oPage Page
         {
             set

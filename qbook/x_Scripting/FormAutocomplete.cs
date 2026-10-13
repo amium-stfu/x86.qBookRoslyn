@@ -1,4 +1,5 @@
-﻿using System;
+using System.ComponentModel;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
@@ -45,6 +46,7 @@ namespace qbook.Scripting
         }
 
         List<AutoCompleteItem> _Items;
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public List<AutoCompleteItem> Items
         {
             get
@@ -61,6 +63,7 @@ namespace qbook.Scripting
             }
         }
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string SelectedText
         {
             get
@@ -94,6 +97,7 @@ namespace qbook.Scripting
         }
 
         string _filter = "";
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Filter
         {
             get { return _filter; }
@@ -143,7 +147,9 @@ namespace qbook.Scripting
                     base.Show(owner);
             }
 
+            [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
             public string Title { get => labelTitle.Text; set => labelTitle.Text = value; }
+            [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
             public string Info
             {
                 get => labelInfo.Text;

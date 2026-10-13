@@ -1,4 +1,4 @@
-﻿using CefSharp.DevTools.Debugger;
+using CefSharp.DevTools.Debugger;
 using CSScripting;
 using CSScriptLib;
 using IronPython.Runtime.Operations;
@@ -34,7 +34,6 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web.Script.Serialization;
 using System.Windows.Forms;
 using System.Xml;
 using static Community.CsharpSqlite.Sqlite3;

@@ -1,4 +1,4 @@
-﻿using qbook.Scripting;
+using qbook.Scripting;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -16,6 +16,7 @@ namespace ColoredTextBox
         public bool ShowDebugInfo = false;
 
         public string _parentObjectName = null;
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string ParentObjectName
         {
             get => _parentObjectName;
@@ -809,6 +810,7 @@ namespace ColoredTextBox
         public bool EnableAutocomplete = false;
 
         public string OrigText = null;
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Text
         {
             get
