@@ -178,6 +178,12 @@ namespace qbook
 
         private string GetCodeDirectoryPath()
         {
+            var book = Core.ThisBook;
+            if (book != null)
+            {
+                return book.CodeDirectory;
+            }
+
             if (!string.IsNullOrWhiteSpace(_assemblyOutputPath))
             {
                 var dir = Path.GetDirectoryName(_assemblyOutputPath);
@@ -185,12 +191,6 @@ namespace qbook
                 {
                     return dir;
                 }
-            }
-
-            var book = Core.ThisBook;
-            if (book != null)
-            {
-                return Path.Combine(book.Directory, book.ProjectName + ".Code");
             }
 
             return string.Empty;
@@ -635,7 +635,7 @@ namespace qbook
                 return;
 
             var effectiveName = string.IsNullOrWhiteSpace(assemblyName) ? "InMemoryAssembly" : assemblyName;
-            var outputDirectory = Path.Combine(Path.GetTempPath(), "qbookRoslyn");
+            var outputDirectory = Core.ThisBook.CodeDirectory;
 
             try
             {
@@ -655,8 +655,8 @@ namespace qbook
                 //_assemblyOutputPath = Path.Combine(outputDirectory, $"{effectiveName}{suffix}.dll");
                 //_pdbOutputPath = Path.Combine(outputDirectory, $"{effectiveName}{suffix}.pdb");
                 
-                _assemblyOutputPath = Path.Combine(Core.ThisBook.DataDirectory.Replace(".data",".code"), "Book.dll");
-                _pdbOutputPath = Path.Combine(Core.ThisBook.DataDirectory.Replace(".data", ".code"), "Book.pdb");
+                _assemblyOutputPath = Path.Combine(Core.ThisBook.CodeDirectory, "Book.dll");
+                _pdbOutputPath = Path.Combine(Core.ThisBook.CodeDirectory, "Book.pdb");
 
                 Debug.WriteLine("");
             }
@@ -850,7 +850,7 @@ namespace qbook
             return text.ToString();
         }
 
-        public CodeDocument AddCodeDocument(string filename, string code, bool active)
+        public CodeDocument AddCodeDocument(string filename, string code, bool active, string codeDirectory = null, string pageName = null)
         {
             if (_adhocWs == null || _projectId == null)
                 throw new InvalidOperationException("Workspace/Project not initialized.");
@@ -860,7 +860,7 @@ namespace qbook
                 DocumentId.CreateNewId(_projectId),
                 name: filename,
                 loader: TextLoader.From(TextAndVersion.Create(SourceText.From(code, Encoding.UTF8), VersionStamp.Create())),
-                filePath: FilePath(filename));
+                filePath: FilePath(filename, codeDirectory, pageName));
 
             var doc = _adhocWs.AddDocument(docInfo);
 
@@ -877,14 +877,15 @@ namespace qbook
 
             return _docMap[filename];
         }
-        string FilePath(string filename)
+        string FilePath(string filename, string codeDirectory = null, string pageName = null)
         {
             string[] data = filename.Split('.');
 
-            if (data.Count() > 2)
-                return Path.Combine(Core.OpenedDirectory, Path.GetFileName(Core.OpenedDirectory) + ".code", "Pages", data[0], filename);
+            string directory = codeDirectory ?? GetCodeDirectoryPath();
+            if (pageName != null || data.Count() > 2)
+                return Path.Combine(directory, "Pages", pageName ?? data[0], filename);
 
-            return Path.Combine(Core.OpenedDirectory, Path.GetFileName(Core.OpenedDirectory) + ".code", filename);
+            return Path.Combine(directory, filename);
         }
 
      
@@ -1494,7 +1495,7 @@ namespace qbook
 
 
                 var asm = LoadRuntimeAssembly(peImage, pdbImage);
-                string codeDir = Path.Combine(Core.ThisBook.Directory, Core.ThisBook.ProjectName + ".Code");
+                string codeDir = Core.ThisBook.CodeDirectory;
 
                 var compilationSourcePaths = compilation.SyntaxTrees
                     .Select(tree => tree.FilePath)

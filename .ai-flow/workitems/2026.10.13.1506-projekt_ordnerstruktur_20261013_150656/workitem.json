@@ -1,0 +1,13 @@
+{
+  "id": "2026.10.13.1506-projekt_ordnerstruktur_20261013_150656",
+  "title": "Projekt Ordnerstruktur - 20261013-150656",
+  "owner_user_id": "StefanFunk",
+  "status": "implemented",
+  "branch": "main",
+  "updated_at": "2026-10-13T13:29:10.2286342+00:00",
+  "progress": "Approved project path changes applied. Worker Build passed with exit code 0.",
+  "next_step": "REPORT or DEBUG is available; another IMPLEMENT requires a new PLAN.",
+  "planning_ready": false,
+  "ai_mode": false,
+  "validation": true
+}

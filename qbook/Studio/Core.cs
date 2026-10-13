@@ -834,7 +834,8 @@ using System.Text.Json;
 
               
 
-                string backupDir = fullPath.Replace(".qbook", ".backup");
+                string codeDir = Book.GetProjectDirectory(directory, filename, ".code");
+                string backupDir = Book.GetProjectDirectory(directory, filename, ".backup");
                 if (!Directory.Exists(backupDir))
                     Directory.CreateDirectory(backupDir);
 
@@ -843,6 +844,8 @@ using System.Text.Json;
                 {
                     Debug.WriteLine("XML detected");
                     ThisBook = Book.Deserialize(fullPath);
+                    ThisBook.Directory = directory;
+                    ThisBook.Filename = filename;
                     await BookBuilder.XmlToFolder(fullPath);
                     QB.Logger.Info($"Opening qbook: {fullPath} from XML-File");
                     File.Copy(fullPath, Path.Combine(backupDir, filename), true); 
@@ -851,13 +854,14 @@ using System.Text.Json;
                 {
                     Debug.WriteLine("Folder detected");
                     QB.Logger.Info($"Opening qbook: {fullPath} from Folder");
-                    ThisBook = await BookBuilder.FromFolder(fullPath.Replace(".qbook", ".code"),"");
+                    ThisBook = await BookBuilder.FromFolder(codeDir, fullPath);
 
                 }
                 Core.ThisBook.DataDirectory = null;
                 Core.ThisBook.SettingsDirectory = null;
                 Core.ThisBook.TempDirectory = null;
                 Core.ThisBook.Directory = directory;
+                Core.ThisBook.Filename = filename;
 
                 RoslynService.EnsureLibsDirectory();
                 Core.Roslyn?.RefreshLibReferences();
@@ -1100,7 +1104,7 @@ using System.Text.Json;
         {
             try
             {
-                string uri = Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename.Replace(".qbook", "") + ".code");
+                string uri = Core.ThisBook.CodeDirectory;
 
                 if (Directory.Exists(uri))
                 {

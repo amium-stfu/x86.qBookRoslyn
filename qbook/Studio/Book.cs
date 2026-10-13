@@ -69,6 +69,7 @@ namespace qbook
             {
                 var changed = _Directory != value;
                 _Directory = value;
+                if (changed) _BackupDirectory = null;
                 if (changed)
                 {
                     //OnStaticPropertyChangedEvent("Directory", _Directory);
@@ -90,6 +91,7 @@ namespace qbook
             {
                 var changed = _Filename != value;
                 _Filename = value;
+                if (changed) _BackupDirectory = null;
                 if (changed)
                 {
                     //OnStaticPropertyChangedEvent("Filename", _Filename);
@@ -97,7 +99,19 @@ namespace qbook
             }
         }
 
-        public string CodeDirectory => Path.Combine(Directory, ProjectName + ".code");
+        public string CodeDirectory => GetProjectDirectory(Directory, Filename, ".code");
+
+        internal static string GetProjectBaseName(string filename)
+        {
+            string name = Path.GetFileNameWithoutExtension(filename);
+            Match version = Regex.Match(name, @"\.v\d");
+            return version.Success ? name.Substring(0, version.Index) : name;
+        }
+
+        internal static string GetProjectDirectory(string directory, string filename, string suffix)
+        {
+            return Path.Combine(directory, GetProjectBaseName(filename) + suffix);
+        }
 
         public void SetDataDirectory(string dir) { _DataDirectory = dir; }
         public void SetSettingsDirectory(string dir) { _SettingsDirectory = dir; }
@@ -149,27 +163,10 @@ namespace qbook
             {
                 if (_BackupDirectory == null)
                 {
-                    //create/use default data-directory
-                    string qbookName = Core.ThisBook.Filename;
-                    Match m = NameVersionExtRegex.Match(qbookName);
-                    if (m.Success)
-                    {
-                        string name = m.Groups["name"].Value;
-                        string version = m.Groups["version"].Value;
-                        string ext = m.Groups["ext"].Value.ToLower();
-                        if (ext == ".qbook")
-                        {
-                            string dir = Path.Combine(Core.ThisBook.Directory, name + ".backup");
-                            if (!System.IO.Directory.Exists(dir))
-                                System.IO.Directory.CreateDirectory(dir);
-
-                            _BackupDirectory = dir;
-                        }
-                    }
-                    else
-                    {
-                        _BackupDirectory = qbookName + ".backup";
-                    }
+                    string dir = GetProjectDirectory(Directory, Filename, ".backup");
+                    if (!System.IO.Directory.Exists(dir))
+                        System.IO.Directory.CreateDirectory(dir);
+                    _BackupDirectory = dir;
                 }
                 return _BackupDirectory;
             }

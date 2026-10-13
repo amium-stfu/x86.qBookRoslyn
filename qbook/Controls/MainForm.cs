@@ -2504,13 +2504,13 @@ namespace qbook
         {
            // BookBuilder.CreateBook("T:\\qbooksave\\Demo", "TestBook");
       
-            string name = Core.ThisBook.Filename.Replace(".qbook", ".csproj");
-            string path = Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename.Replace(".qbook", ".code"), name);
+            string name = Book.GetProjectBaseName(Core.ThisBook.Filename) + ".csproj";
+            string path = Path.Combine(Core.ThisBook.CodeDirectory, name);
 
-            PipeNames.SavePipesToFile(Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename.Replace(".qbook", ".code"), "pipes.json"));
+            PipeNames.SavePipesToFile(Path.Combine(Core.ThisBook.CodeDirectory, "pipes.json"));
 
 
-            string codePath = Path.Combine(Core.ThisBook.Directory, Core.ThisBook.Filename.Replace(".qbook", ".code"));
+            string codePath = Core.ThisBook.CodeDirectory;
 
             //var VSCloader = new ProcessStartInfo
             //{
@@ -2598,7 +2598,7 @@ namespace qbook
 
                 string backupFile = System.DateTime.Now.ToString("yyyyMMdd_HHmms") + Core.ThisBook.Filename.Replace(".qbook", "") + "_" +  ".code";
                 string backupUri = Path.Combine(Core.ThisBook.BackupDirectory, System.DateTime.Now.ToString("yyyyMMdd_HHmms") + "_" + Core.ThisBook.ProjectName);
-                BookBuilder.SaveBook(backupUri, Core.ThisBook.ProjectName);
+                BookBuilder.SaveBook(backupUri, Core.ThisBook.Filename);
                 BookBuilder.SaveBook();
 
                 qbook.Core.ThisBook.Modified = false;

@@ -1,0 +1,74 @@
+{
+  "FormatVersion": 1,
+  "Session": {
+    "Id": "e2e1863e-838d-4325-badb-0f2a762dc64d",
+    "Title": "Projekt Ordnerstruktur - 20261013-150656",
+    "WorkItemPath": ".ai-flow/workitems/2026.10.13.1506-projekt_ordnerstruktur_20261013_150656",
+    "ExportedAt": "2026-10-13T13:29:20.0719046+00:00",
+    "ApplicationVersion": "2026.10.05.2030"
+  },
+  "Messages": [
+    {
+      "Id": "28e5deaf-1d38-4a0a-bd40-8fa25552c3e6",
+      "CreatedAt": "2026-10-13T13:06:57.016561+00:00",
+      "Role": "User",
+      "Text": "# Title Projekt Ordnerstruktur\n\n## Current\nAktuell wird f\u00FCr ein Projekt der Code Ordner immer aus dem vollen Dateinamen gebaut.\u000Bzb:\u000B.\\EOL.v20250929.qbook\u000B\\EOL.v20250929.code\\\u000B\\EOL.v20250929.backup\\\u000B\u000BUrspr\u00FCnglich war es mal so, dass alles nach dem \u0022.v\u0022 im Filenamen ignoriert wird.\u000B\u000BBei \u000B\n\n## Goal\nZiel sollte sein das das Projektverzeichnise entsprechend angelegt und verwaltet werden.\u000B.\\EOL.v20250929.qbook\u000B.\\EOL.code\\\u000B\\EOL.backup\\\u000B\u000B\u000B.vxxxxxxxx  Dient nur als Versionshinweis\n\n## Acceptance Criteria\n\n\n## Out of Scope\n",
+      "Attachments": [
+        {
+          "FileName": "BookBuilder.cs",
+          "FileType": null,
+          "RelativePath": "attachments/28e5deaf-1d38-4a0a-bd40-8fa25552c3e6/BookBuilder.cs"
+        }
+      ]
+    },
+    {
+      "Id": "e3369545-b5e1-4b9d-b7ea-322b57f6137e",
+      "CreatedAt": "2026-10-13T13:08:27.6106384+00:00",
+      "Role": "Assistant",
+      "Text": "Die Namensbildung ist derzeit uneinheitlich: \u0060Book.cs\u0060 ignoriert bereits \u0060.v\u0060 mit nachfolgender Ziffer f\u00FCr Standardverzeichnisse wie \u0060.backup\u0060 und \u0060.data\u0060. \u00D6ffnen, Neuerstellen, XML-Konvertierung und Editoraufruf verwenden dagegen den vollst\u00E4ndigen Dateinamen f\u00FCr \u0060.code\u0060; beim \u00D6ffnen entsteht zus\u00E4tzlich ein versionsabh\u00E4ngiger Backupordner. Der Anhang entspricht der aktuellen \u0060BookBuilder.cs\u0060.\n\nDer Umfang umfasst deshalb die zusammenh\u00E4ngenden Pfade in \u0060BookBuilder\u0060, \u0060Core\u0060, \u0060Book\u0060 und den Editoraufrufen.\n\nAls Akzeptanzkriterien vorgesehen:\n\n- \u0060EOL.v20250929.qbook\u0060 verwendet neben der Datei \u0060EOL.code\u0060 und \u0060EOL.backup\u0060.\n- Erstellen, \u00D6ffnen, Speichern, XML-Konvertierung und Editorzugriff verwenden denselben Codeordner.\n- Ohne Versionszusatz bleibt die Zuordnung \u0060EOL.qbook\u0060 \u2192 \u0060EOL.code\u0060 / \u0060EOL.backup\u0060 erhalten.\n- Die \u0060.qbook\u0060-Datei beh\u00E4lt ihren Versionszusatz. Unterschiedliche Versionen desselben Basisnamens teilen damit die Projektordner.\n- Die bestehenden Regeln f\u00FCr \u0060.data\u0060, \u0060.settings\u0060 und \u0060.temp\u0060 bleiben erhalten.\n\nZwei materielle Entscheidungen sind noch offen. \u0060planning_ready\u0060 bleibt \u0060false\u0060; Quelldateien wurden nicht ver\u00E4ndert. \u0060validation: true\u0060 bleibt erhalten; die automatische Build-Validierung wird an PLAN delegiert.\n\n:::questions\n{\n  \u0022questions\u0022: [\n    {\n      \u0022id\u0022: \u0022version_suffix\u0022,\n      \u0022type\u0022: \u0022single_select\u0022,\n      \u0022text\u0022: \u0022Welcher Versionszusatz soll bei der Bildung der Ordnernamen ignoriert werden?\u0022,\n      \u0022required\u0022: true,\n      \u0022options\u0022: [\n        \u0022Wie bisher: ab dem ersten kleinen .v mit direkt nachfolgender Ziffer; EOL.v20250929 wird EOL, EOL.variant bleibt unver\u00E4ndert.\u0022,\n        \u0022Ab dem ersten kleinen .v unabh\u00E4ngig vom folgenden Text; auch EOL.variant wird EOL.\u0022,\n        \u0022Andere Regel\u0022\n      ]\n    },\n    {\n      \u0022id\u0022: \u0022version_suffix_other\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Bitte die gew\u00FCnschte Regel f\u00FCr Versionszus\u00E4tze angeben.\u0022,\n      \u0022required\u0022: true,\n      \u0022visible_when\u0022: {\n        \u0022question_id\u0022: \u0022version_suffix\u0022,\n        \u0022has_any_of\u0022: [\u0022Andere Regel\u0022]\n      }\n    },\n    {\n      \u0022id\u0022: \u0022existing_directories\u0022,\n      \u0022type\u0022: \u0022single_select\u0022,\n      \u0022text\u0022: \u0022Wie sollen vorhandene versionsabh\u00E4ngige Ordner wie EOL.v20250929.code und EOL.v20250929.backup behandelt werden?\u0022,\n      \u0022required\u0022: true,\n      \u0022options\u0022: [\n        \u0022Manuelle Umstellung: Die Anwendung verwendet k\u00FCnftig ausschlie\u00DFlich die Basisordner; bestehende Ordner benenne ich vorher selbst um.\u0022,\n        \u0022Automatische Umstellung beim \u00D6ffnen: Alte Ordner zum Basisnamen verschieben, sofern das Ziel fehlt; bei gleichzeitig vorhandenen alten und neuen Ordnern mit verst\u00E4ndlicher Meldung abbrechen, ohne Inhalte zusammenzuf\u00FChren.\u0022,\n        \u0022Andere Vorgehensweise\u0022\n      ]\n    },\n    {\n      \u0022id\u0022: \u0022existing_directories_other\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Bitte die gew\u00FCnschte Behandlung bestehender Ordner und m\u00F6glicher Konflikte beschreiben.\u0022,\n      \u0022required\u0022: true,\n      \u0022visible_when\u0022: {\n        \u0022question_id\u0022: \u0022existing_directories\u0022,\n        \u0022has_any_of\u0022: [\u0022Andere Vorgehensweise\u0022]\n      }\n    }\n  ]\n}\n:::endquestions",
+      "Attachments": []
+    },
+    {
+      "Id": "7397873c-7470-41e4-94e7-7af98f9063ba",
+      "CreatedAt": "2026-10-13T13:19:19.9556538+00:00",
+      "Role": "User",
+      "Text": "Welcher Versionszusatz soll bei der Bildung der Ordnernamen ignoriert werden?: Wie bisher: ab dem ersten kleinen .v mit direkt nachfolgender Ziffer; EOL.v20250929 wird EOL, EOL.variant bleibt unver\u00E4ndert.\r\nWie sollen vorhandene versionsabh\u00E4ngige Ordner wie EOL.v20250929.code und EOL.v20250929.backup behandelt werden?: Manuelle Umstellung: Die Anwendung verwendet k\u00FCnftig ausschlie\u00DFlich die Basisordner; bestehende Ordner benenne ich vorher selbst um.",
+      "Attachments": []
+    },
+    {
+      "Id": "38262f9b-4f24-4a8f-8424-198ea0ff925b",
+      "CreatedAt": "2026-10-13T13:19:53.3528672+00:00",
+      "Role": "Assistant",
+      "Text": "\u0060workitem.md\u0060 steht jetzt auf \u0060status: ready\u0060 und \u0060planning_ready: true\u0060.\n\n- **Ziel:** \u0060EOL.v20250929.qbook\u0060 verwendet \u0060EOL.code\u0060 und \u0060EOL.backup\u0060 neben der Datei.\n- **Namensregel:** Ab dem ersten kleinen \u0060.v\u0060 mit direkt nachfolgender Ziffer wird der Zusatz f\u00FCr Ordnernamen ignoriert. \u0060EOL.variant\u0060 bleibt unver\u00E4ndert.\n- **Umfang:** Erstellen, \u00D6ffnen, Speichern, XML-Konvertierung und Editorzugriff verwenden dieselbe Zuordnung. Dateinamen ohne Versionszusatz funktionieren weiterhin.\n- **Abgrenzung:** Keine automatische Migration oder Zusammenf\u00FChrung. Bestehende Ordner benennst du manuell um. Die \u0060.qbook\u0060-Dateinamen und die bestehenden Regeln f\u00FCr \u0060.data\u0060, \u0060.settings\u0060 und \u0060.temp\u0060 bleiben erhalten.\n- **Validierung:** \u0060validation: true\u0060. PLAN bestimmt das konkrete Build-Ziel und den Aufruf gem\u00E4\u00DF den Repository-Regeln f\u00FCr den vollst\u00E4ndigen Projekt-Build \u00FCber RunWorker.\n- **Offene materielle Punkte / verbleibende materielle PLAN-Entscheidungen:** Keine.\n\nEs wurden ausschlie\u00DFlich Workflow-Metadaten ge\u00E4ndert.",
+      "Attachments": []
+    },
+    {
+      "Id": "6e500364-c126-469e-a92a-a33dc13ff7a9",
+      "CreatedAt": "2026-10-13T13:20:45.3872061+00:00",
+      "Role": "User",
+      "Text": "Plan",
+      "Attachments": []
+    },
+    {
+      "Id": "564c00d1-a64d-4f45-ae74-98f1f01a2c3a",
+      "CreatedAt": "2026-10-13T13:23:40.0550035+00:00",
+      "Role": "Assistant",
+      "Text": "Die ausf\u00FChrbare IMPLEMENT-\u00DCbergabe wurde erstellt:\n\n\u0060.ai-flow/workitems/2026.10.13.1506-projekt_ordnerstruktur_20261013_150656/handoffs/2026.10.13.1506-implementation-handoff.md\u0060\n\nSie enth\u00E4lt den konkreten Dateiumfang, Umsetzungsschritte, Akzeptanzkriterien und den vollst\u00E4ndigen Build \u00FCber RunWorker. Build- und Launch-Konfiguration bleiben unver\u00E4ndert.\n\nQuelldateien wurden nicht ge\u00E4ndert; \u0060planning_ready: true\u0060 bleibt erhalten.",
+      "Attachments": []
+    },
+    {
+      "Id": "12851494-0e59-4169-a860-b1b5d419778a",
+      "CreatedAt": "2026-10-13T13:24:34.1266943+00:00",
+      "Role": "User",
+      "Text": "Implement with gpt-6.1-sol \u2022 Medium",
+      "Attachments": []
+    },
+    {
+      "Id": "794075cd-4b14-43c3-a986-548123cd063a",
+      "CreatedAt": "2026-10-13T13:29:19.911123+00:00",
+      "Role": "Assistant",
+      "Text": "Ge\u00E4ndert: \u0060Book.cs\u0060, \u0060BookBuilder.cs\u0060, \u0060Core.cs\u0060, \u0060MainForm.cs\u0060 und \u0060RoslynService.cs\u0060.\n\n\u0060EOL.v20250929.qbook\u0060 verwendet nun \u0060EOL.code\u0060 und \u0060EOL.backup\u0060 neben der Datei. Der vollst\u00E4ndige Dateiname bleibt erhalten; Editor und Roslyn verwenden denselben Codeordner.\n\nWorker-Build \u0060qbookStudio.sln\u0060, \u0060Release|x64\u0060: erfolgreich, Exitcode \u00600\u0060. Bericht: \u0060.ai-flow/BuildReport.txt\u0060. Keine Laufzeit- oder UI-Pr\u00FCfungen ausgef\u00FChrt.\n\n\u00DCbergabe archiviert; Status \u0060implemented\u0060, \u0060planning_ready: false\u0060.",
+      "Attachments": []
+    }
+  ]
+}

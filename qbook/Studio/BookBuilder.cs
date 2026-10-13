@@ -67,12 +67,12 @@ namespace qbook.Studio
 
 
             if (directory == null)
-                directory = Core.ThisBook.DataDirectory;
+                directory = Core.ThisBook.Directory;
 
-            if(name == null)
-                name = Core.ThisBook.ProjectName;
-
-            string book = System.IO.Path.Combine(directory, name + ".code");
+            string filename = name == null ? Core.ThisBook.Filename :
+                (name.EndsWith(".qbook", StringComparison.OrdinalIgnoreCase) ? name : name + ".qbook");
+            string baseName = Book.GetProjectBaseName(filename);
+            string book = Book.GetProjectDirectory(directory, filename, ".code");
 
             if (!System.IO.Directory.Exists(book))
             {
@@ -80,15 +80,15 @@ namespace qbook.Studio
             }
 
           
-            string bookJson = CreateBookJson(folder:book,name: name);
+            string bookJson = CreateBookJson(folder: book, directory: directory, filename: filename);
             string programCs = CreateProgramCs(System.IO.Path.Combine(book, "Program.cs"));
-            string csproj = CreateCsproj("InMemoryProject", file: System.IO.Path.Combine(book, name+ ".csproj"));
+            string csproj = CreateCsproj("InMemoryProject", file: System.IO.Path.Combine(book, baseName + ".csproj"));
             string globalUsings = CreateGlobalUsing(System.IO.Path.Combine(book, "GlobalUsings.cs"));
             System.IO.Directory.CreateDirectory(System.IO.Path.Combine(book, "Pages"));
             SaveAllPages(book);
 
             string pagesInfo = string.Join("\n\n", qbook.Core.ActualMain.Objects.OfType<oPage>().Select(p => CreatePageDefinition(p)));
-            System.IO.File.WriteAllText(System.IO.Path.Combine(directory, name + ".qbook"), pagesInfo);
+            System.IO.File.WriteAllText(System.IO.Path.Combine(directory, filename), pagesInfo);
 
             return bookJson + "\n\n" + programCs + "\n\n" + csproj;
         }
@@ -192,7 +192,7 @@ namespace qbook.Studio
             return sb.ToString();
         }
 
-        private static string CreateBookJson(string folder = "T:\\qbooksave\\book.json", string name = "")
+        private static string CreateBookJson(string folder, string directory, string filename)
         {
            
            
@@ -208,12 +208,12 @@ namespace qbook.Studio
                 PasswordAdmin = Core.ThisBook.PasswordAdmin,
                 PasswordService = Core.ThisBook.PasswordService,
                 PasswordUser = Core.ThisBook.PasswordUser,
-                Directory = System.IO.Path.Combine(folder,name,".code"),
-                Filename = name + ".qbook",
-                SettingsDirectory = System.IO.Path.Combine(folder, name, ".settings"),
-                DataDirectory = System.IO.Path.Combine(folder, name, ".data"),
-                TempDirectory = System.IO.Path.Combine(folder, name, ".temp"),
-                BackupDirectory = System.IO.Path.Combine(folder, name, ".backup"),
+                Directory = directory,
+                Filename = filename,
+                SettingsDirectory = Core.ThisBook.SettingsDirectory,
+                DataDirectory = Core.ThisBook.DataDirectory,
+                TempDirectory = Core.ThisBook.TempDirectory,
+                BackupDirectory = Book.GetProjectDirectory(directory, filename, ".backup"),
                 Language = Core.ThisBook.Language,
                 PageOrder = qbook.Core.ActualMain.Objects.OfType<oPage>().Select(p => p.Name).ToList()
             };
@@ -294,7 +294,7 @@ namespace qbook.Studio
 
             string name = Path.GetFileNameWithoutExtension(uri).Replace(".qbook", "");
             string directory = Path.GetDirectoryName(uri);
-            string codeDir = uri.Replace(".qbook", ".code");
+            string codeDir = Book.GetProjectDirectory(directory, Path.GetFileName(uri), ".code");
             if (!Directory.Exists(codeDir))
                 Directory.CreateDirectory(codeDir);
 
@@ -374,7 +374,7 @@ namespace qbook.Studio
   ""PasswordService"": null,
   ""PasswordUser"": null,
   ""Directory"": ""{directory.Replace("\\", "\\\\")}"",
-  ""Filename"": ""{name}.qbook"",
+  ""Filename"": ""{Path.GetFileName(uri)}"",
   ""SettingsDirectory"": null,
   ""DataDirectory"": null,
   ""TempDirectory"":null,
@@ -415,7 +415,7 @@ namespace qbook.Studio
 
 
            
-            BookBuilder.CreateCsproj(projectName: name, file: Path.Combine(codeDir, name + ".csproj"));
+            BookBuilder.CreateCsproj(projectName: name, file: Path.Combine(codeDir, Book.GetProjectBaseName(uri) + ".csproj"));
           
 
             await Core.OpenQbookAsync(uri);
@@ -447,7 +447,7 @@ namespace qbook.Studio
             };
         }
 
-        internal static async Task<Book> FromFolder(string folderPath, string bookname)
+        internal static async Task<Book> FromFolder(string folderPath, string fullPath)
         {
             Debug.WriteLine("BookFromFolder: " + folderPath);
             Book newBook = new Book();
@@ -466,8 +466,8 @@ namespace qbook.Studio
             newBook.PasswordAdmin = qbook.PasswordAdmin;
             newBook.PasswordService = qbook.PasswordService;
             newBook.PasswordUser = qbook.PasswordUser;
-            newBook.Directory = qbook.Directory;
-            newBook.Filename = qbook.Filename;
+            newBook.Directory = Path.GetDirectoryName(fullPath);
+            newBook.Filename = Path.GetFileName(fullPath);
             newBook.Language = qbook.Language;
             newBook.PageOrder = qbook.PageOrder;
             newBook.SetDataDirectory(qbook.DataDirectory);
@@ -503,7 +503,7 @@ namespace qbook.Studio
                 Debug.WriteLine(" --- read code text");
                 opage.Code = File.ReadAllText(Path.Combine(pageFolder, filename));
                 Debug.WriteLine(" --- add page code to Roslyn");
-                Core.Roslyn.AddCodeDocument(filename, opage.Code, true);
+                Core.Roslyn.AddCodeDocument(filename, opage.Code, true, codeDirectory: folderPath, pageName: page);
                 Debug.WriteLine(" --- get page code document");
                 opage.RoslynCodeDoc = Core.Roslyn.GetCodeDocument(filename);
 
@@ -518,7 +518,7 @@ namespace qbook.Studio
                     string subCode = File.ReadAllText(Path.Combine(pageFolder, codeFile));
 
                     CodeDocument doc = new CodeDocument(codeFile, subCode, true, Core.Roslyn);
-                    Core.Roslyn.AddCodeDocument(codeFile, subCode, true);
+                    Core.Roslyn.AddCodeDocument(codeFile, subCode, true, codeDirectory: folderPath, pageName: page);
 
                     opage.SubCodeDocuments[codeFile] = doc;
                     //if (opage.Includes.Contains(codeFile))
@@ -537,10 +537,10 @@ namespace qbook.Studio
                 newBook.Main.Objects.Add(p);
             }
 
-            Core.Roslyn.AddCodeDocument("Program.cs", File.ReadAllText(Path.Combine(folderPath, "Program.cs")), true);
-            Core.Roslyn.AddCodeDocument("GlobalUsing.cs", "global using static QB.Program;", true);
+            Core.Roslyn.AddCodeDocument("Program.cs", File.ReadAllText(Path.Combine(folderPath, "Program.cs")), true, codeDirectory: folderPath);
+            Core.Roslyn.AddCodeDocument("GlobalUsing.cs", "global using static QB.Program;", true, codeDirectory: folderPath);
 
-            string name = newBook.Filename.Replace(".qbook", "");
+            string name = Book.GetProjectBaseName(newBook.Filename);
             CreateCsproj("QbookStudioRoslyn", file: System.IO.Path.Combine(folderPath, name + ".csproj"));
 
             QB.Root.ActiveQbook = newBook;
@@ -556,7 +556,7 @@ namespace qbook.Studio
         internal static async Task XmlToFolder(string fullPath)
         {
 
-            string root = fullPath.Replace(".qbook", ".code");
+            string root = Book.GetProjectDirectory(Path.GetDirectoryName(fullPath), Path.GetFileName(fullPath), ".code");
             if (!Directory.Exists(root)) Directory.CreateDirectory(root);
 
             string pageFolder = Path.Combine(root, "Pages");
@@ -590,7 +590,7 @@ namespace qbook.Studio
                 string PageFileName = $"{page.Name}.qPage.cs";
                 page.Filename = $"{page.Name}.qPage.cs";
                 File.WriteAllText(Path.Combine(pageDir, PageFileName), pageCode);
-                page.RoslynCodeDoc = Core.Roslyn.AddCodeDocument(PageFileName, pageCode, true);
+                page.RoslynCodeDoc = Core.Roslyn.AddCodeDocument(PageFileName, pageCode, true, codeDirectory: root, pageName: page.Name);
 
                 Core.ThisBook.PageOrder.Add(page.Name);
                 page.CodeOrder.Add(PageFileName);
@@ -619,7 +619,7 @@ namespace qbook.Studio
                     page.CodeOrder.Add(subFileName);
                     page.SubCodeDocuments[subFileName] = new CodeDocument(subFileName, subCode, true, Core.Roslyn);
 
-                    Core.Roslyn.AddCodeDocument(subFileName,subCode,true);
+                    Core.Roslyn.AddCodeDocument(subFileName, subCode, true, codeDirectory: root, pageName: page.Name);
 
                     File.WriteAllText(Path.Combine(pageDir, subFileName), subCode);
                     Debug.WriteLine("   wrote subcode file: " + subFileName);
@@ -684,15 +684,15 @@ namespace qbook.Studio
             sbProgram.AppendLine("\t}");
             sbProgram.AppendLine("}");
 
-            Core.Roslyn.AddCodeDocument("Program.cs", sbProgram.ToString(), true);
-            Core.Roslyn.AddCodeDocument("GlobalUsing.cs", "global using static QB.Program;\r\n", true);
+            Core.Roslyn.AddCodeDocument("Program.cs", sbProgram.ToString(), true, codeDirectory: root);
+            Core.Roslyn.AddCodeDocument("GlobalUsing.cs", "global using static QB.Program;\r\n", true, codeDirectory: root);
 
             File.WriteAllText(Path.Combine(root, "Program.cs"), sbProgram.ToString());
             File.WriteAllText(Path.Combine(root, "GlobalUsing.cs"), "global using static QB.Program;\r\n");
 
             string name = Path.GetFileNameWithoutExtension(fullPath).Replace(".qbook", "");
 
-            BookBuilder.CreateCsproj(projectName: name, file: Path.Combine(root, name + ".csproj"));
+            BookBuilder.CreateCsproj(projectName: name, file: Path.Combine(root, Book.GetProjectBaseName(fullPath) + ".csproj"));
 
             var project = new qBookDefinition
             {
