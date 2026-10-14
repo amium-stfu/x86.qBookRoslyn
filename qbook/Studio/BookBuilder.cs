@@ -543,7 +543,7 @@ namespace qbook.Studio
             string name = Book.GetProjectBaseName(newBook.Filename);
             CreateCsproj("QbookStudioRoslyn", file: System.IO.Path.Combine(folderPath, name + ".csproj"));
 
-            QB.Root.ActiveQbook = newBook;
+            // Core publishes the completed book together with its host model.
             return newBook;
 
         }

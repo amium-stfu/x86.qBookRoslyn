@@ -1,4 +1,4 @@
-﻿import * as vscode from 'vscode';
+import * as vscode from 'vscode';
 
 export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): string {
   const nonce = createNonce();
@@ -36,9 +36,17 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
 
     .toolbar {
       display: flex;
-      flex-wrap: wrap;
+      flex-direction: column;
+      flex-wrap: nowrap;
       gap: 6px;
       margin-bottom: 12px;
+    }
+
+    .toolbar > button {
+      flex: 0 0 auto;
+      min-width: 0;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .pipe-status {
@@ -88,6 +96,11 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
       background: var(--vscode-input-background);
       color: var(--vscode-foreground);
       border: 1px solid var(--vscode-input-border, #666);
+    }
+
+    button.runtime-progress {
+      opacity: 0.65;
+      outline: 1px solid var(--vscode-focusBorder);
     }
 
     button.runtime-status {
@@ -475,6 +488,9 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
     .context-menu .menu-footer button {
       width: 100%;
     }
+    .automation-options { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+    .automation-options input { width: auto; padding: 0; margin: 0; }
+    .automation-options label { display: flex; align-items: center; gap: 6px; }
   </style>
 </head>
 <body>
@@ -486,13 +502,19 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
     <span id="pipeStatusText">Pipe broken</span>
   </div>
   <div class="toolbar">
-    <button id="btnStop" class="secondary">Stop</button>
+    <button id="btnInitialize" class="secondary">Initialize</button>
     <button id="btnRun" class="secondary">Run</button>
-    <button id="btnRebuild" class="secondary">Rebuild</button>
+    <button id="btnStop" class="secondary">Stop</button>
+    <button id="btnCheckCode" class="secondary">Check Code</button>
+    <button id="btnFastRebuild" class="secondary">Rebuild</button>
     <button id="btnBackup" class="secondary">Backup</button>
-    <button id="btnDebugToggle" class="secondary">Start Debugging</button>
+    <button id="btnDebugToggle" class="secondary" title="Start Debugging" aria-label="Start Debugging">Debug</button>
   </div>
 
+  <div class="automation-options">
+    <label><input id="autoRun" type="checkbox" checked />AutoRun</label>
+    <label><input id="autoBackup" type="checkbox" checked />AutoBackup</label>
+  </div>
   <div class="status" id="status">Ready</div>
 
   <div class="tree">
@@ -578,11 +600,21 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
 
+    const btnInitialize = document.getElementById('btnInitialize');
     const btnRun = document.getElementById('btnRun');
     const btnStop = document.getElementById('btnStop');
-    const btnRebuild = document.getElementById('btnRebuild');
+    const btnCheckCode = document.getElementById('btnCheckCode');
+    const btnFastRebuild = document.getElementById('btnFastRebuild');
     const btnBackup = document.getElementById('btnBackup');
     const btnDebugToggle = document.getElementById('btnDebugToggle');
+    const autoRun = document.getElementById('autoRun');
+    const autoBackup = document.getElementById('autoBackup');
+    autoRun?.addEventListener('change', () => {
+      vscode.postMessage({ type: 'updateAutomationOptions', autoRun: autoRun.checked });
+    });
+    autoBackup?.addEventListener('change', () => {
+      vscode.postMessage({ type: 'updateAutomationOptions', autoBackup: autoBackup.checked });
+    });
     const treeHeaderTitle = document.getElementById('treeHeaderTitle');
     const pageInput = document.getElementById('pageInput');
     const titleInput = document.getElementById('titleInput');
@@ -634,18 +666,20 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
     };
 
     const runtimeButtons = {
-      run: btnRun,
-      stop: btnStop,
-      rebuild: btnRebuild,
+      initialize: [btnInitialize],
+      run: [btnRun],
+      stop: [btnStop],
+      rebuild: [btnFastRebuild],
     };
 
     const runtimeState = {
+      initialize: null,
       run: null,
       stop: null,
       rebuild: null,
     };
 
-    const runtimeButtonKeys = ['run', 'stop', 'rebuild'];
+    const runtimeButtonKeys = ['initialize', 'run', 'stop', 'rebuild'];
     const debugState = {
       active: false,
     };
@@ -654,13 +688,15 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
       const snapshot = nextState && typeof nextState === 'object' ? nextState : {};
       runtimeButtonKeys.forEach((key) => {
         const incoming = snapshot[key];
-        const normalized = incoming === 'status' || incoming === 'alert' ? incoming : null;
+        const normalized = incoming === 'status' || incoming === 'alert' || incoming === 'progress' ? incoming : null;
         runtimeState[key] = normalized;
-        const target = runtimeButtons[key];
-        if (target) {
-          target.classList.toggle('runtime-status', normalized === 'status');
-          target.classList.toggle('runtime-alert', normalized === 'alert');
-        }
+        runtimeButtons[key].forEach((target) => {
+          if (target) {
+            target.classList.toggle('runtime-status', normalized === 'status');
+            target.classList.toggle('runtime-alert', normalized === 'alert');
+            target.classList.toggle('runtime-progress', normalized === 'progress');
+          }
+        });
       });
     }
 
@@ -668,7 +704,7 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
       const active = Boolean(nextState && typeof nextState === 'object' && nextState.active);
       debugState.active = active;
       if (btnDebugToggle) {
-        btnDebugToggle.textContent = active ? 'Stop Debugging' : 'Start Debugging';
+        btnDebugToggle.textContent = 'Debug';
         btnDebugToggle.title = active ? 'Stop Debugging' : 'Start Debugging';
         btnDebugToggle.setAttribute('aria-label', active ? 'Stop Debugging' : 'Start Debugging');
         btnDebugToggle.classList.toggle('runtime-status', active);
@@ -878,19 +914,21 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
       if (status) status.textContent = text;
     }
 
-    btnRun?.addEventListener('click', () => {
-      setStatus('Run started');
-      vscode.postMessage(payload('run'));
-    });
-
+    btnInitialize?.addEventListener('click', () => vscode.postMessage(payload('initialize')));
+    btnRun?.addEventListener('click', () => vscode.postMessage(payload('run')));
     btnStop?.addEventListener('click', () => {
-      setStatus('Stop requested');
+      setStatus('Stopping...');
       vscode.postMessage(payload('stop'));
     });
 
-    btnRebuild?.addEventListener('click', () => {
+    btnCheckCode?.addEventListener('click', () => {
+      setStatus('Check Code running');
+      vscode.postMessage(payload('checkCode'));
+    });
+
+    btnFastRebuild?.addEventListener('click', () => {
       setStatus('Rebuild running');
-      vscode.postMessage(payload('rebuild'));
+      vscode.postMessage(payload('fastRebuild'));
     });
 
     btnBackup?.addEventListener('click', () => {
@@ -1518,7 +1556,10 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
 
     window.addEventListener('message', (event) => {
       const { type, payload, message, status: incomingPipeStatus, text } = event.data ?? {};
-      if (type === 'bookData') {
+      if (type === 'automationState') {
+        if (autoRun && typeof payload?.autoRun === 'boolean') autoRun.checked = payload.autoRun;
+        if (autoBackup && typeof payload?.autoBackup === 'boolean') autoBackup.checked = payload.autoBackup;
+      } else if (type === 'bookData') {
         renderTree(payload);
       } else if (type === 'bookError') {
         renderTreeError(message);
@@ -1571,6 +1612,7 @@ export function getWebviewHtml(webview: vscode.Webview, logoUri: vscode.Uri): st
     updateRuntimeButtonsState(runtimeState);
     applyDebugButtonsState({ active: false });
 
+    vscode.postMessage({ type: 'requestAutomationState' });
     vscode.postMessage({ type: 'requestTree' });
   </script>
 </body>

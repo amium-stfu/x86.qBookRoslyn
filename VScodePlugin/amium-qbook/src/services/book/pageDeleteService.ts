@@ -8,7 +8,7 @@ export async function deletePageFromProject(
   pageName: string
 ): Promise<void> {
   if (!bookRoot) {
-    throw new Error('Kein qBook-Projekt geladen.');
+    throw new Error('No qBook project is loaded.');
   }
 
   const pageDir = getPageDirectory(bookRoot, pageName);
@@ -21,5 +21,5 @@ export async function deletePageFromProject(
 
 export function getDeletePageErrorMessage(pageName: string, error: unknown): string {
   const details = error instanceof Error ? error.message : String(error);
-  return `Page '${pageName}' konnte nicht gelöscht werden: ${details}`;
+  return `Page '${pageName}' deletion failed: ${details}`;
 }

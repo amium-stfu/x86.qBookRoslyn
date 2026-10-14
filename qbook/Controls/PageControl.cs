@@ -8,12 +8,45 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace qbook
 {
     public partial class PageControl : UserControl
     {
+        internal bool IsTeardownActive { get; private set; }
+
+        internal void BeginTeardown(System.Windows.Forms.Control host)
+        {
+            if (IsDisposed || Disposing || IsTeardownActive) return;
+            IsTeardownActive = true;
+            SuspendLayout();
+            // Only book-owned native controls belong to runtime teardown.
+            var pending = new Queue<System.Windows.Forms.Control>();
+            pending.Enqueue(host);
+            while (pending.Count > 0)
+            {
+                var parent = pending.Dequeue();
+                foreach (System.Windows.Forms.Control child in parent.Controls)
+                {
+                    pending.Enqueue(child);
+                    if (child.Tag is QB.Controls.Control) child.Visible = false;
+                }
+            }
+            if (IsHandleCreated && Visible) Refresh();
+        }
+
+        internal void EndTeardown()
+        {
+            if (!IsTeardownActive) return;
+            IsTeardownActive = false;
+            if (!IsDisposed && !Disposing)
+            {
+                ResumeLayout(false);
+                Invalidate(true);
+            }
+        }
         public PageControl()
         {
 
@@ -319,6 +352,7 @@ namespace qbook
             //
 
             PageAmium.AmiumDefault(Width, Height, Frame,Page.Format);
+            if (IsTeardownActive || !BookRuntime.CanRenderRuntime) return;
             //Chart_();
 
             Images();
@@ -476,7 +510,7 @@ namespace qbook
                 Draw.renderBounds = RenderBounds;
                 Render();
                 Draw.renderBounds = RenderBounds;
-                DialogBox.Active?.Render();
+                if (!IsTeardownActive && BookRuntime.CanRenderRuntime) DialogBox.Active?.Render();
             }
         }
 
@@ -486,6 +520,7 @@ namespace qbook
         }
         protected override void OnSizeChanged(EventArgs e)
         {
+            if (IsTeardownActive || !BookRuntime.CanRenderRuntime) return;
             try
             {
                 if (!Popout)
@@ -544,6 +579,7 @@ namespace qbook
 
         private void PageControl_MouseMove(object sender, MouseEventArgs e)
         {
+            if (IsTeardownActive || !BookRuntime.CanRenderRuntime) return;
             if (HandleDialogMouse(e, "move")) return;
             if (!Popout)
                 Page = Core.SelectedPage;
@@ -685,6 +721,7 @@ namespace qbook
 
         private void PageControl_MouseWheel(object sender, System.Windows.Forms.MouseEventArgs e)
         {
+            if (IsTeardownActive || !BookRuntime.CanRenderRuntime) return;
             if (HandleDialogMouse(e, "wheel")) return;
             if (Page != null)
             {
@@ -706,6 +743,7 @@ namespace qbook
 
         private void PageControl_MouseUp(object sender, MouseEventArgs e)
         {
+            if (IsTeardownActive || !BookRuntime.CanRenderRuntime) return;
             if (HandleDialogMouse(e, "up")) return;
             if (!Popout)
                 Page = Core.SelectedPage;
@@ -837,6 +875,7 @@ namespace qbook
         }
         private void Page_MouseDown(object sender, MouseEventArgs e)
         {
+            if (IsTeardownActive || !BookRuntime.CanRenderRuntime) return;
             if (HandleDialogMouse(e, "down")) return;
             mouseDownControl = null;
             mouseDownButton = MouseButtons.None;
@@ -1053,6 +1092,7 @@ namespace qbook
         }
         private void PageControl_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
         {
+            if (IsTeardownActive || !BookRuntime.CanRenderRuntime) return;
             if (DialogBox.Active != null) return;
             if (e.Control)
             {
@@ -1095,6 +1135,7 @@ namespace qbook
         }
         private void PageControl_KeyDown(object sender, KeyEventArgs e)
         {
+            if (IsTeardownActive || !BookRuntime.CanRenderRuntime) return;
             if (DialogBox.Active != null) { e.Handled = e.SuppressKeyPress = true; return; }
 
             //if (e.Control && e.Shift && e.KeyCode == Keys.S)

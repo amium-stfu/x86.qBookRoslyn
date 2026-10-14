@@ -1,4 +1,4 @@
-﻿import * as vscode from 'vscode';
+import * as vscode from 'vscode';
 import * as path from 'node:path';
 import { TextDecoder } from 'util';
 import { PipeBridge, PipeCommandPayload, PipeConnectionState } from './pipes/namedPipeClients';
@@ -18,6 +18,7 @@ import {
   BookTreeNode,
   BridgeMessage,
   PageMetadata,
+  RebuildAutomation,
 } from './types/extensionTypes.js';
 import {
   waitForNextDiagnosticsUpdate,
@@ -69,6 +70,8 @@ let pipeConnectionState: PipeConnectionState = 'disconnected';
 let activePipeStatusSubscription: vscode.Disposable | undefined;
 let viewProviderRef: QBookViewProvider | undefined;
 let extensionContextRef: vscode.ExtensionContext | undefined;
+let pipeRefresh: Promise<void> = Promise.resolve();
+let deactivated = false;
 
 const pipeCommandReceiverContext: PipeCommandReceiverContext = {
   notifyRuntimeSignal: (signal: RuntimeSignal, command?: PipeCommandPayload) =>
@@ -86,6 +89,9 @@ type RuntimeButtonState = Record<RuntimeButtonId, RuntimeSignalKind | null>;
 
 export function activate(context: vscode.ExtensionContext): void {
   extensionContextRef = context;
+  deactivated = false;
+  getRuntimeLogChannel()?.info('Book workspace activated; initializing runtime connection.');
+  void refreshWorkspacePipeBridge(context);
   const viewProvider = new QBookViewProvider(context);
   viewProviderRef = viewProvider;
   viewProviderRef.updatePipeStatus(pipeConnectionState);
@@ -117,7 +123,14 @@ export function activate(context: vscode.ExtensionContext): void {
   viewProvider.handleActiveEditorChange(vscode.window.activeTextEditor);
   viewProvider.refreshDiagnostics();
 
-  applySettingsPipeBridge(context);
+  const pipeWatcher = vscode.workspace.createFileSystemWatcher('**/{Book.json,pipes.json}');
+  context.subscriptions.push(
+    pipeWatcher,
+    pipeWatcher.onDidCreate(() => void refreshWorkspacePipeBridge(context)),
+    pipeWatcher.onDidChange(() => void refreshWorkspacePipeBridge(context)),
+    pipeWatcher.onDidDelete(() => void refreshWorkspacePipeBridge(context)),
+    vscode.workspace.onDidChangeWorkspaceFolders(() => void refreshWorkspacePipeBridge(context))
+  );
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((event: vscode.ConfigurationChangeEvent) => {
@@ -126,18 +139,35 @@ export function activate(context: vscode.ExtensionContext): void {
         event.affectsConfiguration('amium-qbook.pipe.clientName') ||
         event.affectsConfiguration('amium-qbook.pipe.reconnectDelay')
       ) {
-        if (currentPipeConfig?.source === 'project' && lastProjectRoot) {
-          void applyProjectPipeBridge(context, lastProjectRoot);
-        } else {
-          applySettingsPipeBridge(context);
-        }
+        void refreshWorkspacePipeBridge(context);
       }
     })
   );
 }
 
 export function deactivate(): void {
+  deactivated = true;
   disposeActivePipeBridge();
+}
+
+function refreshWorkspacePipeBridge(context: vscode.ExtensionContext): Promise<void> {
+  pipeRefresh = pipeRefresh.then(async () => {
+    if (deactivated) return;
+    const bookUri = await findBookFileInWorkspace();
+    const bookRoot = bookUri ? getDirectoryUri(bookUri) : undefined;
+    const pipes = bookRoot ? await readProjectPipeConfig(bookRoot) : undefined;
+    if (deactivated) return;
+    lastProjectRoot = bookRoot;
+    if (pipes) {
+      updatePipeBridge(context, { ...pipes, reconnectDelay: getReconnectDelaySetting(), source: 'project' });
+    } else {
+      if (currentPipeConfig?.source === 'project') disposeActivePipeBridge();
+      applySettingsPipeBridge(context);
+    }
+  }).catch((error: unknown) => {
+    getRuntimeLogChannel()?.error('Runtime connection initialization failed', error);
+  });
+  return pipeRefresh;
 }
 
 function applySettingsPipeBridge(context: vscode.ExtensionContext): void {
@@ -161,22 +191,6 @@ function applySettingsPipeBridge(context: vscode.ExtensionContext): void {
   });
 }
 
-async function applyProjectPipeBridge(context: vscode.ExtensionContext, bookRoot: vscode.Uri): Promise<void> {
-  const pipes = await readProjectPipeConfig(bookRoot);
-  if (!pipes) {
-    if (currentPipeConfig?.source === 'project') {
-      applySettingsPipeBridge(context);
-    }
-    return;
-  }
-
-  updatePipeBridge(context, {
-    ...pipes,
-    reconnectDelay: getReconnectDelaySetting(),
-    source: 'project',
-  });
-}
-
 function getReconnectDelaySetting(): number {
   return Math.max(100, vscode.workspace.getConfiguration('amium-qbook').get<number>('pipe.reconnectDelay') ?? 500);
 }
@@ -190,11 +204,15 @@ async function readProjectPipeConfig(bookRoot: vscode.Uri): Promise<{ serverPipe
     const serverPipe = (data.ServerPipe ?? '').trim();
     const clientPipe = (data.ClientPipe ?? '').trim();
     if (!serverPipe || !clientPipe) {
+      getRuntimeLogChannel()?.error('Project pipes.json requires non-empty ServerPipe and ClientPipe values.');
       return undefined;
     }
 
     return { serverPipe, clientPipe };
-  } catch {
+  } catch (error) {
+    if (!(error instanceof vscode.FileSystemError && error.code === 'FileNotFound')) {
+      getRuntimeLogChannel()?.error('Could not read project pipes.json', error);
+    }
     return undefined;
   }
 }
@@ -268,6 +286,7 @@ function createPipeBridgeInstance(context: vscode.ExtensionContext, config: Acti
 
   activePipeStatusSubscription?.dispose();
   activePipeStatusSubscription = bridge.onStatus((status: PipeConnectionState) => {
+    getRuntimeLogChannel()?.info(`Runtime pipe ${status}: ${config.clientPipe}`);
     broadcastPipeStatus(status);
   });
 
@@ -330,16 +349,19 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
   private lastPayload?: BookTreePayload;
   private pipeStatus: PipeConnectionState = 'disconnected';
   private runtimeButtonState: RuntimeButtonState = {
+    initialize: null,
     run: null,
     stop: null,
     rebuild: null,
   };
-  private runtimeHighlightTimers = new Map<RuntimeButtonId, ReturnType<typeof setTimeout>>();
   private managedDebugSession?: vscode.DebugSession;
   private isRenamingPage = false;
   private debugAttachRunCounter = 0;
   private knownDebugSessions = new Map<string, vscode.DebugSession>();
-  private pendingAutoRunAfterRebuild = false;
+  private runtimeInFlight?: RuntimeButtonId;
+  private autoRun = true;
+  private autoBackup = true;
+  private rebuildAutomation?: RebuildAutomation;
 
   public constructor(private readonly context: vscode.ExtensionContext) {
     this.context.subscriptions.push(
@@ -372,7 +394,16 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
     webviewView.webview.onDidReceiveMessage(async (message: BridgeMessage) => {
       await dispatchWebviewMessage({
         message,
+        syncAutomationOptions: (options) => this.syncAutomationOptions(options),
+        beginRebuildAutomation: () => this.beginRebuildAutomation(),
+        isAutomationActive: (operation) => this.rebuildAutomation === operation,
+        sendPreparedRebuild: (operation) => this.sendAutomationStage(operation, 'rebuild'),
+        failRebuildAutomation: (operation, detail) => {
+          if (this.rebuildAutomation === operation) this.finishRuntimeFailure('rebuild', detail);
+        },
         pipeCommandSenderContext,
+        notifyRuntimeRequested: (button) => this.notifyRuntimeRequested(button),
+        notifyRuntimeFailed: (button, detail) => this.finishRuntimeFailure(button, detail),
         loadAndSendTreeData: () => this.loadAndSendTreeData(webviewView),
         openRelativeFile: (relativePath?: string) => this.openRelativeFile(relativePath),
         verifyAllTreeCsFiles: () => this.verifyAllTreeCsFiles(),
@@ -402,9 +433,6 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
         errorPaths: this.errorPaths,
         reorderPayloadNodes: (nextOrder: string[]) => {
           this.reorderPayloadNodes(nextOrder);
-        },
-        setPendingAutoRunAfterRebuild: (value: boolean) => {
-          this.pendingAutoRunAfterRebuild = value;
         },
       });
     });
@@ -458,8 +486,7 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
 
     const bookRoot = getDirectoryUri(bookUri);
     this.lastBookRoot = bookRoot;
-    lastProjectRoot = bookRoot;
-    await applyProjectPipeBridge(this.context, bookRoot);
+    await refreshWorkspacePipeBridge(this.context);
     this.refreshDiagnostics();
     this.handleActiveEditorChange(vscode.window.activeTextEditor);
     const fileContents = await vscode.workspace.fs.readFile(bookUri);
@@ -607,51 +634,122 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
   public updatePipeStatus(status: PipeConnectionState): void {
     this.pipeStatus = status;
     postPipeStatus(this.currentView, this.pipeStatus);
+    if (status === 'disconnected') {
+      if (this.runtimeInFlight) {
+        this.finishRuntimeFailure(this.runtimeInFlight, 'Pipe disconnected; host completion is unknown.');
+      } else {
+        postRuntimeInfo(this.currentView, 'Runtime offline');
+      }
+    }
   }
 
   public notifyRuntimeSignal(signal: RuntimeSignal, command?: PipeCommandPayload): void {
+    const lifecycle = command?.Args?.includes('Lifecycle');
+    const operation = this.rebuildAutomation;
+    if (operation) {
+      if (signal.kind === 'alert') {
+        this.finishRuntimeFailure(this.runtimeInFlight ?? 'rebuild', command?.Args?.[1] ?? 'Host action failed.');
+        return;
+      }
+      if (!lifecycle || operation.stage === 'preparing' || signal.button !== operation.stage) return;
+    }
+    if (!lifecycle && (this.runtimeInFlight || Object.values(this.runtimeButtonState).some(state => state === 'alert'))) return;
+    if (signal.kind === 'progress') {
+      if (!this.runtimeInFlight) this.notifyRuntimeRequested(signal.button);
+      return;
+    }
+    if (this.runtimeInFlight && signal.button !== this.runtimeInFlight) return;
+    if (lifecycle) this.runtimeInFlight = undefined;
+    if (signal.kind === 'alert') {
+      this.finishRuntimeFailure(signal.button, command?.Args?.[1] ?? 'Host action failed.');
+      return;
+    }
     this.applyRuntimeHighlight(signal.button, signal.kind);
+    const label = signal.button.charAt(0).toUpperCase() + signal.button.slice(1);
     const timestamp = extractRuntimeTimestamp(command?.Args);
-    const label = signal.button === 'run' ? 'Run' : signal.button === 'rebuild' ? 'Rebuild' : 'Stop';
-    const nextStatus = timestamp
-      ? `Runtime ${signal.kind}: ${label} @ ${timestamp}`
-      : `Runtime ${signal.kind}: ${label}`;
-
-    if (signal.kind === 'status') {
-      if (signal.button === 'rebuild') {
-        postStatusText(this.currentView, 'Rebuild done');
-        if (this.pendingAutoRunAfterRebuild) {
-          this.pendingAutoRunAfterRebuild = false;
-          void sendRuntimeCommand(pipeCommandSenderContext, 'Run');
-          postStatusText(this.currentView, 'Run started automatically after rebuild');
-        }
-      } else if (signal.button === 'run') {
-        postStatusText(this.currentView, 'Running...');
-      } else if (signal.button === 'stop') {
-        postStatusText(this.currentView, 'Stopped');
+    postStatusText(this.currentView, label + ' completed');
+    postRuntimeInfo(this.currentView, 'Runtime status: ' + label + (timestamp ? ' @ ' + timestamp : ''));
+    if (operation && lifecycle && signal.kind === 'status') {
+      if (operation.stage === 'rebuild' && operation.autoRun) {
+        void this.sendAutomationStage(operation, 'initialize');
+      } else if (operation.stage === 'initialize') {
+        void this.sendAutomationStage(operation, 'run');
+      } else {
+        this.rebuildAutomation = undefined;
       }
     }
+  }
 
-    postRuntimeInfo(this.currentView, nextStatus);
+  private syncAutomationOptions(message?: BridgeMessage): void {
+    if (typeof message?.autoRun === 'boolean') this.autoRun = message.autoRun;
+    if (typeof message?.autoBackup === 'boolean') this.autoBackup = message.autoBackup;
+    this.currentView?.webview.postMessage({
+      type: 'automationState',
+      payload: { autoRun: this.autoRun, autoBackup: this.autoBackup },
+    });
+  }
+
+  private beginRebuildAutomation(): RebuildAutomation | undefined {
+    if (!this.notifyRuntimeRequested('rebuild')) return undefined;
+    const operation: RebuildAutomation = {
+      autoRun: this.autoRun,
+      autoBackup: this.autoBackup,
+      stage: 'preparing',
+    };
+    this.rebuildAutomation = operation;
+    return operation;
+  }
+
+  private async sendAutomationStage(
+    operation: RebuildAutomation,
+    stage: 'rebuild' | 'initialize' | 'run'
+  ): Promise<void> {
+    if (this.rebuildAutomation !== operation) return;
+    operation.stage = stage;
+    this.runtimeInFlight = stage;
+    this.applyRuntimeHighlight(stage, 'progress');
+    postStatusText(this.currentView, stage + ' running');
+    getRuntimeLogChannel()?.info(stage + ' requested');
+    const command = stage.charAt(0).toUpperCase() + stage.slice(1);
+    const sent = await sendRuntimeCommand(pipeCommandSenderContext, command);
+    if (!sent && this.rebuildAutomation === operation && operation.stage === stage) {
+      this.finishRuntimeFailure(stage, 'Runtime command could not be sent; host completion is unknown.');
+    }
+  }
+
+  private notifyRuntimeRequested(button: RuntimeButtonId): boolean {
+    if (this.runtimeInFlight) {
+      vscode.window.showErrorMessage('A runtime action is still pending.');
+      return false;
+    }
+    this.runtimeInFlight = button;
+    this.applyRuntimeHighlight(button, 'progress');
+    postStatusText(this.currentView, button + ' running');
+    getRuntimeLogChannel()?.info(button + ' requested');
+    return true;
+  }
+
+  private finishRuntimeFailure(button: RuntimeButtonId, detail: string): void {
+    this.rebuildAutomation = undefined;
+    this.runtimeInFlight = undefined;
+    this.applyRuntimeHighlight(button, 'alert');
+    const message = button + ' failed: ' + detail;
+    postStatusText(this.currentView, message);
+    postRuntimeInfo(this.currentView, message);
+    getRuntimeLogChannel()?.error(message);
   }
 
   private applyRuntimeHighlight(button: RuntimeButtonId, kind: RuntimeSignalKind): void {
-    this.runtimeButtonState[button] = kind;
-    postRuntimeState(this.currentView, this.runtimeButtonState);
-
-    const existingTimer = this.runtimeHighlightTimers.get(button);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
+    if (this.runtimeButtonState[button] === kind) {
+      return;
     }
 
-    const timer = setTimeout(() => {
-      this.runtimeHighlightTimers.delete(button);
-      if (this.runtimeButtonState[button] === kind) {
-        this.runtimeButtonState[button] = null;
-        postRuntimeState(this.currentView, this.runtimeButtonState);
-      }
-    }, 4000);
-    this.runtimeHighlightTimers.set(button, timer);
+    this.runtimeButtonState.initialize = null;
+    this.runtimeButtonState.run = null;
+    this.runtimeButtonState.stop = null;
+    this.runtimeButtonState.rebuild = null;
+    this.runtimeButtonState[button] = kind;
+    postRuntimeState(this.currentView, this.runtimeButtonState);
   }
 
   private clearProjectState(): void {
@@ -663,16 +761,13 @@ class QBookViewProvider implements vscode.WebviewViewProvider {
     );
 
     this.lastBookRoot = cleared.lastBookRoot;
-    lastProjectRoot = undefined;
     this.selectedPath = cleared.selectedPath;
     this.errorPaths = cleared.errorPaths;
     this.lastPayload = cleared.lastPayload;
     if (cleared.hadState) {
       postBookStatus(this.currentView, this.selectedPath, this.errorPaths, this.lastPayload);
     }
-    if (currentPipeConfig?.source === 'project') {
-      applySettingsPipeBridge(this.context);
-    }
+
   }
 
 }

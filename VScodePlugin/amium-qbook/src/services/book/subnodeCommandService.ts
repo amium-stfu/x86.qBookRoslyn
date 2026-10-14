@@ -41,13 +41,13 @@ export async function handleAddSubcodeCommand(
     ignoreFocusOut: true,
     validateInput: (value: string) => {
       if (!value || !value.trim()) {
-        return 'Name ist erforderlich.';
+        return 'Name required.';
       }
       if (!normalizeCodeName(value)) {
-        return 'Nur Buchstaben, Zahlen, Punkt, Unterstrich und Bindestrich sind erlaubt.';
+        return 'Only letters, numbers, dot, underscore, and hyphen are allowed.';
       }
       if (value.trim().toLowerCase() === 'qpage') {
-        return 'Subcode darf nicht qPage heiÃŸen.';
+        return 'Subcode must not be named qPage.';
       }
       return undefined;
     },
@@ -59,12 +59,12 @@ export async function handleAddSubcodeCommand(
 
   const codeName = normalizeCodeName(rawName);
   if (!codeName) {
-    vscode.window.showWarningMessage('Subcode-Name ist ungÃ¼ltig.');
+    vscode.window.showWarningMessage('Subcode name is invalid.');
     return;
   }
 
   if (codeName.toLowerCase() === 'qpage') {
-    vscode.window.showWarningMessage('Subcode darf nicht qPage heiÃŸen.');
+    vscode.window.showWarningMessage('Subcode must not be named qPage.');
     return;
   }
 
@@ -89,57 +89,57 @@ export async function handleRenameSubnodeCommand(
 ): Promise<void> {
   const pageName = normalizePageName(message.page);
   if (!pageName) {
-    vscode.window.showWarningMessage('Keine Page fÃ¼r die Datei ausgewÃ¤hlt.');
+    vscode.window.showWarningMessage('No page selected for the file.');
     return;
   }
 
   const fileName = normalizeSubnodeFileName(pageName, message.fileName);
   if (!fileName) {
-    vscode.window.showWarningMessage('UngÃ¼ltiger Dateiname.');
+    vscode.window.showWarningMessage('Invalid file name.');
     return;
   }
 
   const currentCode = extractSubnodeCodeName(pageName, fileName);
   if (!currentCode) {
-    vscode.window.showWarningMessage('Codename konnte nicht ermittelt werden.');
+    vscode.window.showWarningMessage('Could not determine code name.');
     return;
   }
 
   if (isProtectedSubnodeFile(pageName, fileName)) {
-    vscode.window.showWarningMessage('qPage Dateien dÃ¼rfen nicht umbenannt werden.');
+    vscode.window.showWarningMessage('qPage files must not be renamed.');
     return;
   }
 
   const nextCodeName = normalizeCodeName(message.codeName);
   if (!nextCodeName) {
-    vscode.window.showWarningMessage('UngÃ¼ltiger Codename. Erlaubt sind Buchstaben, Zahlen, Punkt, Unterstrich und Bindestrich.');
+    vscode.window.showWarningMessage('Invalid code name. Only letters, numbers, dot, underscore, and hyphen are allowed.');
     return;
   }
 
   if (currentCode === nextCodeName) {
-    vscode.window.showInformationMessage('Codename unverÃ¤ndert.');
+    vscode.window.showInformationMessage('Code name unchanged.');
     return;
   }
 
   if (!bookRoot) {
-    vscode.window.showWarningMessage('Kein qBook-Projekt geladen.');
+    vscode.window.showWarningMessage('No qBook project loaded.');
     return;
   }
 
   try {
     const result = await renameSubnodeInPage(bookRoot, pageName, fileName, nextCodeName);
     if (result.status === 'source-missing') {
-      vscode.window.showErrorMessage(`Datei '${fileName}' wurde nicht gefunden.`);
+      vscode.window.showErrorMessage(`File '${fileName}' was not found.`);
       return;
     }
 
     if (result.status === 'target-exists') {
-      vscode.window.showErrorMessage(`Datei '${result.newFileName}' existiert bereits.`);
+      vscode.window.showErrorMessage(`File '${result.newFileName}' already exists.`);
       return;
     }
 
     await reloadTreeView();
-    vscode.window.showInformationMessage(`Datei '${result.fileName}' wurde in '${result.newFileName}' umbenannt.`);
+    vscode.window.showInformationMessage(`File '${result.fileName}' has been renamed to '${result.newFileName}'.`);
   } catch (error: unknown) {
     vscode.window.showErrorMessage(getRenameSubnodeErrorMessage(error));
   }
@@ -152,23 +152,23 @@ export async function handleDeleteSubnodeCommand(
 ): Promise<void> {
   const pageName = normalizePageName(message.page);
   if (!pageName) {
-    vscode.window.showWarningMessage('Keine Page fÃ¼r die Datei ausgewÃ¤hlt.');
+    vscode.window.showWarningMessage('No page selected for the file.');
     return;
   }
 
   const fileName = normalizeSubnodeFileName(pageName, message.fileName);
   if (!fileName) {
-    vscode.window.showWarningMessage('UngÃ¼ltiger Dateiname.');
+    vscode.window.showWarningMessage('Invalid file name.');
     return;
   }
 
   if (isProtectedSubnodeFile(pageName, fileName)) {
-    vscode.window.showWarningMessage('qPage Dateien dÃ¼rfen nicht gelÃ¶scht werden.');
+    vscode.window.showWarningMessage('qPage files must not be deleted.');
     return;
   }
 
   if (!bookRoot) {
-    vscode.window.showWarningMessage('Kein qBook-Projekt geladen.');
+    vscode.window.showWarningMessage('No qBook project loaded.');
     return;
   }
 
@@ -184,12 +184,12 @@ export async function handleDeleteSubnodeCommand(
 
     const result = await deleteSubnodeFromPage(bookRoot, pageName, fileName);
     if (result.status === 'missing') {
-      vscode.window.showErrorMessage(`Datei '${fileName}' wurde nicht gefunden.`);
+      vscode.window.showErrorMessage(`File '${fileName}' was not found.`);
       return;
     }
 
     await reloadTreeView();
-    vscode.window.showInformationMessage(`Datei '${result.fileName}' wurde gelÃ¶scht.`);
+    vscode.window.showInformationMessage(`File '${result.fileName}' has been deleted.`);
   } catch (error: unknown) {
     vscode.window.showErrorMessage(getDeleteSubnodeErrorMessage(error));
   }

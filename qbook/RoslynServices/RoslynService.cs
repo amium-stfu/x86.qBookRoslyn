@@ -34,6 +34,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Controls;
@@ -312,6 +313,11 @@ namespace qbook
 
             protected override Assembly? Load(AssemblyName assemblyName)
             {
+                // Never load a private QB/host copy from book libraries.
+                if (assemblyName.Name == typeof(QB.Root).Assembly.GetName().Name)
+                    return typeof(QB.Root).Assembly;
+                if (assemblyName.Name == typeof(Core).Assembly.GetName().Name)
+                    return typeof(Core).Assembly;
                 // Host and QB dependencies always share the default context's type identity.
                 try
                 {
@@ -605,6 +611,8 @@ namespace qbook
                     return;
                 try
                 {
+                    if (!IsManagedAssembly(path))
+                        return;
                     var name = AssemblyName.GetAssemblyName(path).Name;
                     if (name != null && !paths.ContainsKey(name)) paths.Add(name, path);
                 }
@@ -1552,7 +1560,7 @@ namespace qbook
                 string assemblyLogFile = Path.Combine(codeDir, "AssemblyLog.json");
                 File.WriteAllText(assemblyLogFile, jsonLog);
 
-                // VS Code launch.json im selben Verzeichnis erzeugen/aktualisieren
+                // Refresh the book workspace debugger configuration after successful emission.
                 var symbolSearchPaths = new List<string>();
                 if (!string.IsNullOrWhiteSpace(_assemblyOutputPath))
                 {
@@ -1576,49 +1584,15 @@ namespace qbook
 
            
 
-                var launchData = new Dictionary<string, object>
+                try
                 {
-                    { "version", "0.2.0" },
-                    { "configurations", new object[]
-                        {
-                            new Dictionary<string, object>
-                            {
-                                { "name", "qbook: Attach to host process" },
-                                { "type", "clr" },
-                                { "request", "attach" },
-                                { "processId", Process.GetCurrentProcess().Id },
-                                { "justMyCode", false },
-                                { "requireExactSource", false },
-                                { "suppressJITOptimizations", true },
-                                { "sourceFileMap", BuildSourceFileMap(compilationSourcePaths, codeDir) },
-                                { "logging", new Dictionary<string, object>
-                                    {
-                                        { "moduleLoad", true },
-                                        { "exceptions", true },
-                                        { "programOutput", true }
-                                    }
-                                },
-                                
-                                { "symbolOptions", new Dictionary<string, object>
-                                    {
-                                        { "searchPaths", distinctSymbolPaths },
-                                        { "searchMicrosoftSymbolServer", false }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                };
-
-                string launchJson = JsonSerializer.Serialize(launchData, new JsonSerializerOptions
+                    WriteBookDebugConfiguration(codeDir, compilationSourcePaths, distinctSymbolPaths);
+                }
+                catch
                 {
-                    WriteIndented = true
-                });
-
-                var vscodeDir = Path.Combine(codeDir, ".vscode");
-                Directory.CreateDirectory(vscodeDir);
-                string launchFile = Path.Combine(vscodeDir, "launch.json");
-                File.WriteAllText(launchFile, launchJson);
+                    BuildSuccess = false;
+                    throw;
+                }
 
 
                 BuildSuccess = true;
@@ -1686,6 +1660,147 @@ namespace qbook
                 lock (_buildLock) _isBuildingAssembly = false;
             }
         }
+        private static void WriteBookDebugConfiguration(
+            string codeDir, IEnumerable<string> sourcePaths, string[] symbolPaths)
+        {
+            const string profileName = "qbook: Attach to host process";
+            string vscodeDir = Path.Combine(codeDir, ".vscode");
+            string launchFile = Path.Combine(vscodeDir, "launch.json");
+            string settingsFile = Path.Combine(vscodeDir, "settings.json");
+            string launchJson;
+
+            try
+            {
+                var launch = ReadDebugConfigurationObject(launchFile);
+                JsonArray configurations;
+                if (!launch.ContainsKey("configurations"))
+                {
+                    configurations = new JsonArray();
+                    launch["configurations"] = configurations;
+                }
+                else
+                {
+                    configurations = launch["configurations"] as JsonArray
+                        ?? throw new JsonException("The 'configurations' property must be an array.");
+                }
+
+                JsonObject? profile = null;
+                for (int index = 0; index < configurations.Count; index++)
+                {
+                    var entry = configurations[index] as JsonObject
+                        ?? throw new JsonException("Each launch configuration must be an object.");
+                    if (entry["name"] is not JsonValue name ||
+                        !name.TryGetValue<string>(out var entryName) || entryName != profileName)
+                        continue;
+
+                    if (profile == null)
+                        profile = entry;
+                    else
+                        configurations.RemoveAt(index--);
+                }
+
+                if (profile == null)
+                {
+                    profile = new JsonObject();
+                    configurations.Add(profile);
+                }
+
+                launch["version"] = "0.2.0";
+                profile["name"] = profileName;
+                profile["type"] = "coreclr";
+                profile["request"] = "attach";
+                profile["processId"] = Process.GetCurrentProcess().Id;
+                profile["justMyCode"] = false;
+                profile["requireExactSource"] = false;
+                profile["suppressJITOptimizations"] = true;
+                profile["sourceFileMap"] = JsonSerializer.SerializeToNode(BuildSourceFileMap(sourcePaths, codeDir));
+
+                var logging = GetDebugConfigurationObject(profile, "logging");
+                logging["moduleLoad"] = true;
+                logging["exceptions"] = true;
+                logging["programOutput"] = true;
+
+                var symbols = GetDebugConfigurationObject(profile, "symbolOptions");
+                symbols["searchPaths"] = JsonSerializer.SerializeToNode(symbolPaths);
+                symbols["searchMicrosoftSymbolServer"] = false;
+                launchJson = launch.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+            }
+            catch (Exception ex)
+            {
+                throw new IOException($"Could not prepare debug configuration '{launchFile}': {ex.Message}", ex);
+            }
+
+            string settingsJson;
+            try
+            {
+                var settings = ReadDebugConfigurationObject(settingsFile);
+                settingsJson = settings.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+            }
+            catch (Exception ex)
+            {
+                throw new IOException($"Could not prepare debug configuration '{settingsFile}': {ex.Message}", ex);
+            }
+
+            // Prepare both documents before replacing either existing file.
+            WriteDebugConfigurationFile(launchFile, launchJson);
+            WriteDebugConfigurationFile(settingsFile, settingsJson);
+        }
+
+        private static JsonObject ReadDebugConfigurationObject(string filePath)
+        {
+            if (!File.Exists(filePath))
+                return new JsonObject();
+
+            return JsonNode.Parse(File.ReadAllText(filePath), documentOptions: new JsonDocumentOptions
+            {
+                CommentHandling = JsonCommentHandling.Skip,
+                AllowTrailingCommas = true
+            }) as JsonObject ?? throw new JsonException("The document root must be an object.");
+        }
+
+        private static JsonObject GetDebugConfigurationObject(JsonObject parent, string propertyName)
+        {
+            if (!parent.ContainsKey(propertyName))
+            {
+                var value = new JsonObject();
+                parent[propertyName] = value;
+                return value;
+            }
+
+            return parent[propertyName] as JsonObject
+                ?? throw new JsonException($"The '{propertyName}' property must be an object.");
+        }
+
+        private static void WriteDebugConfigurationFile(string filePath, string json)
+        {
+            string temporaryFile = filePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+                File.WriteAllText(temporaryFile, json);
+                if (File.Exists(filePath))
+                    File.Replace(temporaryFile, filePath, destinationBackupFileName: null);
+                else
+                    File.Move(temporaryFile, filePath);
+            }
+            catch (Exception ex)
+            {
+                throw new IOException($"Could not write debug configuration '{filePath}': {ex.Message}", ex);
+            }
+            finally
+            {
+                try
+                {
+                    if (File.Exists(temporaryFile))
+                        File.Delete(temporaryFile);
+                }
+                catch (Exception ex)
+                {
+                    QB.Logger.Warn($"Could not remove temporary debug configuration '{temporaryFile}': {ex.Message}");
+                }
+            }
+        }
+
         /// <summary>
         /// Builds the debugger sourceFileMap from the source paths stored in the PDB.
         /// </summary>
@@ -1714,8 +1829,8 @@ namespace qbook
                     map[root + "\\Pages"] = "${workspaceFolder}\\Pages";
             }
 
-            if (map.Count == 0 && !string.IsNullOrWhiteSpace(fallbackCodeDir))
-                map[fallbackCodeDir.TrimEnd('\\', '/')] = "${workspaceFolder}";
+            //if (map.Count == 0 && !string.IsNullOrWhiteSpace(fallbackCodeDir))
+            //    map[fallbackCodeDir.TrimEnd('\\', '/')] = "${workspaceFolder}";
 
             return map;
         }
@@ -1724,8 +1839,9 @@ namespace qbook
         {
             try
             {
-                AssemblyName.GetAssemblyName(path);
-                return true;
+                using var stream = File.OpenRead(path);
+                using var peReader = new PEReader(stream);
+                return peReader.HasMetadata && peReader.GetMetadataReader().IsAssembly;
             }
             catch (BadImageFormatException) { return false; }
             catch (IOException) { return false; }

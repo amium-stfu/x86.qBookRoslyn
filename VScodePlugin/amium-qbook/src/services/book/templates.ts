@@ -5,7 +5,7 @@ export function generateProgramClassContent(pageNames: string[]): string {
 
   const methodBody = (method: 'Initialize' | 'Run' | 'Destroy'): string => {
     if (!pageNames.length) {
-      return '\t\t\t// Keine Pages registriert';
+      return '\t\t\t// No pages registered';
     }
     return pageNames.map((page) => `\t\t\t${page}.${method}();`).join('\n');
   };

@@ -2,7 +2,7 @@
 
 - Session Title: Framework wechsel - 20261012-161310
 - Session Id: 65f2cdd0-98c2-4a72-b085-7a3ffdb1fda5
-- Exported At: 2026-10-12T21:00:26.4939255+00:00
+- Exported At: 2026-10-13T21:41:03.2088127+00:00
 - WorkItem Path: .ai-flow/workitems/2026.10.12.1613-framework_wechsel_20261012_161310
 
 ## 2026-10-12T14:13:10.6847064+00:00 | User | a2497900-e044-4de6-81ce-646bb128beeb
@@ -439,3 +439,117 @@ Die ursprüngliche Filterung erkannte nur exakte Laufzeitpfade. Der frühere `Bo
 **Offen:** Externer `dotnet build`, frischer Projektexport und Roslyn-Buchkompilierung wurden nicht ausgeführt. Die verbindlichen Hosted-Regeln erlauben hier ausschließlich den ausgewählten Solution-Worker-Build; eine zusätzliche Projektvalidierung benötigt einen neuen PLAN. Externe Kompilierung setzt weiterhin verfügbare DLLs an den exportierten Pfaden voraus.
 
 Ursachen, Änderungen und Validierungsgrenzen sind im kumulativen Debug-Handoff dokumentiert.
+
+
+## 2026-10-13T21:30:41.6956748+00:00 | User | 9ec87c16-a4d8-4b8b-9e66-598deb32e407
+
+Nach dem dem Framework Wechsel funktioniert in VS Code das Debuggen nicht mehr:Kann es sein das launch.json und setting.json nicht mehr passen.Geplant war das bei jedem Rebuild die Dateien schrieben werden
+You may only use the Microsoft Visual Studio .NET/C/C++ Debugger (vsdbg) with
+Visual Studio Code, Visual Studio or Visual Studio for Mac software to help you
+develop and test your applications.
+
+Attachments:
+- [launch.json](attachments/9ec87c16-a4d8-4b8b-9e66-598deb32e407/launch.json) (application/json)
+- [settings.json](attachments/9ec87c16-a4d8-4b8b-9e66-598deb32e407/settings.json) (application/json)
+
+## 2026-10-13T21:32:59.3606446+00:00 | Assistant | c9c2b2c0-75ec-4ee0-b0df-ecdc5bf2b351
+
+**Ja: Die angehängte `launch.json` passt noch zum alten Framework – und der Rebuild-Generator schreibt diesen falschen Wert weiterhin.**
+
+Die konkreten Befunde:
+
+- `launch.json` enthält `type: "clr"`. Für den inzwischen auf .NET 10 umgestellten Host muss der Attach-Eintrag `coreclr` verwenden. `clr` ist für .NET Framework vorgesehen. [Microsoft-Dokumentation](https://github.com/dotnet/vscode-csharp/blob/main/docs/debugger/Desktop-.NET-Framework.md)
+- In `qbook/RoslynServices/RoslynService.cs` wird nach erfolgreicher Kompilierung weiterhin ausdrücklich `"type", "clr"` erzeugt. Eine manuelle Änderung würde beim nächsten erfolgreichen Rebuild überschrieben.
+- Das VS-Code-Plugin übernimmt den vorhandenen Typ aus der Datei. Sein Standardwert `coreclr` greift deshalb nicht.
+- Die angehängte `settings.json` enthält lediglich `git.ignoreLimitWarning`. Darin ist keine veraltete Framework-Einstellung erkennbar. Eine Erzeugung dieser Datei habe ich im aktiven Rebuild-Pfad nicht gefunden.
+- Die Repository-Konfiguration `AiFlow Launch: qbook` verwendet bereits korrekt `coreclr`. Betroffen ist die **generierte Attach-Konfiguration im jeweiligen Buchprojekt**.
+
+Für die Korrektur sollte jeder erfolgreiche Buch-Rebuild den qBook-Attach-Eintrag mit `coreclr`, aktueller Host-PID und passenden Quell-/Symbolpfaden aktualisieren. Andere Launch-Einträge und bestehende Benutzereinstellungen müssen erhalten bleiben.
+
+Der zitierte `vsdbg`-Text ist für sich genommen noch keine konkrete Fehlerdiagnose. Er wird auch als Nutzungshinweis ausgegeben; die verwendete Editor-Distribution ist daher noch zu klären. [Microsoft-Repository](https://github.com/dotnet/vscode-csharp/issues/3699)
+
+Quellcode und Konfigurationen wurden nicht geändert. `planning_ready` bleibt `false`.
+
+:::questions
+{
+  "questions": [
+    {
+      "id": "debug_editor_distribution",
+      "type": "single_select",
+      "text": "In welchem Editor tritt das Problem auf?",
+      "options": [
+        "Offizielles Microsoft Visual Studio Code",
+        "VSCodium",
+        "Cursor",
+        "Anderer Editor"
+      ],
+      "required": true
+    },
+    {
+      "id": "debug_editor_distribution_other",
+      "type": "text",
+      "text": "Welcher Editor wird verwendet?",
+      "required": true,
+      "visible_when": {
+        "question_id": "debug_editor_distribution",
+        "has_any_of": ["Anderer Editor"]
+      }
+    }
+  ]
+}
+:::endquestions
+
+
+## 2026-10-13T21:33:36.5745557+00:00 | User | cca9b656-df00-4b3c-93e3-e335dbe72273
+
+In welchem Editor tritt das Problem auf?: Offizielles Microsoft Visual Studio Code
+
+
+## 2026-10-13T21:35:14.9323166+00:00 | Assistant | 5872d35b-43b0-4433-97c6-f04c9660c7b5
+
+**Die Korrektur ist jetzt für PLAN definiert.** `status: ready` und `planning_ready: true` sind im Workitem gesetzt.
+
+- **Ziel:** Buchprojekte wieder im offiziellen Microsoft VS Code am .NET-10-Host debuggen.
+- **Umfang:** Den Generator in `qbook/RoslynServices/RoslynService.cs` korrigieren. Nach jeder erfolgreichen Buchkompilierung den qBook-Attach-Eintrag mit `coreclr`, aktueller Host-PID sowie passenden Quell- und Symbolpfaden aktualisieren.
+- **Dateiverhalten:** `launch.json` und `settings.json` im `.vscode`-Ordner des Buchprojekts schreiben; fremde Launch-Einträge und vorhandene Einstellungen erhalten. Fehlende Dateien neu anlegen. Bei fehlgeschlagener Kompilierung keine Konfiguration für eine nicht erzeugte Assembly ausgeben.
+- **Nichtziele:** Erneute Frameworkmigration oder Änderung des bereits korrekten Repository-Eintrags `AiFlow Launch: qbook`.
+- **Abnahme:** Rebuild aktualisiert die Dateien automatisch; anschließend funktionieren Attach und ein Breakpoint im Buchcode. Erneuter Rebuild und Host-Neustart liefern weiterhin passende Konfigurationen.
+- **Validierung:** `validation: true`. Vollständiger Worker-Build und dessen exakte Ausführung werden an PLAN delegiert. Attach und Breakpoints sind zusätzliche Funktionsprüfungen.
+
+Offene wesentliche Punkte und verbleibende wesentliche PLAN-Entscheidungen: **keine**.
+
+Die Korrektur wurde noch nicht implementiert; geändert wurden ausschließlich Workflow-Metadaten.
+
+
+## 2026-10-13T21:36:03.6656790+00:00 | User | ed762d2c-afd4-47e7-b352-59f78e8b9835
+
+Plan
+
+
+## 2026-10-13T21:38:47.8683950+00:00 | Assistant | cb83d369-fd4c-4cd5-91cf-6027dfb5f730
+
+Der [Implementierungsplan](B:/x86.qBookRoslyn/.ai-flow/workitems/2026.10.12.1613-framework_wechsel_20261012_161310/handoffs/2026.10.12.1613-implementation-handoff.md) ist erstellt.
+
+Er umfasst den `coreclr`-Generator, die Aktualisierung beider Debug-Dateien, den Erhalt vorhandener Einstellungen sowie Worker-Build und Attach-/Breakpoint-Prüfungen.
+
+Nur das Handoff wurde geschrieben. `planning_ready: true` bleibt erhalten.
+
+
+## 2026-10-13T21:39:02.2427159+00:00 | User | 727f2865-14fe-4baa-a975-ddd8cb5ab565
+
+Implement with gpt-6.1-sol • Medium
+
+
+## 2026-10-13T21:41:03.1028583+00:00 | Assistant | 2f9283f5-97f5-49d3-8987-86216028095b
+
+In `qbook/RoslynServices/RoslynService.cs` umgesetzt:
+
+- Attach-Profil auf `coreclr` mit aktueller PID und Buchpfaden.
+- Fremde Launch-Einträge und Einstellungen bleiben erhalten; fehlende Dateien werden erzeugt.
+- Konfigurationsfehler verhindern den Rebuild-Erfolg und nennen die betroffene Datei.
+
+Worker-Build `qbookStudio.sln`: erfolgreich, Exitcode `0`.
+
+Live-Rebuild, Dateiregeneration, Attach, Breakpoints und Neustart-Verhalten wurden mangels verfügbarer App-/Editor-Sitzung nicht geprüft. Die Debugger-Funktion ist daher noch nicht bestätigt.
+
+Handoff archiviert; Status `implemented`, `planning_ready: false`.

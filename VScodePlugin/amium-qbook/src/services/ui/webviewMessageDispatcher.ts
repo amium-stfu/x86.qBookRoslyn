@@ -5,7 +5,7 @@ import {
   RuntimeSignalKind,
   sendRuntimeCommand,
 } from '../../pipes/pipeCommands.js';
-import { BridgeMessage, BookTreePayload, PageMetadata } from '../../types/extensionTypes.js';
+import { BridgeMessage, BookTreePayload, PageMetadata, RebuildAutomation } from '../../types/extensionTypes.js';
 import { ensureNoCSharpErrorsBeforeRebuild } from '../diagnostics/csharpDiagnostics.js';
 import { createTimestampedBackup } from '../book/backupService.js';
 import {
@@ -30,11 +30,18 @@ import { postStatusText } from './webviewStatusService.js';
 
 export type WebviewMessageDispatchContext = {
   message: BridgeMessage;
+  syncAutomationOptions: (message?: BridgeMessage) => void;
+  beginRebuildAutomation: () => RebuildAutomation | undefined;
+  isAutomationActive: (operation: RebuildAutomation) => boolean;
+  sendPreparedRebuild: (operation: RebuildAutomation) => Promise<void>;
+  failRebuildAutomation: (operation: RebuildAutomation, detail: string) => void;
   pipeCommandSenderContext: PipeCommandSenderContext;
   loadAndSendTreeData: () => Promise<void>;
   openRelativeFile: (relativePath?: string) => Promise<void>;
   verifyAllTreeCsFiles: () => Promise<void>;
   applyRuntimeHighlight: (button: RuntimeButtonId, kind: RuntimeSignalKind) => void;
+  notifyRuntimeRequested: (button: RuntimeButtonId) => boolean;
+  notifyRuntimeFailed: (button: RuntimeButtonId, detail: string) => void;
   currentView: vscode.WebviewView | undefined;
   managedDebugSession: vscode.DebugSession | undefined;
   setManagedDebugSession: (session: vscode.DebugSession | undefined) => void;
@@ -51,47 +58,75 @@ export type WebviewMessageDispatchContext = {
   selectedPath: string | undefined;
   errorPaths: Set<string>;
   reorderPayloadNodes: (nextOrder: string[]) => void;
-  setPendingAutoRunAfterRebuild: (value: boolean) => void;
 };
 
 export async function dispatchWebviewMessage(context: WebviewMessageDispatchContext): Promise<void> {
   const message = context.message;
 
   switch (message.type) {
+    case 'requestAutomationState':
+      context.syncAutomationOptions();
+      break;
+    case 'updateAutomationOptions':
+      context.syncAutomationOptions(message);
+      break;
     case 'requestTree':
       await context.loadAndSendTreeData();
       break;
     case 'openFile':
       await context.openRelativeFile(message.relativePath);
       break;
+    case 'initialize':
     case 'run':
-      await sendRuntimeCommand(context.pipeCommandSenderContext, 'Run');
-      break;
-    case 'stop':
-      await sendRuntimeCommand(context.pipeCommandSenderContext, 'Destroy');
-      break;
-    case 'rebuild': {
-      await context.verifyAllTreeCsFiles();
-      const canRebuild = await ensureNoCSharpErrorsBeforeRebuild();
-      if (!canRebuild) {
-        postStatusText(context.currentView, 'Rebuild canceled: C# errors found');
-        context.applyRuntimeHighlight('rebuild', 'alert');
-        break;
+    case 'stop': {
+      const button = message.type;
+      if (!context.notifyRuntimeRequested(button)) break;
+      const command = button.charAt(0).toUpperCase() + button.slice(1);
+      if (!await sendRuntimeCommand(context.pipeCommandSenderContext, command)) {
+        context.notifyRuntimeFailed(button, 'Runtime command could not be sent; host completion is unknown.');
       }
+      break;
+    }
+    case 'checkCode': {
+      await context.verifyAllTreeCsFiles();
+      const hasNoCSharpErrors = await ensureNoCSharpErrorsBeforeRebuild();
+      postStatusText(context.currentView, hasNoCSharpErrors
+        ? 'Check Code completed: no C# errors found'
+        : 'Check Code completed: C# errors found');
+      break;
+    }
+    case 'fastRebuild': {
+      const operation = context.beginRebuildAutomation();
+      if (!operation) break;
+      const saveStarted = Date.now();
+      context.getRuntimeLogChannel()?.info('Rebuild save BEGIN');
       try {
-        const snapshotUri = await createTimestampedBackup(context.lastBookRoot);
-        const snapshotName = snapshotUri.path.split('/').filter(Boolean).pop() ?? snapshotUri.fsPath;
-        postStatusText(context.currentView, `Backup created: ${snapshotName}`);
+        if (!await vscode.workspace.saveAll(false)) {
+          throw new Error('Not all files could be saved.');
+        }
       } catch (error: unknown) {
         const details = error instanceof Error ? error.message : String(error);
-        postStatusText(context.currentView, `Rebuild canceled: Backup failed (${details})`);
-        context.applyRuntimeHighlight('rebuild', 'alert');
-        vscode.window.showErrorMessage(`Backup failed: ${details}`);
+        postStatusText(context.currentView, `Rebuild canceled: Save failed (${details})`);
+        context.failRebuildAutomation(operation, 'Save failed: ' + details);
+        vscode.window.showErrorMessage(`Save failed: ${details}`);
         break;
       }
-      postStatusText(context.currentView, 'Rebuild running');
-      context.setPendingAutoRunAfterRebuild(true);
-      await sendRuntimeCommand(context.pipeCommandSenderContext, 'Rebuild');
+      context.getRuntimeLogChannel()?.info(`Rebuild save END duration=${Date.now() - saveStarted}ms`);
+      if (!context.isAutomationActive(operation)) break;
+      if (operation.autoBackup) {
+        try {
+          postStatusText(context.currentView, 'Rebuild backup running');
+          await createTimestampedBackup(context.lastBookRoot);
+        } catch (error: unknown) {
+          const details = error instanceof Error ? error.message : String(error);
+          context.failRebuildAutomation(operation, 'Backup failed: ' + details);
+          vscode.window.showErrorMessage('Backup failed: ' + details);
+          break;
+        }
+      }
+      if (context.isAutomationActive(operation)) {
+        await context.sendPreparedRebuild(operation);
+      }
       break;
     }
     case 'backup':

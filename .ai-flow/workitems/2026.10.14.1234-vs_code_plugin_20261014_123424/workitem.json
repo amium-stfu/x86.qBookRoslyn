@@ -1,0 +1,13 @@
+{
+  "id": "2026.10.14.1234-vs_code_plugin_20261014_123424",
+  "title": "VS Code Plugin - 20261014-123424",
+  "owner_user_id": "StefanFunk",
+  "status": "defining",
+  "branch": "main",
+  "updated_at": "2026-10-14T12:34:24.5356183\u002B02:00",
+  "progress": "Structure definition is in progress.",
+  "next_step": "Resolve plan-relevant Structure questions.",
+  "planning_ready": false,
+  "ai_mode": false,
+  "validation": true
+}

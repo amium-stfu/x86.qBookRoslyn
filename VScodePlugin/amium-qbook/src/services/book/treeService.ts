@@ -110,37 +110,6 @@ function getDisplayName(pageName: string, fileName: string): string {
     return '';
   }
 
-  const normalizedPage = pageName.toLowerCase();
-  const normalizedFile = fileName.toLowerCase();
-
-  if (normalizedFile.startsWith(normalizedPage.toLowerCase())) {
-    const suffix = fileName.substring(pageName.length);
-    if (suffix.toLowerCase().startsWith('.qpage') || suffix.toLowerCase().startsWith('.opage')) {
-      return 'qPage';
-    }
-    if (suffix.toLowerCase().startsWith('.procedures')) {
-      return 'Procedures';
-    }
-    if (suffix.toLowerCase().startsWith('.test')) {
-      return 'Test';
-    }
-    if (suffix.toLowerCase().startsWith('.view')) {
-      return 'View';
-    }
-    if (suffix.toLowerCase().startsWith('.customcode')) {
-      return 'Custom Code';
-    }
-    if (suffix.toLowerCase().startsWith('.sequencer')) {
-      return 'Sequencer';
-    }
-    if (suffix.toLowerCase().startsWith('.testdevice')) {
-      return 'Test Device';
-    }
-    if (suffix.toLowerCase().startsWith('.clientudl')) {
-      return 'Client UDL';
-    }
-  }
-
   if (fileName.toLowerCase().endsWith('.cs')) {
     const withoutExtension = fileName.slice(0, -3);
     if (withoutExtension.startsWith(`${pageName}.`)) {

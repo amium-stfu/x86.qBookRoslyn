@@ -78,6 +78,7 @@ class PipeCommandClient {
                 }
                 settled = true;
                 socket.removeAllListeners();
+                socket.on('error', () => { });
                 if (!socket.destroyed) {
                     socket.destroy();
                 }
@@ -174,7 +175,8 @@ class PipeEventClient extends node_events_1.EventEmitter {
             this.logger?.error?.(`Pipe '${this.pipeName}' reported an error.`, error);
             this.setState('disconnected');
             this.scheduleReconnect();
-            this.emit('error', error);
+            if (this.listenerCount('error') > 0)
+                this.emit('error', error);
         });
         socket.on('close', () => {
             this.logger?.info?.(`Pipe '${this.pipeName}' connection closed.`);
@@ -216,6 +218,7 @@ class PipeEventClient extends node_events_1.EventEmitter {
         }
         if (this.socket) {
             this.socket.removeAllListeners();
+            this.socket.on('error', () => { });
             try {
                 this.socket.destroy();
             }
@@ -240,7 +243,8 @@ class PipeEventClient extends node_events_1.EventEmitter {
         }
         catch (error) {
             this.logger?.error?.(`Failed to parse payload from pipe '${this.pipeName}'.`, error);
-            this.emit('error', error);
+            if (this.listenerCount('error') > 0)
+                this.emit('error', error);
         }
     }
     setState(state) {
@@ -266,6 +270,10 @@ class PipeBridge {
         const messageListener = (command) => {
             this.messageEmitter.fire(command);
         };
+        // Socket and payload errors are already logged by PipeEventClient.
+        const errorListener = () => { };
+        this.eventClient.on('error', errorListener);
+        this.disposables.push(new vscode.Disposable(() => this.eventClient.off('error', errorListener)));
         const connectedListener = () => this.statusEmitter.fire('connected');
         const disconnectedListener = () => this.statusEmitter.fire('disconnected');
         this.eventClient.on('message', messageListener);

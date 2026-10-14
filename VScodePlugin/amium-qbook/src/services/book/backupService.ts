@@ -47,17 +47,17 @@ async function resolveUniqueSnapshotDirectory(backupRoot: vscode.Uri, baseName: 
 
 export async function createTimestampedBackup(bookRoot: vscode.Uri | undefined): Promise<vscode.Uri> {
   if (!bookRoot) {
-    throw new Error('Book-Verzeichnis konnte nicht ermittelt werden.');
+    throw new Error('Book directory could not be determined.');
   }
 
   const sourceStat = await vscode.workspace.fs.stat(bookRoot);
   if (sourceStat.type !== vscode.FileType.Directory) {
-    throw new Error('Book-Verzeichnis ist kein Ordner.');
+    throw new Error('Book directory is not a folder.');
   }
 
   const sourceDirectoryName = getDirectoryName(bookRoot);
   if (!sourceDirectoryName) {
-    throw new Error('Book-Ordnername fehlt.');
+    throw new Error('Book folder name is missing.');
   }
 
   const parentDirectory = getParentDirectoryUri(bookRoot);

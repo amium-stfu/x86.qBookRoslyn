@@ -113,13 +113,13 @@ function getErrorDetails(error: unknown): string {
 }
 
 export function getCreateSubcodeErrorMessage(error: unknown): string {
-  return `Subcode konnte nicht erstellt werden: ${getErrorDetails(error)}`;
+  return `Subcode creation failed: ${getErrorDetails(error)}`;
 }
 
 export function getRenameSubnodeErrorMessage(error: unknown): string {
-  return `Code-Datei konnte nicht umbenannt werden: ${getErrorDetails(error)}`;
+  return `Code file could not be renamed: ${getErrorDetails(error)}`;
 }
 
 export function getDeleteSubnodeErrorMessage(error: unknown): string {
-  return `Code-Datei konnte nicht gelöscht werden: ${getErrorDetails(error)}`;
+  return `Code file could not be deleted: ${getErrorDetails(error)}`;
 }

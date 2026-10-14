@@ -1,0 +1,13 @@
+{
+  "id": "2026.10.14.0022-vs_code_lifecycle_20261014_002250",
+  "title": "VS Code LifeCycle - 20261014-002250",
+  "owner_user_id": "StefanFunk",
+  "status": "implemented",
+  "branch": "main",
+  "updated_at": "2026-10-14T08:32:49.8817944+02:00",
+  "progress": "Scoped lifecycle, launcher and activation changes implemented; Worker Build passed.",
+  "next_step": "Runtime acceptance scenarios remain unobserved; DEBUG and REPORT are available.",
+  "planning_ready": false,
+  "ai_mode": false,
+  "validation": true
+}

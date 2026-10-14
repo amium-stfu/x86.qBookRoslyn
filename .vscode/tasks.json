@@ -19,6 +19,36 @@
         "path": "qbookStudio.sln",
         "action": "Build"
       }
+    },
+    {
+      "label": "AiFlow Build: amium-qbook",
+      "type": "process",
+      "command": "C:/Program Files/nodejs/node.exe",
+      "args": [
+        "node_modules/typescript/bin/tsc",
+        "-p",
+        "./"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/VScodePlugin/amium-qbook"
+      },
+      "_aiFlow": {
+        "owner": "AiFlow",
+        "path": "VScodePlugin/amium-qbook",
+        "action": "Build"
+      }
+    },
+    {
+      "label": "AiFlow Build: qbook",
+      "type": "process",
+      "command": "C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/.vscode/build-qbook-and-extension.ps1"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "_aiFlow": {
+        "owner": "AiFlow",
+        "path": "qbook/qbook.csproj",
+        "action": "Build"
+      }
     }
   ]
 }

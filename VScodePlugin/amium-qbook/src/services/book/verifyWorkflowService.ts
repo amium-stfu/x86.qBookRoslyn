@@ -56,7 +56,7 @@ export async function verifyAllTreeCsFiles(
     await sleep(120);
   }
 
-  context.postStatusText('PrÃ¼fe C# Diagnostics ...');
+  context.postStatusText('Checking C# Diagnostics ...');
   await waitForNextDiagnosticsUpdate(800);
   await sleep(120);
   context.refreshDiagnostics();

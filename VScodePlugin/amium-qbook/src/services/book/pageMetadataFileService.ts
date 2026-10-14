@@ -8,7 +8,7 @@ const textEncoder = new TextEncoder();
 
 export function getPageDirectory(bookRoot: vscode.Uri | undefined, pageName: string): vscode.Uri {
   if (!bookRoot) {
-    throw new Error('Kein qBook-Projekt geladen.');
+    throw new Error('No qBook project is loaded.');
   }
   return vscode.Uri.joinPath(bookRoot, 'Pages', pageName);
 }

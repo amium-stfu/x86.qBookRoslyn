@@ -1,0 +1,13 @@
+{
+  "id": "2026.10.13.1549-vs_code_plugin_20261013_154936",
+  "title": "VS Code Plugin - 20261013-154936",
+  "owner_user_id": "StefanFunk",
+  "status": "implemented",
+  "branch": "main",
+  "updated_at": "2026-10-13T21:16:51.818436+00:00",
+  "progress": "Full-Destroy Stop, host-owned sequential Rebuild and Run toolbar removal applied. Worker Build qbook/qbook.csproj succeeded with exit code 0.",
+  "next_step": "REPORT or DEBUG if requested.",
+  "planning_ready": false,
+  "ai_mode": false,
+  "validation": true
+}

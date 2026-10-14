@@ -3,13 +3,13 @@ function getErrorDetails(error: unknown): string {
 }
 
 export function getReorderPagesErrorMessage(error: unknown): string {
-  return `Neue Page-Reihenfolge konnte nicht gespeichert werden: ${getErrorDetails(error)}`;
+  return `New page order could not be saved: ${getErrorDetails(error)}`;
 }
 
 export function getCreatePageErrorMessage(error: unknown): string {
-  return `Page konnte nicht erstellt werden: ${getErrorDetails(error)}`;
+  return `Page could not be created: ${getErrorDetails(error)}`;
 }
 
 export function getImportPageErrorMessage(error: unknown): string {
-  return `Page konnte nicht importiert werden: ${getErrorDetails(error)}`;
+  return `Page could not be imported: ${getErrorDetails(error)}`;
 }

@@ -9,13 +9,17 @@ export type ActivePipeConfiguration = {
 
 export type BridgeMessage = {
   type?:
+    | 'initialize'
     | 'run'
     | 'stop'
     | 'save'
-    | 'rebuild'
+    | 'checkCode'
+    | 'fastRebuild'
     | 'backup'
     | 'debugStart'
     | 'debugStop'
+    | 'requestAutomationState'
+    | 'updateAutomationOptions'
     | 'requestTree'
     | 'openFile'
     | 'toggleHidden'
@@ -29,6 +33,8 @@ export type BridgeMessage = {
     | 'createPage'
     | 'importPage'
     | string;
+  autoRun?: boolean;
+  autoBackup?: boolean;
   page?: string;
   title?: string;
   format?: string;
@@ -83,4 +89,10 @@ export type OPageDocument = {
   Format?: string;
   Hidden?: boolean;
   [key: string]: unknown;
+};
+
+export type RebuildAutomation = {
+  autoRun: boolean;
+  autoBackup: boolean;
+  stage: 'preparing' | 'rebuild' | 'initialize' | 'run';
 };

@@ -1,4 +1,4 @@
-﻿using CSScripting;
+using CSScripting;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -127,7 +127,7 @@ namespace qbook
                 if (_DataDirectory == null)
                 {
                     //create/use default data-directory
-                    string qbookName = Core.ThisBook.Filename;
+                    string qbookName = Filename;
                     Match m = NameVersionExtRegex.Match(qbookName);
                     if (m.Success)
                     {
@@ -136,7 +136,7 @@ namespace qbook
                         string ext = m.Groups["ext"].Value.ToLower();
                         if (ext == ".qbook")
                         {
-                            string dir = Path.Combine(Core.ThisBook.Directory, name + ".data");
+                            string dir = Path.Combine(Directory, name + ".data");
                             if (!System.IO.Directory.Exists(dir))
                                 System.IO.Directory.CreateDirectory(dir);
 
@@ -184,7 +184,7 @@ namespace qbook
                 if (_SettingsDirectory == null)
                 {
                     //create/use default data-directory
-                    string qbookName = Core.ThisBook.Filename;
+                    string qbookName = Filename;
                     Match m = NameVersionExtRegex.Match(qbookName);
                     if (m.Success)
                     {
@@ -193,7 +193,7 @@ namespace qbook
                         string ext = m.Groups["ext"].Value.ToLower();
                         if (ext == ".qbook")
                         {
-                            string dir = Path.Combine(Core.ThisBook.Directory, name + ".settings");
+                            string dir = Path.Combine(Directory, name + ".settings");
                             if (!System.IO.Directory.Exists(dir))
                                 System.IO.Directory.CreateDirectory(dir);
 
@@ -222,7 +222,7 @@ namespace qbook
                 if (_TempDirectory == null)
                 {
                     //create/use default data-directory
-                    string qbookName = Core.ThisBook.Filename;
+                    string qbookName = Filename;
                     Match m = NameVersionExtRegex.Match(qbookName);
                     if (m.Success)
                     {
@@ -231,7 +231,7 @@ namespace qbook
                         string ext = m.Groups["ext"].Value.ToLower();
                         if (ext == ".qbook")
                         {
-                            string dir = Path.Combine(Core.ThisBook.Directory, name + ".temp");
+                            string dir = Path.Combine(Directory, name + ".temp");
                             if (!System.IO.Directory.Exists(dir))
                                 System.IO.Directory.CreateDirectory(dir);
 

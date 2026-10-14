@@ -159,6 +159,31 @@ namespace qbook
             return pageControl;
         }
 
+        internal PageControl BeginBookTeardown()
+        {
+            if (IsDisposed || Disposing || !IsHandleCreated) return null;
+            if (InvokeRequired) return (PageControl)Invoke(new Func<PageControl>(BeginBookTeardown));
+            var surface = GetPageControl();
+            if (surface == null || surface.IsDisposed || surface.Disposing) return null;
+            try
+            {
+                surface.BeginTeardown(this);
+                return surface;
+            }
+            catch
+            {
+                surface.EndTeardown();
+                throw;
+            }
+        }
+
+        internal void EndBookTeardown(PageControl surface)
+        {
+            if (surface == null || IsDisposed || Disposing || !IsHandleCreated) return;
+            if (InvokeRequired) { Invoke(new System.Action(() => EndBookTeardown(surface))); return; }
+            surface.EndTeardown();
+        }
+
         private readonly Dictionary<System.Windows.Forms.Control, bool> dialogEnabledStates = new Dictionary<System.Windows.Forms.Control, bool>();
         private readonly Dictionary<System.Windows.Forms.Control, bool> dialogVisibleStates = new Dictionary<System.Windows.Forms.Control, bool>();
         private DialogBox displayedDialog;
@@ -459,7 +484,7 @@ namespace qbook
                 return;
 
             //this.Text = $"{Main.Qb.Book.Filename}-{Main.Qb.SelectedPage.TextL} [v{AssemblyVersionStringEx}]";
-            pageControl.Refresh();//.Invalidate();
+            if (!pageControl.IsTeardownActive) pageControl.Refresh();//.Invalidate();
             Invalidate();
 
             if (doPdf)
@@ -2500,63 +2525,25 @@ namespace qbook
         }
 
 
-        private void newEditorToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void newEditorToolStripMenuItem_Click(object sender, EventArgs e)
         {
-           // BookBuilder.CreateBook("T:\\qbooksave\\Demo", "TestBook");
-      
-            string name = Book.GetProjectBaseName(Core.ThisBook.Filename) + ".csproj";
-            string path = Path.Combine(Core.ThisBook.CodeDirectory, name);
-
-            PipeNames.SavePipesToFile(Path.Combine(Core.ThisBook.CodeDirectory, "pipes.json"));
-
-
-            string codePath = Core.ThisBook.CodeDirectory;
-
-            //var VSCloader = new ProcessStartInfo
-            //{
-            //    FileName = "code",
-            //    Arguments = $"\"{codePath}\"",
-            //    UseShellExecute = false, // true wenn du z.B. Explorer öffnen willst
-            //    CreateNoWindow = true   // true, wenn kein Fenster angezeigt werden soll
-            //};
-
-
-            //Process.Start(VSCloader);
-
-            if(VsCodeLauncher.OpenFolder(codePath))
-                return;
-
-            string exePath = string.Empty;
-
-
-            if (Debugger.IsAttached)
+            newEditorToolStripMenuItem.Enabled = false;
+            try
             {
-                exePath = GetExePath(released: false);
+                string codePath = Core.ThisBook.CodeDirectory;
+                PipeNames.SavePipesToFile(Path.Combine(codePath, "pipes.json"));
+                if (!await VsCodeLauncher.OpenFolder(codePath))
+                    throw new InvalidOperationException("VS Code CLI was not found. The book workspace was not opened.");
             }
-            else
+            catch (Exception ex)
             {
-                exePath = GetExePath(released: true);
+                QB.Logger.Error("Book editor launch failed: " + ex);
+                MessageBox.Show(this, ex.Message, "Book editor launch failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-
-            string args =  $"\"{path}\" " + $"\"{PipeNames.Server}\" " + $"\"{PipeNames.Client}\"";
-
-            QB.Logger.Debug("Starting Code-Editor in: " + exePath);
-         
-
-          
-
-            ProcessStartInfo psi = new ProcessStartInfo
+            finally
             {
-                FileName = exePath,
-                Arguments = args,
-                UseShellExecute = false, // true wenn du z.B. Explorer öffnen willst
-                CreateNoWindow = false   // true, wenn kein Fenster angezeigt werden soll
-            };
-
-            var editorProcess = Process.Start(psi);
-            Program.RegisterExternalEditorProcess(editorProcess);
-
-         //   await Core.ShowCodeExploror();
+                newEditorToolStripMenuItem.Enabled = true;
+            }
         }
 
         bool InitShown = false;

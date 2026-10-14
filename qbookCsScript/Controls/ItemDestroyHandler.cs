@@ -13,23 +13,43 @@ namespace QB.Controls
 
         public static void AddDestroyer(System.Action destroyer)
         {
-            Destroyers.Add(destroyer);
+            lock (Destroyers) Destroyers.Add(destroyer);
         }
 
         internal static void RemoveDestroyer(System.Action destroyer)
         {
-            Destroyers.Remove(destroyer);
+            lock (Destroyers) Destroyers.Remove(destroyer);
         }
 
         public static void DestroyAll()
         {
             var errors = new List<Exception>();
-            foreach (System.Action dest in Destroyers.ToArray())
+            System.Action[] callbacks;
+            lock (Destroyers)
             {
+                callbacks = Destroyers.ToArray();
+            }
+            foreach (System.Action dest in callbacks)
+            {
+                // Earlier callbacks can unregister owned controls from this snapshot.
+                lock (Destroyers)
+                    if (!Destroyers.Remove(dest)) continue;
                 try
                 {
                     dest();
-                    Destroyers.Remove(dest);
+                    if (dest.Target is Item item)
+                    {
+                        item.UnregisterObject();
+                        lock (Root.ModuleDict)
+                            foreach (var key in Root.ModuleDict.Where(pair => ReferenceEquals(pair.Value, item)).Select(pair => pair.Key).ToArray())
+                                Root.ModuleDict.Remove(key);
+                        lock (Root.SignalDict)
+                            foreach (var key in Root.SignalDict.Where(pair => ReferenceEquals(pair.Value, item)).Select(pair => pair.Key).ToArray())
+                                Root.SignalDict.Remove(key);
+                        lock (Root.MessageDict)
+                            foreach (var key in Root.MessageDict.Where(pair => ReferenceEquals(pair.Value, item)).Select(pair => pair.Key).ToArray())
+                                Root.MessageDict.Remove(key);
+                    }
                 }
                 catch (Exception ex)
                 {

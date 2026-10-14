@@ -20,7 +20,7 @@ export async function handleToggleHiddenCommand(
 
   const targetPage = resolveNodePageIdentifier(message);
   if (!targetPage) {
-    vscode.window.showWarningMessage('Keine Page ausgewÃ¤hlt.');
+    vscode.window.showWarningMessage('No page selected.');
     return;
   }
 
@@ -44,7 +44,7 @@ export async function handleUpdateTitleCommand(
 ): Promise<void> {
   const targetPage = resolveNodePageIdentifier(message);
   if (!targetPage) {
-    vscode.window.showWarningMessage('Keine Page ausgewÃ¤hlt.');
+    vscode.window.showWarningMessage('No page selected.');
     return;
   }
 
@@ -56,7 +56,7 @@ export async function handleUpdateTitleCommand(
     });
     applyMetadataPatch(targetPage, { title: nextTitle });
   } catch (error: unknown) {
-    reportMetadataError('Titel', error);
+    reportMetadataError('Title', error);
   }
 }
 
@@ -68,13 +68,13 @@ export async function handleUpdateFormatCommand(
 ): Promise<void> {
   const targetPage = resolveNodePageIdentifier(message);
   if (!targetPage) {
-    vscode.window.showWarningMessage('Keine Page ausgewÃ¤hlt.');
+    vscode.window.showWarningMessage('No page selected.');
     return;
   }
 
   const nextFormat = normalizeFormatValue(message.format);
   if (!nextFormat) {
-    vscode.window.showWarningMessage('UngÃ¼ltiges Format.');
+    vscode.window.showWarningMessage('Invalid format.');
     return;
   }
 

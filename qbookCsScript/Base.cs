@@ -1,4 +1,4 @@
-﻿using QB.Controls;
+using QB.Controls;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -156,86 +156,102 @@ namespace QB
         public static void ResetObjectDict()
         {
             Controls.DialogBox.ResetDialogs();
-            //do some necessary cleanup (especially timers, callbacks, ...)
-            foreach (Item o in ObjectDict.Values.ToList())
+            Item[] objects;
+            lock (ObjectDict)
             {
-                //if (o is Timer)
-                //    (o as Timer).Destroy();
-
-                if (o is Item)
-                    (o as Item).Destroy();
+                objects = ObjectDict.Values.ToArray();
+                ObjectDict.Clear();
             }
-
-
-            ObjectDict.Clear();
-
-            lock (Root.SignalDict)
-                SignalDict.Clear();
-            lock (Root.ModuleDict)
-                ModuleDict.Clear();
+            // These entries are already owned by the object snapshot.
+            lock (ModuleDict)
+                foreach (var key in ModuleDict.Where(pair => objects.Any(item => ReferenceEquals(item, pair.Value))).Select(pair => pair.Key).ToArray())
+                    ModuleDict.Remove(key);
+            lock (SignalDict)
+                foreach (var key in SignalDict.Where(pair => objects.Any(item => ReferenceEquals(item, pair.Value))).Select(pair => pair.Key).ToArray())
+                    SignalDict.Remove(key);
+            var errors = new List<Exception>();
+            foreach (var item in objects)
+            {
+                try { item.Destroy(); }
+                catch (Exception ex) { errors.Add(ex); }
+            }
+            if (errors.Count > 0) throw new AggregateException("Object cleanup failed.", errors);
         }
+
         public static void ResetWidgetDict()
         {
-            Controls.DialogBox.ResetDialogs();
-            //do some necessary cleanup (especially timers, callbacks, ...)
+            Controls.Control[] objects;
             lock (ControlDict)
             {
-                foreach (var o in ControlDict.Values)
-                {
-                    o.Stop();
-                }
+                objects = ControlDict.Values.ToArray();
                 ControlDict.Clear();
             }
+            var errors = new List<Exception>();
+            foreach (var item in objects)
+            {
+                try { item.Stop(); }
+                catch (Exception ex) { errors.Add(ex); }
+            }
+            if (errors.Count > 0) throw new AggregateException("Widget cleanup failed.", errors);
         }
-
         public static void ResetModuleDict()
         {
-            //do some necessary cleanup (especially timers, callbacks, ...)
+            Module[] objects;
             lock (ModuleDict)
             {
-                foreach (var o in ModuleDict.Values)
-                {
-                    o.Destroy();
-                }
+                objects = ModuleDict.Values.ToArray();
                 ModuleDict.Clear();
             }
+            var errors = new List<Exception>();
+            foreach (var item in objects)
+            {
+                try { item.Destroy(); }
+                catch (Exception ex) { errors.Add(ex); }
+            }
+            if (errors.Count > 0) throw new AggregateException("Module cleanup failed.", errors);
         }
-
         public static void ResetSignalDict()
         {
-            //do some necessary cleanup (especially timers, callbacks, ...)
+            Signal[] objects;
             lock (SignalDict)
             {
-                foreach (var o in SignalDict.Values)
-                {
-                    o.Destroy();
-                }
+                objects = SignalDict.Values.ToArray();
                 SignalDict.Clear();
             }
+            var errors = new List<Exception>();
+            foreach (var item in objects)
+            {
+                try { item.Destroy(); }
+                catch (Exception ex) { errors.Add(ex); }
+            }
+            if (errors.Count > 0) throw new AggregateException("Signal cleanup failed.", errors);
         }
-
         public static void ResetMessageDict()
         {
-            //do some necessary cleanup (especially timers, callbacks, ...)
+            Message[] objects;
             lock (MessageDict)
             {
-                foreach (var o in MessageDict.Values)
-                {
-                    o.Destroy();
-                }
+                objects = MessageDict.Values.ToArray();
                 MessageDict.Clear();
             }
+            var errors = new List<Exception>();
+            foreach (var item in objects)
+            {
+                try { item.Destroy(); }
+                catch (Exception ex) { errors.Add(ex); }
+            }
+            if (errors.Count > 0) throw new AggregateException("Message cleanup failed.", errors);
         }
-
         public static void ResetAllDicts()
         {
-            ResetObjectDict();
-            ResetWidgetDict();
-            ResetModuleDict();
-            ResetSignalDict();
-            ResetMessageDict();
+            var errors = new List<Exception>();
+            foreach (System.Action reset in new System.Action[] { ResetObjectDict, ResetWidgetDict, ResetModuleDict, ResetSignalDict, ResetMessageDict })
+            {
+                try { reset(); }
+                catch (Exception ex) { errors.Add(ex); }
+            }
+            if (errors.Count > 0) throw new AggregateException("Runtime registry cleanup failed.", errors);
         }
-
         public static void InvalidateBoxBounds()
         {
             lock (ControlDict)

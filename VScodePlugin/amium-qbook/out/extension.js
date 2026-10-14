@@ -65,6 +65,8 @@ let pipeConnectionState = 'disconnected';
 let activePipeStatusSubscription;
 let viewProviderRef;
 let extensionContextRef;
+let pipeRefresh = Promise.resolve();
+let deactivated = false;
 const pipeCommandReceiverContext = {
     notifyRuntimeSignal: (signal, command) => viewProviderRef?.notifyRuntimeSignal(signal, command),
     getRuntimeLogChannel,
@@ -76,6 +78,9 @@ const pipeCommandSenderContext = {
 };
 function activate(context) {
     extensionContextRef = context;
+    deactivated = false;
+    getRuntimeLogChannel()?.info('Book workspace activated; initializing runtime connection.');
+    void refreshWorkspacePipeBridge(context);
     const viewProvider = new QBookViewProvider(context);
     viewProviderRef = viewProvider;
     viewProviderRef.updatePipeStatus(pipeConnectionState);
@@ -94,22 +99,42 @@ function activate(context) {
     context.subscriptions.push(openPanelCommand);
     viewProvider.handleActiveEditorChange(vscode.window.activeTextEditor);
     viewProvider.refreshDiagnostics();
-    applySettingsPipeBridge(context);
+    const pipeWatcher = vscode.workspace.createFileSystemWatcher('**/{Book.json,pipes.json}');
+    context.subscriptions.push(pipeWatcher, pipeWatcher.onDidCreate(() => void refreshWorkspacePipeBridge(context)), pipeWatcher.onDidChange(() => void refreshWorkspacePipeBridge(context)), pipeWatcher.onDidDelete(() => void refreshWorkspacePipeBridge(context)), vscode.workspace.onDidChangeWorkspaceFolders(() => void refreshWorkspacePipeBridge(context)));
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('amium-qbook.pipe.serverName') ||
             event.affectsConfiguration('amium-qbook.pipe.clientName') ||
             event.affectsConfiguration('amium-qbook.pipe.reconnectDelay')) {
-            if (currentPipeConfig?.source === 'project' && lastProjectRoot) {
-                void applyProjectPipeBridge(context, lastProjectRoot);
-            }
-            else {
-                applySettingsPipeBridge(context);
-            }
+            void refreshWorkspacePipeBridge(context);
         }
     }));
 }
 function deactivate() {
+    deactivated = true;
     disposeActivePipeBridge();
+}
+function refreshWorkspacePipeBridge(context) {
+    pipeRefresh = pipeRefresh.then(async () => {
+        if (deactivated)
+            return;
+        const bookUri = await (0, treeService_js_1.findBookFileInWorkspace)();
+        const bookRoot = bookUri ? (0, treeService_js_1.getDirectoryUri)(bookUri) : undefined;
+        const pipes = bookRoot ? await readProjectPipeConfig(bookRoot) : undefined;
+        if (deactivated)
+            return;
+        lastProjectRoot = bookRoot;
+        if (pipes) {
+            updatePipeBridge(context, { ...pipes, reconnectDelay: getReconnectDelaySetting(), source: 'project' });
+        }
+        else {
+            if (currentPipeConfig?.source === 'project')
+                disposeActivePipeBridge();
+            applySettingsPipeBridge(context);
+        }
+    }).catch((error) => {
+        getRuntimeLogChannel()?.error('Runtime connection initialization failed', error);
+    });
+    return pipeRefresh;
 }
 function applySettingsPipeBridge(context) {
     const config = vscode.workspace.getConfiguration('amium-qbook');
@@ -129,20 +154,6 @@ function applySettingsPipeBridge(context) {
         source: 'settings',
     });
 }
-async function applyProjectPipeBridge(context, bookRoot) {
-    const pipes = await readProjectPipeConfig(bookRoot);
-    if (!pipes) {
-        if (currentPipeConfig?.source === 'project') {
-            applySettingsPipeBridge(context);
-        }
-        return;
-    }
-    updatePipeBridge(context, {
-        ...pipes,
-        reconnectDelay: getReconnectDelaySetting(),
-        source: 'project',
-    });
-}
 function getReconnectDelaySetting() {
     return Math.max(100, vscode.workspace.getConfiguration('amium-qbook').get('pipe.reconnectDelay') ?? 500);
 }
@@ -155,11 +166,15 @@ async function readProjectPipeConfig(bookRoot) {
         const serverPipe = (data.ServerPipe ?? '').trim();
         const clientPipe = (data.ClientPipe ?? '').trim();
         if (!serverPipe || !clientPipe) {
+            getRuntimeLogChannel()?.error('Project pipes.json requires non-empty ServerPipe and ClientPipe values.');
             return undefined;
         }
         return { serverPipe, clientPipe };
     }
-    catch {
+    catch (error) {
+        if (!(error instanceof vscode.FileSystemError && error.code === 'FileNotFound')) {
+            getRuntimeLogChannel()?.error('Could not read project pipes.json', error);
+        }
         return undefined;
     }
 }
@@ -222,6 +237,7 @@ function createPipeBridgeInstance(context, config) {
     });
     activePipeStatusSubscription?.dispose();
     activePipeStatusSubscription = bridge.onStatus((status) => {
+        getRuntimeLogChannel()?.info(`Runtime pipe ${status}: ${config.clientPipe}`);
         broadcastPipeStatus(status);
     });
     return bridge;
@@ -277,16 +293,19 @@ class QBookViewProvider {
     lastPayload;
     pipeStatus = 'disconnected';
     runtimeButtonState = {
+        initialize: null,
         run: null,
         stop: null,
         rebuild: null,
     };
-    runtimeHighlightTimers = new Map();
     managedDebugSession;
     isRenamingPage = false;
     debugAttachRunCounter = 0;
     knownDebugSessions = new Map();
-    pendingAutoRunAfterRebuild = false;
+    runtimeInFlight;
+    autoRun = true;
+    autoBackup = true;
+    rebuildAutomation;
     constructor(context) {
         this.context = context;
         this.context.subscriptions.push(...(0, sessionLifecycleService_js_1.registerDebugSessionLifecycle)({
@@ -314,7 +333,17 @@ class QBookViewProvider {
         webviewView.webview.onDidReceiveMessage(async (message) => {
             await (0, webviewMessageDispatcher_js_1.dispatchWebviewMessage)({
                 message,
+                syncAutomationOptions: (options) => this.syncAutomationOptions(options),
+                beginRebuildAutomation: () => this.beginRebuildAutomation(),
+                isAutomationActive: (operation) => this.rebuildAutomation === operation,
+                sendPreparedRebuild: (operation) => this.sendAutomationStage(operation, 'rebuild'),
+                failRebuildAutomation: (operation, detail) => {
+                    if (this.rebuildAutomation === operation)
+                        this.finishRuntimeFailure('rebuild', detail);
+                },
                 pipeCommandSenderContext,
+                notifyRuntimeRequested: (button) => this.notifyRuntimeRequested(button),
+                notifyRuntimeFailed: (button, detail) => this.finishRuntimeFailure(button, detail),
                 loadAndSendTreeData: () => this.loadAndSendTreeData(webviewView),
                 openRelativeFile: (relativePath) => this.openRelativeFile(relativePath),
                 verifyAllTreeCsFiles: () => this.verifyAllTreeCsFiles(),
@@ -344,9 +373,6 @@ class QBookViewProvider {
                 errorPaths: this.errorPaths,
                 reorderPayloadNodes: (nextOrder) => {
                     this.reorderPayloadNodes(nextOrder);
-                },
-                setPendingAutoRunAfterRebuild: (value) => {
-                    this.pendingAutoRunAfterRebuild = value;
                 },
             });
         });
@@ -392,8 +418,7 @@ class QBookViewProvider {
         }
         const bookRoot = (0, treeService_js_1.getDirectoryUri)(bookUri);
         this.lastBookRoot = bookRoot;
-        lastProjectRoot = bookRoot;
-        await applyProjectPipeBridge(this.context, bookRoot);
+        await refreshWorkspacePipeBridge(this.context);
         this.refreshDiagnostics();
         this.handleActiveEditorChange(vscode.window.activeTextEditor);
         const fileContents = await vscode.workspace.fs.readFile(bookUri);
@@ -513,60 +538,132 @@ class QBookViewProvider {
     updatePipeStatus(status) {
         this.pipeStatus = status;
         (0, webviewStatusService_js_1.postPipeStatus)(this.currentView, this.pipeStatus);
+        if (status === 'disconnected') {
+            if (this.runtimeInFlight) {
+                this.finishRuntimeFailure(this.runtimeInFlight, 'Pipe disconnected; host completion is unknown.');
+            }
+            else {
+                (0, webviewStatusService_js_1.postRuntimeInfo)(this.currentView, 'Runtime offline');
+            }
+        }
     }
     notifyRuntimeSignal(signal, command) {
+        const lifecycle = command?.Args?.includes('Lifecycle');
+        const operation = this.rebuildAutomation;
+        if (operation) {
+            if (signal.kind === 'alert') {
+                this.finishRuntimeFailure(this.runtimeInFlight ?? 'rebuild', command?.Args?.[1] ?? 'Host action failed.');
+                return;
+            }
+            if (!lifecycle || operation.stage === 'preparing' || signal.button !== operation.stage)
+                return;
+        }
+        if (!lifecycle && (this.runtimeInFlight || Object.values(this.runtimeButtonState).some(state => state === 'alert')))
+            return;
+        if (signal.kind === 'progress') {
+            if (!this.runtimeInFlight)
+                this.notifyRuntimeRequested(signal.button);
+            return;
+        }
+        if (this.runtimeInFlight && signal.button !== this.runtimeInFlight)
+            return;
+        if (lifecycle)
+            this.runtimeInFlight = undefined;
+        if (signal.kind === 'alert') {
+            this.finishRuntimeFailure(signal.button, command?.Args?.[1] ?? 'Host action failed.');
+            return;
+        }
         this.applyRuntimeHighlight(signal.button, signal.kind);
+        const label = signal.button.charAt(0).toUpperCase() + signal.button.slice(1);
         const timestamp = (0, pipeCommands_js_1.extractRuntimeTimestamp)(command?.Args);
-        const label = signal.button === 'run' ? 'Run' : signal.button === 'rebuild' ? 'Rebuild' : 'Stop';
-        const nextStatus = timestamp
-            ? `Runtime ${signal.kind}: ${label} @ ${timestamp}`
-            : `Runtime ${signal.kind}: ${label}`;
-        if (signal.kind === 'status') {
-            if (signal.button === 'rebuild') {
-                (0, webviewStatusService_js_1.postStatusText)(this.currentView, 'Rebuild done');
-                if (this.pendingAutoRunAfterRebuild) {
-                    this.pendingAutoRunAfterRebuild = false;
-                    void (0, pipeCommands_js_1.sendRuntimeCommand)(pipeCommandSenderContext, 'Run');
-                    (0, webviewStatusService_js_1.postStatusText)(this.currentView, 'Run started automatically after rebuild');
-                }
+        (0, webviewStatusService_js_1.postStatusText)(this.currentView, label + ' completed');
+        (0, webviewStatusService_js_1.postRuntimeInfo)(this.currentView, 'Runtime status: ' + label + (timestamp ? ' @ ' + timestamp : ''));
+        if (operation && lifecycle && signal.kind === 'status') {
+            if (operation.stage === 'rebuild' && operation.autoRun) {
+                void this.sendAutomationStage(operation, 'initialize');
             }
-            else if (signal.button === 'run') {
-                (0, webviewStatusService_js_1.postStatusText)(this.currentView, 'Running...');
+            else if (operation.stage === 'initialize') {
+                void this.sendAutomationStage(operation, 'run');
             }
-            else if (signal.button === 'stop') {
-                (0, webviewStatusService_js_1.postStatusText)(this.currentView, 'Stopped');
+            else {
+                this.rebuildAutomation = undefined;
             }
         }
-        (0, webviewStatusService_js_1.postRuntimeInfo)(this.currentView, nextStatus);
+    }
+    syncAutomationOptions(message) {
+        if (typeof message?.autoRun === 'boolean')
+            this.autoRun = message.autoRun;
+        if (typeof message?.autoBackup === 'boolean')
+            this.autoBackup = message.autoBackup;
+        this.currentView?.webview.postMessage({
+            type: 'automationState',
+            payload: { autoRun: this.autoRun, autoBackup: this.autoBackup },
+        });
+    }
+    beginRebuildAutomation() {
+        if (!this.notifyRuntimeRequested('rebuild'))
+            return undefined;
+        const operation = {
+            autoRun: this.autoRun,
+            autoBackup: this.autoBackup,
+            stage: 'preparing',
+        };
+        this.rebuildAutomation = operation;
+        return operation;
+    }
+    async sendAutomationStage(operation, stage) {
+        if (this.rebuildAutomation !== operation)
+            return;
+        operation.stage = stage;
+        this.runtimeInFlight = stage;
+        this.applyRuntimeHighlight(stage, 'progress');
+        (0, webviewStatusService_js_1.postStatusText)(this.currentView, stage + ' running');
+        getRuntimeLogChannel()?.info(stage + ' requested');
+        const command = stage.charAt(0).toUpperCase() + stage.slice(1);
+        const sent = await (0, pipeCommands_js_1.sendRuntimeCommand)(pipeCommandSenderContext, command);
+        if (!sent && this.rebuildAutomation === operation && operation.stage === stage) {
+            this.finishRuntimeFailure(stage, 'Runtime command could not be sent; host completion is unknown.');
+        }
+    }
+    notifyRuntimeRequested(button) {
+        if (this.runtimeInFlight) {
+            vscode.window.showErrorMessage('A runtime action is still pending.');
+            return false;
+        }
+        this.runtimeInFlight = button;
+        this.applyRuntimeHighlight(button, 'progress');
+        (0, webviewStatusService_js_1.postStatusText)(this.currentView, button + ' running');
+        getRuntimeLogChannel()?.info(button + ' requested');
+        return true;
+    }
+    finishRuntimeFailure(button, detail) {
+        this.rebuildAutomation = undefined;
+        this.runtimeInFlight = undefined;
+        this.applyRuntimeHighlight(button, 'alert');
+        const message = button + ' failed: ' + detail;
+        (0, webviewStatusService_js_1.postStatusText)(this.currentView, message);
+        (0, webviewStatusService_js_1.postRuntimeInfo)(this.currentView, message);
+        getRuntimeLogChannel()?.error(message);
     }
     applyRuntimeHighlight(button, kind) {
+        if (this.runtimeButtonState[button] === kind) {
+            return;
+        }
+        this.runtimeButtonState.initialize = null;
+        this.runtimeButtonState.run = null;
+        this.runtimeButtonState.stop = null;
+        this.runtimeButtonState.rebuild = null;
         this.runtimeButtonState[button] = kind;
         (0, webviewStatusService_js_1.postRuntimeState)(this.currentView, this.runtimeButtonState);
-        const existingTimer = this.runtimeHighlightTimers.get(button);
-        if (existingTimer) {
-            clearTimeout(existingTimer);
-        }
-        const timer = setTimeout(() => {
-            this.runtimeHighlightTimers.delete(button);
-            if (this.runtimeButtonState[button] === kind) {
-                this.runtimeButtonState[button] = null;
-                (0, webviewStatusService_js_1.postRuntimeState)(this.currentView, this.runtimeButtonState);
-            }
-        }, 4000);
-        this.runtimeHighlightTimers.set(button, timer);
     }
     clearProjectState() {
         const cleared = (0, projectStateService_js_1.createClearedProjectViewState)(this.lastBookRoot, this.selectedPath, this.errorPaths, this.lastPayload);
         this.lastBookRoot = cleared.lastBookRoot;
-        lastProjectRoot = undefined;
         this.selectedPath = cleared.selectedPath;
         this.errorPaths = cleared.errorPaths;
         this.lastPayload = cleared.lastPayload;
         if (cleared.hadState) {
             (0, bookStatusService_js_1.postBookStatus)(this.currentView, this.selectedPath, this.errorPaths, this.lastPayload);
-        }
-        if (currentPipeConfig?.source === 'project') {
-            applySettingsPipeBridge(this.context);
         }
     }
 }

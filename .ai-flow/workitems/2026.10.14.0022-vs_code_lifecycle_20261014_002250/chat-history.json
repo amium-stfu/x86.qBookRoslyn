@@ -1,0 +1,243 @@
+{
+  "FormatVersion": 1,
+  "Session": {
+    "Id": "a7eb332f-0de8-4786-9f58-d0525a147e62",
+    "Title": "VS Code LifeCycle - 20261014-002250",
+    "WorkItemPath": ".ai-flow/workitems/2026.10.14.0022-vs_code_lifecycle_20261014_002250",
+    "ExportedAt": "2026-10-14T06:46:26.0657071+00:00",
+    "ApplicationVersion": "2026.10.05.2030"
+  },
+  "Messages": [
+    {
+      "Id": "0acb8b8b-adfd-4982-89c4-a59ddc02b75b",
+      "CreatedAt": "2026-10-13T22:22:50.3048122+00:00",
+      "Role": "User",
+      "Text": "# Title VS Code LifeCycle\n\n## Current\nNach der Umstellung des LifeCycles bzw. dessen Steuerung aus dem VS Code heraus kommt es zu fehlern.\u000BStart funktioniert aber ein Rebuild nach Start liefert Fehler. Zudem wird die komplette UI inkl. Header/Footer gestoppt. Das war vor den \u00C4nderung im Workitem aus dem Annhang nicht.\u000B\u000BZb.\u000B2026-10-14 00:05:06.034 [error] #EX opening qbook: One or more errors occurred. (Collection was modified; enumeration operation may not execute.)\u000B2026-10-14 00:05:08.966 [error] [EX] qbook.Net.PipeCommands\u002B\u003CRebuild\u003Ed__0.MoveNext() -\u003E System.InvalidOperationException: Book cleanup, loading or build failed.\u000B\u000B2026-10-14 00:05:06.034 [error] #EX opening qbook: One or more errors occurred. (Collection was modified; enumeration operation may not execute.)\u000B\u000Bpublic static bool RunAll()\n{\n    try\n    {\n        if (!BuildSuccess || !IsRuntimeReady || !_resourcesInitialized || _resourcesReleased || _resourceCycleFailed)\n            throw new InvalidOperationException(\u0022Runtime is not successfully built and initialized. BuildResult=\u0022 \u002B BuildResult);\n\u000B        \n        MethodInfo runGlobal = _programType.GetMethod(\u0022Run\u0022);\n        if (runGlobal == null)\n            throw new MissingMethodException(\u0022QB.Program.Run was not found.\u0022);\n\n        QB.Root.ActiveQbook = qbook.Core.ThisBook;\n        Core.SendToEditor(\u0022LogInfo\u0022, \u0022[HOST] Program.Run START\u0022);\n        ExceptionBridge.Safe(\u0022Program.Run\u0022, () =\u003E\n        {\n            runGlobal.Invoke(null, null);\n        }, rethrow: true);\u000B\u000BSystem.ArgumentNullException\n  HResult=0x80004003\n  Message=Value cannot be null. (Parameter \u0027path1\u0027)\n  Source=System.Private.CoreLib\n  StackTrace:\n   at System.ArgumentNullException.Throw(String paramName)\n   at System.IO.Path.Combine(String path1, String path2, String path3)\n   at DefinitionFunkyLib.FunkyTest..ctor(String name) in B:\\Audi\\CellTester_2026.08.26.code\\Pages\\FunkyLib\\FunkyLib.testDevice.cs:line 58\n   at DefinitionTestSystem.CellTest..ctor(String name, SystemClient cyclers) in B:\\Audi\\CellTester_2026.08.26.code\\Pages\\TestSystem\\TestSystem.cell_test.cs:line 85\n   at DefinitionTestSlot01.qPage.Run() in B:\\Audi\\CellTester_2026.08.26.code\\Pages\\TestSlot01\\TestSlot01.qPage.cs:line 28\n   at QB.Program.Run() in B:\\Audi\\CellTester_2026.08.26.code\\Program.cs:line 23\n   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)\u000B\u000B \n\n## Goal\nBitte untersuche den LifeCylce:\u000B- Warum ein erneuter Rebuild probleme Verursacht.\u000B\u000B\n\n## Acceptance Criteria\n\n\n## Out of Scope\n",
+      "Attachments": [
+        {
+          "FileName": "chat-history.json",
+          "FileType": "application/json",
+          "RelativePath": "attachments/0acb8b8b-adfd-4982-89c4-a59ddc02b75b/chat-history.json"
+        },
+        {
+          "FileName": "BookRuntime.cs",
+          "FileType": null,
+          "RelativePath": "attachments/0acb8b8b-adfd-4982-89c4-a59ddc02b75b/BookRuntime.cs"
+        }
+      ]
+    },
+    {
+      "Id": "9d4f333f-3f14-4b9f-b633-a77b561a55ec",
+      "CreatedAt": "2026-10-13T22:23:45.041696+00:00",
+      "Role": "Assistant",
+      "Text": "**Der vollst\u00E4ndige UI-Abbau ist im aktuellen Lifecycle ausdr\u00FCcklich enthalten.** In \u0060qbook/Studio/BookRuntime.cs\u0060 f\u00FChrt \u0060StopAll()\u0060 zu \u0060DestroyAll()\u0060. Dieser Ablauf entfernt s\u00E4mtliche registrierten Controls, setzt globale Dictionaries zur\u00FCck und entl\u00E4dt die Runtime-Assembly.\n\nIm angeh\u00E4ngten Verlauf wurde zuletzt genau dieses Verhalten einschlie\u00DFlich UI-Abbau best\u00E4tigt. Deine aktuelle Beanstandung \u00F6ffnet diese Entscheidung erneut.\n\nF\u00FCr die Rebuild-Untersuchung sind zwei Fehlerstellen auseinanderzuhalten:\n\n- \u0060Collection was modified\u0060 beim \u00D6ffnen beziehungsweise Wiederaufbauen des Buchs.\n- Ein fehlender Pfad in \u0060FunkyTest\u0060 beim anschlie\u00DFenden \u0060Program.Run()\u0060.\n\nOb beide dieselbe Ursache haben, ist bislang unbelegt. Laut \u0060.ai-flow/agents/structure.md\u0060 darf STRUCTURE den Umfang anhand vorhandenen Codes kl\u00E4ren, aber keine Laufzeitfehler debuggen oder Korrekturen implementieren. Quelldateien wurden nicht ver\u00E4ndert; \u0060planning_ready\u0060 bleibt \u0060false\u0060.\n\n:::questions\n{\n  \u0022questions\u0022: [\n    {\n      \u0022id\u0022: \u0022investigation_scope\u0022,\n      \u0022type\u0022: \u0022single_select\u0022,\n      \u0022text\u0022: \u0022Welches Ergebnis soll dieses Workitem liefern?\u0022,\n      \u0022options\u0022: [\n        \u0022Nur Ursachenanalyse der Rebuild-Fehler mit belegten Befunden\u0022,\n        \u0022Ursachenanalyse und anschlie\u00DFende Korrektur des Lifecycles\u0022,\n        \u0022Andere\u0022\n      ],\n      \u0022required\u0022: true\n    },\n    {\n      \u0022id\u0022: \u0022investigation_scope_other\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Welches Ergebnis m\u00F6chtest du stattdessen?\u0022,\n      \u0022required\u0022: true,\n      \u0022visible_when\u0022: {\n        \u0022question_id\u0022: \u0022investigation_scope\u0022,\n        \u0022has_any_of\u0022: [\u0022Andere\u0022]\n      }\n    },\n    {\n      \u0022id\u0022: \u0022ui_lifecycle\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Welches Sollverhalten gilt f\u00FCr Header/Footer und die \u00FCbrige Buch-UI: Was soll bei Stop erhalten bleiben, und darf Rebuild die UI vor\u00FCbergehend abbauen, wenn sie danach vollst\u00E4ndig wiederhergestellt wird?\u0022,\n      \u0022required\u0022: true\n    }\n  ]\n}\n:::endquestions",
+      "Attachments": []
+    },
+    {
+      "Id": "725e65af-f7d2-4335-8e90-5a9f38f09bbb",
+      "CreatedAt": "2026-10-13T22:25:58.9616659+00:00",
+      "Role": "User",
+      "Text": "Welches Ergebnis soll dieses Workitem liefern?: Ursachenanalyse und anschlie\u00DFende Korrektur des Lifecycles\r\nWelches Sollverhalten gilt f\u00FCr Header/Footer und die \u00FCbrige Buch-UI: Was soll bei Stop erhalten bleiben, und darf Rebuild die UI vor\u00FCbergehend abbauen, wenn sie danach vollst\u00E4ndig wiederhergestellt wird?: Eigentlich sollte doch nur das B:\\x86.qBookRoslyn\\qbook\\Controls\\PageControl.cs vom Rebuild betroffen sein oder nicht",
+      "Attachments": []
+    },
+    {
+      "Id": "56250643-39a9-4183-92bf-8c3f7d1c260a",
+      "CreatedAt": "2026-10-13T22:26:47.9211611+00:00",
+      "Role": "Assistant",
+      "Text": "**Ja, der Rebuild sollte die Buch-Runtime betreffen und die Host-Oberfl\u00E4che erhalten.** Eine Beschr\u00E4nkung auf \u00C4nderungen in \u0060PageControl.cs\u0060 w\u00E4re allerdings zu eng: Auch \u0060BookRuntime\u0060, Buchladeablauf und Pipe-Steuerung geh\u00F6ren dazu.\n\nDie entscheidende Besonderheit: **Header/Footer werden ebenfalls innerhalb des \u0060PageControl\u0060 gezeichnet**, \u00FCber \u0060PageAmium.AmiumDefault()\u0060. Aktuell \u00FCberspringt \u0060OnPaint()\u0060 w\u00E4hrend des Teardowns die gesamte Darstellung und leert die Fl\u00E4che. Dadurch verschwinden auch diese vom Host gezeichneten Bereiche.\n\nDie sinnvolle Grenze verl\u00E4uft deshalb zwischen:\n\n- **Host-Darstellung:** Rahmen, Header/Footer, Navigation und Status.\n- **Buch-Runtime:** dynamische Seiteninstanzen, Controls, Tasks, Timer und Ger\u00E4teaktivit\u00E4ten.\n\nAls Akzeptanzkriterien schlage ich vor: Wiederholtes Rebuild nach Start funktioniert ohne die gemeldeten Fehler; die Runtime wird sauber neu aufgebaut und einmal gestartet; die Host-Darstellung bleibt erhalten. Die konkreten Fehlerursachen sind noch offen. \u0060planning_ready\u0060 bleibt \u0060false\u0060.\n\n:::questions\n{\n  \u0022questions\u0022: [\n    {\n      \u0022id\u0022: \u0022host_runtime_boundary\u0022,\n      \u0022type\u0022: \u0022single_select\u0022,\n      \u0022text\u0022: \u0022Soll diese Grenze sowohl f\u00FCr Stop als auch Rebuild gelten: Host-Rahmen einschlie\u00DFlich Header/Footer bleibt sichtbar; Stop zerst\u00F6rt die Buch-Runtime, Rebuild baut sie anschlie\u00DFend neu auf?\u0022,\n      \u0022options\u0022: [\u0022Ja\u0022, \u0022Andere\u0022],\n      \u0022required\u0022: true\n    },\n    {\n      \u0022id\u0022: \u0022host_runtime_boundary_other\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Welche Bereiche sollen bei Stop beziehungsweise Rebuild erhalten bleiben?\u0022,\n      \u0022required\u0022: true,\n      \u0022visible_when\u0022: {\n        \u0022question_id\u0022: \u0022host_runtime_boundary\u0022,\n        \u0022has_any_of\u0022: [\u0022Andere\u0022]\n      }\n    }\n  ]\n}\n:::endquestions",
+      "Attachments": []
+    },
+    {
+      "Id": "449b2ea5-c7eb-4133-b49f-620a1d65bf19",
+      "CreatedAt": "2026-10-13T22:27:27.1873794+00:00",
+      "Role": "User",
+      "Text": "Soll diese Grenze sowohl f\u00FCr Stop als auch Rebuild gelten: Host-Rahmen einschlie\u00DFlich Header/Footer bleibt sichtbar; Stop zerst\u00F6rt die Buch-Runtime, Rebuild baut sie anschlie\u00DFend neu auf?: Ja",
+      "Attachments": []
+    },
+    {
+      "Id": "80400054-4244-4231-895d-1c3645b73777",
+      "CreatedAt": "2026-10-13T22:28:17.8202727+00:00",
+      "Role": "Assistant",
+      "Text": "Festgelegt: **Stop und Rebuild erhalten den Host-Rahmen einschlie\u00DFlich Header/Footer, Navigation und Status.**\n\n- **Ziel:** Ursachen der Rebuild-Fehler kl\u00E4ren und den Lifecycle korrigieren.\n- **Stop:** Buch-Runtime vollst\u00E4ndig zerst\u00F6ren und entladen.\n- **Rebuild:** Speichern \u2192 Backup \u2192 Destroy \u2192 Build \u2192 Initialize \u2192 einmaliges Run. Fehler brechen nachfolgende Schritte ab.\n- **Umfang:** Runtime-Steuerung, Buchladen, UI-Abgrenzung und notwendige Pipe-/Plugin-Anbindung. Buchkontext und konfigurierte Verzeichnisse m\u00FCssen g\u00FCltig bleiben.\n- **Ausgeschlossen:** \u00C4nderungen am externen Buchcode und den gesch\u00FCtzten Shared-Item-Dateien; \u00C4nderungen an Check, Backup und Debug.\n\n**Akzeptanz:** Wiederholtes Rebuild nach Start sowie Stop \u2192 Rebuild funktionieren ohne die gemeldeten Collection-/Pfadfehler. Die Host-Oberfl\u00E4che bleibt auch bei Fehlern erhalten.\n\n\u0060validation: true\u0060: PLAN bestimmt den vollst\u00E4ndigen Projekt-Build und genauen RunWorker-Aufruf gem\u00E4\u00DF Repository-Regeln. Das Laufzeitverhalten wird separat gepr\u00FCft; ein erfolgreicher Build allein belegt es nicht.\n\nKeine offenen materiellen Punkte oder weiteren Grundsatzentscheidungen f\u00FCr PLAN. Im aktiven \u0060workitem.md\u0060 sind \u0060status: ready\u0060 und \u0060planning_ready: true\u0060 gesetzt. Quelldateien wurden nicht ver\u00E4ndert.",
+      "Attachments": []
+    },
+    {
+      "Id": "73d8d93b-b133-4839-baf5-ba9458693d44",
+      "CreatedAt": "2026-10-13T22:28:35.5912609+00:00",
+      "Role": "User",
+      "Text": "Plan",
+      "Attachments": []
+    },
+    {
+      "Id": "5765a09a-ed2b-4b9a-ae1d-2a02cd5939b4",
+      "CreatedAt": "2026-10-13T22:31:16.3738001+00:00",
+      "Role": "Assistant",
+      "Text": "Der Umsetzungshandoff ist erstellt:\n\n\u0060.ai-flow/workitems/2026.10.14.0022-vs_code_lifecycle_20261014_002250/handoffs/2026.10.14.0022-implementation-handoff.md\u0060\n\nEr enth\u00E4lt Ursachenanalyse und Korrekturumfang, Erhalt des Host-Rahmens, konkrete Lifecycle-Akzeptanzkriterien sowie den gemeinsamen Worker-Build f\u00FCr C# und Extension. Die vorhandene Launch-Konfiguration bleibt erhalten.\n\nKeine Quelldateien ge\u00E4ndert und kein Build ausgef\u00FChrt. \u0060planning_ready: true\u0060 bleibt bestehen.",
+      "Attachments": []
+    },
+    {
+      "Id": "c7fd1ca5-bf4e-4d83-9d28-7e409433ea03",
+      "CreatedAt": "2026-10-13T22:31:29.4218804+00:00",
+      "Role": "User",
+      "Text": "Implement with gpt-6.1-sol \u2022 Medium",
+      "Attachments": []
+    },
+    {
+      "Id": "928d4ad7-5a6b-4c46-8eb9-82d5ded78010",
+      "CreatedAt": "2026-10-13T22:32:00.3385041+00:00",
+      "Role": "Assistant",
+      "Text": "Implement completed with errors. The Codex CLI exited with code 1.\r\nReading prompt from stdin...\r\nIch lade die verbindlichen Regeln und pr\u00FCfe anschlie\u00DFend die freigegebenen Lifecycle-Pfade. Danach setze ich die Korrekturen im genehmigten Umfang um und f\u00FChre den vorgeschriebenen Worker-Build aus.",
+      "Attachments": []
+    },
+    {
+      "Id": "cfa41531-54fe-482b-98e3-8d57e4002b8d",
+      "CreatedAt": "2026-10-14T05:36:42.0269076+00:00",
+      "Role": "User",
+      "Text": "Debug with gpt-6.1-sol \u2022 Medium",
+      "Attachments": []
+    },
+    {
+      "Id": "a70acdcf-c0d5-4065-90a5-c15f31c3c220",
+      "CreatedAt": "2026-10-14T05:43:11.1677352+00:00",
+      "Role": "Assistant",
+      "Text": "Die abgebrochene Arbeit wurde im DEBUG-Modus fortgesetzt.\n\n- Korrigiert: mutationsanf\u00E4llige Registry-Bereinigung, Verlust des Buchkontexts und konfigurierter Pfade sowie das Leeren der gesamten Zeichenfl\u00E4che beim Teardown.\n- Host-Rahmen bleibt im Zeichenpfad erhalten; Runtime-Aufrufe werden bis zur erfolgreichen Initialisierung unterdr\u00FCckt. Fehler melden die betroffene Lifecycle-Stufe.\n- Finaler Worker-Build f\u00FCr C# und TypeScript erfolgreich: \u0060Success=true\u0060, \u0060success=true\u0060, \u0060exitCode=0\u0060. Bericht: \u0060.ai-flow/BuildReport.txt\u0060.\n- Debug-Handoff aktualisiert; gesch\u00FCtzte und externe Dateien unver\u00E4ndert.\n\nNoch unbest\u00E4tigt sind die exakten urspr\u00FCnglichen Exception-Ausl\u00F6ser und die Laufzeitszenarien mehrfach Rebuild, Stop \u2192 Rebuild sowie Fehlererholung mit sichtbarem Header/Footer. Der erfolgreiche Build ersetzt diese Beobachtungen nicht.",
+      "Attachments": []
+    },
+    {
+      "Id": "1874b446-589b-40ad-8b37-bad4f4cfd741",
+      "CreatedAt": "2026-10-14T06:09:20.1134718+00:00",
+      "Role": "User",
+      "Text": "Es wird aktuell alles eher schlechter als besser:\u000B[Stop] -\u003E Reagiert sofort: ok\u000B[Rebuild] -\u003E h\u00E4ngt im Stop ablauf und wirft viele Fehler wenn es wenn ich es im Debugger laufen lasse. Die Fehler sind allerdings auf qbook Ebene und nicht auf Projektebene\u000B\u000BAuch das Initialisieren des VS Code Plugins h\u00E4ngt. erst nach \u003E10s wird der qBook Runtime Log aktualisiert. \nBeim Start von VS Code werden immer zwei Vs Code Instanzen ge\u00F6ffnet. Hier generell die Frage ob es nicht Sinn macht den VScode Loader so umzustellen das er die .csproj \u00F6ffnet",
+      "Attachments": [
+        {
+          "FileName": "clipboard-20261014-080705.png",
+          "FileType": "image/png",
+          "RelativePath": "attachments/1874b446-589b-40ad-8b37-bad4f4cfd741/clipboard-20261014-080705.png"
+        }
+      ]
+    },
+    {
+      "Id": "638049a3-0bc2-4255-88a4-35d15529e977",
+      "CreatedAt": "2026-10-14T06:11:02.6331238+00:00",
+      "Role": "Assistant",
+      "Text": "**Die \u0060.csproj\u0060 allein zu \u00F6ffnen l\u00F6st das Workspace-Problem nicht zuverl\u00E4ssig.** VS Code unterscheidet zwischen einer ge\u00F6ffneten Datei und dem Workspace, der die Projekte enth\u00E4lt. F\u00FCr C# sollte der passende Projektordner beziehungsweise Workspace ge\u00F6ffnet werden. [VS-Code-Projektverwaltung](https://code.visualstudio.com/docs/csharp/project-management)\n\nDer Screenshot zeigt konkret: **Das Hostprojekt \u0060B:\\x86.qBookRoslyn\\qbook\\qbook.csproj\u0060 liegt au\u00DFerhalb des aktuellen Workspace.** Er zeigt keine Exception aus dem Stop-Ablauf.\n\nIm vorhandenen Code sind folgende Punkte erkennbar:\n\n- \u0060VsCodeLauncher.OpenFolder()\u0060 verwendet standardm\u00E4\u00DFig \u0060--new-window\u0060. Jeder Aufruf fordert damit ein neues Fenster an. Warum beim ersten Start zwei erscheinen, ist noch unbelegt.\n- Das Plugin aktiviert sich \u00FCber Panel/Command. Die projektspezifischen Pipes werden erst beim Laden der Panel-Daten eingerichtet. Dieser Aufbau koppelt die Runtime-Verbindung an die Oberfl\u00E4che; die Ursache der beobachteten zehn Sekunden ist noch offen.\n- Rebuild durchl\u00E4uft weiterhin den gemeinsamen Cleanup-/Lade-/Build-Pfad. Die konkrete qBook-Exception ben\u00F6tigen wir, um den Fehlerumfang gezielt einzugrenzen.\n\nAls Ziel halte ich fest: sofortiges Stop-Verhalten erhalten, Rebuild ohne h\u00E4ngenden Cleanup, genau ein Buchfenster und Runtime-Verbindung unabh\u00E4ngig vom Laden der C#-Analyse beziehungsweise Panel-Inhalte. Header/Footer bleiben wie vereinbart erhalten.\n\n\u0060planning_ready\u0060 bleibt \u0060false\u0060; nur Workflow-Metadaten wurden ge\u00E4ndert.\n\n:::questions\n{\n  \u0022questions\u0022: [\n    {\n      \u0022id\u0022: \u0022workspace_scope\u0022,\n      \u0022type\u0022: \u0022single_select\u0022,\n      \u0022text\u0022: \u0022Welche Projekte soll der von qBook gestartete VS-Code-Workspace enthalten?\u0022,\n      \u0022options\u0022: [\n        \u0022Nur das Buchprojekt; qBook-Hostentwicklung bleibt separat\u0022,\n        \u0022Buchprojekt und qBook-Host gemeinsam, damit auch Hostquellen vollst\u00E4ndig unterst\u00FCtzt werden\u0022,\n        \u0022Andere\u0022\n      ],\n      \u0022required\u0022: true\n    },\n    {\n      \u0022id\u0022: \u0022workspace_scope_other\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Welcher Projektumfang soll ge\u00F6ffnet werden?\u0022,\n      \u0022required\u0022: true,\n      \u0022visible_when\u0022: {\n        \u0022question_id\u0022: \u0022workspace_scope\u0022,\n        \u0022has_any_of\u0022: [\u0022Andere\u0022]\n      }\n    },\n    {\n      \u0022id\u0022: \u0022first_cleanup_exception\u0022,\n      \u0022type\u0022: \u0022text\u0022,\n      \u0022text\u0022: \u0022Bitte kopiere die erste qBook-Exception beim Rebuild mit Meldung und Stacktrace, m\u00F6glichst vor den nachfolgenden Fehlern.\u0022,\n      \u0022required\u0022: true\n    }\n  ]\n}\n:::endquestions",
+      "Attachments": [
+        {
+          "FileName": "call_0c5c8da13d1b45299a6654cc58f88c73.png",
+          "FileType": "image/png",
+          "RelativePath": "attachments/638049a3-0bc2-4255-88a4-35d15529e977/call_0c5c8da13d1b45299a6654cc58f88c73.png"
+        }
+      ]
+    },
+    {
+      "Id": "7500c3dc-0f8b-4df3-88e1-e179f3dd02de",
+      "CreatedAt": "2026-10-14T06:14:54.2844691+00:00",
+      "Role": "User",
+      "Text": "Welche Projekte soll der von qBook gestartete VS-Code-Workspace enthalten?: Nur das Buchprojekt; qBook-Hostentwicklung bleibt separat\r\nBitte kopiere die erste qBook-Exception beim Rebuild mit Meldung und Stacktrace, m\u00F6glichst vor den nachfolgenden Fehlern.: System.ArgumentNullException\n  HResult=0x80004003\n  Message=Value cannot be null. (Parameter \u0027path1\u0027)\n  Source=System.Private.CoreLib\n  StackTrace:\n   at System.ArgumentNullException.Throw(String paramName)\n   at System.IO.Path.Combine(String path1, String path2, String path3)\n   at DefinitionFunkyLib.FunkyTest..ctor(String name) in B:\\Audi\\CellTester_2026.08.26.code\\Pages\\FunkyLib\\FunkyLib.testDevice.cs:line 58\n   at DefinitionTestSystem.CellTest..ctor(String name, SystemClient cyclers) in B:\\Audi\\CellTester_2026.08.26.code\\Pages\\TestSystem\\TestSystem.cell_test.cs:line 85\n   at DefinitionTestSlot01.qPage.Run() in B:\\Audi\\CellTester_2026.08.26.code\\Pages\\TestSlot01\\TestSlot01.qPage.cs:line 28\n   at QB.Program.Run() in B:\\Audi\\CellTester_2026.08.26.code\\Program.cs:line 23\n   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)",
+      "Attachments": []
+    },
+    {
+      "Id": "07ca404d-fae2-4265-aa8c-a9996a77d4e7",
+      "CreatedAt": "2026-10-14T06:16:22.4017354+00:00",
+      "Role": "Assistant",
+      "Text": "**Der Stacktrace zeigt den Fehler beim Run, nicht beim Stop:** In \u0060FunkyTest\u0060 wird \u0060QB.Book.DataDirectory\u0060 als erster Parameter an \u0060Path.Combine()\u0060 \u00FCbergeben und ist dort \u0060null\u0060. Warum die Host-Anbindung diesen Wert liefert, ist noch ungekl\u00E4rt.\n\nDer neue Umfang ist festgelegt:\n\n- **Lifecycle:** sofort reagierenden Stop erhalten; Rebuild und Pfadbindung korrigieren. Host-Rahmen einschlie\u00DFlich Header/Footer bleibt sichtbar.\n- **VS-Code-Loader:** ausschlie\u00DFlich den Buchprojektordner mit \u0060Book.json\u0060, Buch-\u0060.csproj\u0060 und \u0060pipes.json\u0060 \u00F6ffnen. Hostentwicklung bleibt separat. Keine doppelten Buchfenster; vorhandenes Fenster desselben Buchs wiederverwenden.\n- **Plugin:** Pipe-Verbindung und Runtime Log beim Aktivieren des Buch-Workspace starten, unabh\u00E4ngig von Panel, Seitenbaum und C#-Analyse.\n- **Ausgeschlossen:** \u00C4nderungen an externem Buchcode, gesch\u00FCtzten Shared-Dateien und globalen VS-Code-Einstellungen.\n\n**Akzeptanz:** wiederholtes Rebuild und Stop \u2192 Rebuild funktionieren; konfigurierte Pfade bleiben g\u00FCltig; genau ein Buchfenster \u00F6ffnet sich; Verbindung und eingehende Logs funktionieren auch bei geschlossenem Panel oder noch laufender C#-Analyse.\n\n\u0060validation: true\u0060: PLAN legt den vollst\u00E4ndigen C#-/Extension-Build und Worker-Aufruf fest. Laufzeitbeobachtungen bleiben davon getrennt.\n\nKeine offenen materiellen Entscheidungen f\u00FCr PLAN. \u0060status: ready\u0060 und \u0060planning_ready: true\u0060 sind gesetzt. Nur Workitem-Metadaten wurden ge\u00E4ndert; die Fehler sind noch nicht behoben.",
+      "Attachments": []
+    },
+    {
+      "Id": "83984e05-49bd-43b7-acda-21c7e9c418cd",
+      "CreatedAt": "2026-10-14T06:17:00.61832+00:00",
+      "Role": "User",
+      "Text": "Plan",
+      "Attachments": []
+    },
+    {
+      "Id": "323c6f91-2ef1-4dd3-aa0e-64d42edfab8c",
+      "CreatedAt": "2026-10-14T06:20:42.9037515+00:00",
+      "Role": "Assistant",
+      "Text": "Der neue Umsetzungshandoff ist erstellt:\n\n\u0060.ai-flow/workitems/2026.10.14.0022-vs_code_lifecycle_20261014_002250/handoffs/2026.10.14.0022-implementation-handoff.md\u0060\n\nEr umfasst Lifecycle-/Pfadkorrekturen, ein einzelnes Buchfenster, Plugin-Verbindung bei geschlossenem Panel und den gemeinsamen Worker-Build f\u00FCr C# und TypeScript.\n\nKeine Quelldateien ge\u00E4ndert, kein Build ausgef\u00FChrt. \u0060planning_ready: true\u0060 bleibt erhalten.",
+      "Attachments": []
+    },
+    {
+      "Id": "262829de-ff90-4e24-bd93-c49df0f1b36e",
+      "CreatedAt": "2026-10-14T06:20:52.5538471+00:00",
+      "Role": "User",
+      "Text": "Implement with gpt-6.1-sol \u2022 Medium",
+      "Attachments": []
+    },
+    {
+      "Id": "29dbd72b-a457-40a6-888a-2285b519501c",
+      "CreatedAt": "2026-10-14T06:33:07.5790451+00:00",
+      "Role": "Assistant",
+      "Text": "Die freigegebenen \u00C4nderungen sind umgesetzt:\n\n- **Cleanup:** redundanten Teardown und Finalizer-Waits entfernt; doppelte Item-Zerst\u00F6rung, abgemeldete Callbacks und UI-Thread-Zugriff korrigiert.\n- **Buchkontext:** Facade explizit an das Host-Buch gebunden; urspr\u00FCngliche Verzeichnisfehler bleiben erhalten. QB-Assembly-Identit\u00E4t abgesichert.\n- **Editor:** ein CLI-Dispatch f\u00FCr den Buchordner mit Exitcode-Auswertung; Legacy-Zweitstart entfernt.\n- **Plugin:** Workspace-Aktivierung, Runtime-Log und Projekt-Pipes starten unabh\u00E4ngig vom Panel. Reconnect und Listener-Cleanup bleiben erhalten.\n\nGe\u00E4ndert wurden \u0060BookRuntime.cs\u0060, \u0060Core.cs\u0060, \u0060PipeCommands.cs\u0060, \u0060RoslynService.cs\u0060, \u0060qbookCsScript/Book.cs\u0060, \u0060ItemDestroyHandler.cs\u0060, \u0060Control.cs\u0060, \u0060MainForm.cs\u0060, \u0060VscodeLauncher.cs\u0060 sowie Plugin-\u0060package.json\u0060, \u0060extension.ts\u0060 und \u0060namedPipeClients.ts\u0060.\n\n**Validierung:** Letzter Worker-Build f\u00FCr \u0060qbook/qbook.csproj\u0060 erfolgreich: \u0060Success=true\u0060, \u0060success=true\u0060, Exitcode \u00600\u0060. C# und TypeScript gebaut; 0 Fehler, 3417 Warnungen. Bericht: \u0060.ai-flow/BuildReport.txt\u0060.\n\nDie genannten Ursachen sind statisch belegt. Die genaue Ursache des urspr\u00FCnglichen H\u00E4ngers sowie Rebuild-/Stop-Zyklen, UI-Erhalt, Fensterwiederverwendung und fr\u00FChe Verbindung wurden nicht live beobachtet. Installierte Erweiterungen und laufende Prozesse wurden nicht aktualisiert.\n\nWorkitem: \u0060implemented\u0060; Handoff archiviert; \u0060planning_ready=false\u0060, \u0060validation=true\u0060.",
+      "Attachments": []
+    },
+    {
+      "Id": "a9da5583-3a14-418c-856d-dd6bbdf1c1af",
+      "CreatedAt": "2026-10-14T06:36:45.6768853+00:00",
+      "Role": "User",
+      "Text": "Debug with gpt-6.1-sol \u2022 Medium",
+      "Attachments": [
+        {
+          "FileName": "clipboard-20261014-083642.png",
+          "FileType": "image/png",
+          "RelativePath": "attachments/a9da5583-3a14-418c-856d-dd6bbdf1c1af/clipboard-20261014-083642.png"
+        }
+      ]
+    },
+    {
+      "Id": "edde9113-f0a8-4de5-81a1-75b2787cc9bf",
+      "CreatedAt": "2026-10-14T06:38:17.8226576+00:00",
+      "Role": "Assistant",
+      "Text": "Die Fehlermeldung \u201EVS Code CLI was not found\u201C entsteht durch einen falschen Pfad in \u0060qbook/VscodeLauncher.cs\u0060: qbook sucht \u0060resources\\app\\out\\cli.js\u0060, die installierte Version verwendet jedoch \u00607baac39ec3\\resources\\app\\out\\cli.js\u0060. Dieser Pfad und \u0060Code.exe\u0060 existieren.\n\nDer Befund ist im Debug Handoff dokumentiert. Keine Quellcode\u00E4nderung, kein Build und kein Startversuch wurden durchgef\u00FChrt.\n\nDie notwendige Korrektur liegt au\u00DFerhalb des freigegebenen Dateiumfangs. Gem\u00E4\u00DF Handoff muss STRUCTURE zun\u00E4chst \u0060qbook/VscodeLauncher.cs\u0060 freigeben. Die Aufl\u00F6sung sollte den installierten CLI-Pfad ber\u00FCcksichtigen, ohne den Versionsordner fest einzutragen.",
+      "Attachments": [
+        {
+          "FileName": "call_2cdc7078fac34dbc91d1520e0c4c5fb4.png",
+          "FileType": "image/png",
+          "RelativePath": "attachments/edde9113-f0a8-4de5-81a1-75b2787cc9bf/call_2cdc7078fac34dbc91d1520e0c4c5fb4.png"
+        }
+      ]
+    },
+    {
+      "Id": "668ad00e-0a21-423f-9a5a-6b36405eff89",
+      "CreatedAt": "2026-10-14T06:40:04.3970637+00:00",
+      "Role": "User",
+      "Text": "Die Fehlermeldung \u201EVS Code CLI was not found\u201C entsteht durch einen falschen Pfad in qbook/VscodeLauncher.cs: qbook sucht resources\\app\\out\\cli.js, die installierte Version verwendet jedoch 7baac39ec3\\resources\\app\\out\\cli.js. Dieser Pfad und Code.exe existieren.\n\nDer Befund ist im Debug Handoff dokumentiert. Keine Quellcode\u00E4nderung, kein Build und kein Startversuch wurden durchgef\u00FChrt.\n\nDie notwendige Korrektur liegt au\u00DFerhalb des freigegebenen Dateiumfangs. Gem\u00E4\u00DF Handoff muss STRUCTURE zun\u00E4chst qbook/VscodeLauncher.cs freigeben. Die Aufl\u00F6sung sollte den installierten CLI-Pfad ber\u00FCcksichtigen, ohne den Versionsordner fest einzutragen.",
+      "Attachments": []
+    },
+    {
+      "Id": "78638fb4-001e-4e90-bfb7-afdeaa100032",
+      "CreatedAt": "2026-10-14T06:41:50.4189616+00:00",
+      "Role": "Assistant",
+      "Text": "Der Pfadbefund ist best\u00E4tigt: Das installierte \u0060code.cmd\u0060 verweist auf den vorhandenen versionsabh\u00E4ngigen CLI-Pfad; der bisher angenommene direkte Pfad fehlt.\n\nF\u00FCr den n\u00E4chsten PLAN ist **ausschlie\u00DFlich \u0060qbook/VscodeLauncher.cs\u0060** vorgesehen:\n\n- CLI passend zur gew\u00E4hlten Installation aufl\u00F6sen, ohne Versionsordner fest einzutragen.\n- Bisheriges Installationslayout weiterhin unterst\u00FCtzen.\n- Einzelnen Startaufruf, Buch-Workspace und Exit-/Fehlerbehandlung erhalten.\n- Keine \u00C4nderungen an Installation, PATH, Runtime oder Plugin.\n\nEine Korrektur zum Debug-Bericht: Im vorherigen archivierten Umsetzungshandoff war \u0060qbook/VscodeLauncher.cs\u0060 bereits ausdr\u00FCcklich aufgef\u00FChrt.\n\n\u0060validation: true\u0060: PLAN bestimmt den vollst\u00E4ndigen Solution-Build \u00FCber Worker. Das Startverhalten bleibt separat nachzuweisen.\n\nKeine offenen materiellen Punkte. \u0060status: ready\u0060 und \u0060planning_ready: true\u0060 sind gesetzt. Nur Workitem-Metadaten wurden ge\u00E4ndert; kein Build oder Start ausgef\u00FChrt.",
+      "Attachments": []
+    },
+    {
+      "Id": "9f7415a6-e2e6-47eb-b568-c04365df9764",
+      "CreatedAt": "2026-10-14T06:41:53.7634717+00:00",
+      "Role": "User",
+      "Text": "Plan",
+      "Attachments": []
+    },
+    {
+      "Id": "30efea0f-700e-4409-87a8-59b7cc0d3923",
+      "CreatedAt": "2026-10-14T06:43:39.9414027+00:00",
+      "Role": "Assistant",
+      "Text": "Der Handoff ist erstellt:\n\n\u0060.ai-flow/workitems/2026.10.14.0022-vs_code_lifecycle_20261014_002250/handoffs/2026.10.14.0022-implementation-handoff.md\u0060\n\nEr begrenzt die Korrektur auf \u0060qbook/VscodeLauncher.cs\u0060: CLI-Pfad ohne festen Versionsordner aufl\u00F6sen und bisheriges Layout erhalten. Verifikation: vollst\u00E4ndiger Solution-Build \u00FCber Worker.\n\nKeine Quelldateien ge\u00E4ndert, kein Build oder Start ausgef\u00FChrt. \u0060planning_ready: true\u0060 bleibt bestehen.",
+      "Attachments": []
+    },
+    {
+      "Id": "e92e6ab2-e184-4eb9-9eba-be90aca071fb",
+      "CreatedAt": "2026-10-14T06:44:52.5596352+00:00",
+      "Role": "User",
+      "Text": "Implement with gpt-6.1-sol \u2022 Low",
+      "Attachments": []
+    },
+    {
+      "Id": "b6089f89-ecd9-47c3-8429-ccbad2649658",
+      "CreatedAt": "2026-10-14T06:46:25.9474236+00:00",
+      "Role": "Assistant",
+      "Text": "\u0060qbook/VscodeLauncher.cs\u0060 l\u00F6st die CLI jetzt anhand der installationszugeh\u00F6rigen \u0060bin/code.cmd\u0060 auf, ohne festen Versionsordner. Das direkte Layout bleibt unterst\u00FCtzt; die Prozessbehandlung bleibt unver\u00E4ndert.\n\nWorker-Build f\u00FCr \u0060qbookStudio.sln\u0060 erfolgreich, Exitcode \u00600\u0060. Bericht: \u0060.ai-flow/BuildReport.txt\u0060.\n\nInstallierte Deklaration und CLI-Datei wurden eingesehen. Tats\u00E4chlicher Editorstart und weitere Layoutf\u00E4lle bleiben ungepr\u00FCft.\n\nHandoff archiviert; Workitem auf \u0060implemented\u0060, \u0060planning_ready: false\u0060 gesetzt.",
+      "Attachments": []
+    }
+  ]
+}

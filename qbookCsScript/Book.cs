@@ -16,6 +16,17 @@ namespace QB
 {
     public static class Book
     {
+        internal static Func<object> ActiveBookResolver;
+
+        private static dynamic GetActiveBook()
+        {
+            object book = ActiveBookResolver != null ? ActiveBookResolver() : Root.ActiveQbook;
+            if (book == null)
+                throw new InvalidOperationException("No active book is bound to the runtime facade.");
+            Root.ActiveQbook = book;
+            return book;
+        }
+
         public static List<string> DroppedItems = new List<string>();
         public static bool CompactView = false;
         public static string UriStartup = "";
@@ -66,11 +77,15 @@ namespace QB
             {
                 try
                 {
-                    return Root.ActiveQbook.DataDirectory; 
+                    string directory = GetActiveBook().DataDirectory;
+                    if (string.IsNullOrWhiteSpace(directory))
+                        throw new InvalidOperationException("The active book returned an empty DataDirectory.");
+                    return directory;
                 }
                 catch (Exception ex)
                 {
-                    return null;
+                    Logger.Error("Active book DataDirectory access failed: " + ex.ToString());
+                    throw;
                 }
             }
         }
@@ -81,11 +96,15 @@ namespace QB
             {
                 try
                 {
-                    return Root.ActiveQbook.SettingsDirectory;
+                    string directory = GetActiveBook().SettingsDirectory;
+                    if (string.IsNullOrWhiteSpace(directory))
+                        throw new InvalidOperationException("The active book returned an empty SettingsDirectory.");
+                    return directory;
                 }
                 catch (Exception ex)
                 {
-                    return null;
+                    Logger.Error("Active book SettingsDirectory access failed: " + ex.ToString());
+                    throw;
                 }
             }
         }

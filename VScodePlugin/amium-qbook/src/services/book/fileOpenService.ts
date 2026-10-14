@@ -12,18 +12,18 @@ export async function openRelativeFile(
   options?: OpenRelativeFileOptions
 ): Promise<string | undefined> {
   if (!relativePath) {
-    vscode.window.showWarningMessage('Keine Datei ausgewÃ¤hlt.');
+    vscode.window.showWarningMessage('No file selected.');
     return undefined;
   }
 
   if (!baseUri) {
-    vscode.window.showWarningMessage('Es ist kein qBook-Projekt geÃ¶ffnet.');
+    vscode.window.showWarningMessage('No qBook project is open.');
     return undefined;
   }
 
   const targetUri = resolveRelativeFileUri(relativePath, baseUri);
   if (!targetUri) {
-    vscode.window.showErrorMessage('Datei liegt auÃŸerhalb des qBook-Verzeichnisses.');
+    vscode.window.showErrorMessage('File is outside the qBook directory.');
     return undefined;
   }
 
@@ -38,7 +38,7 @@ export async function openRelativeFile(
     return normalizedRelative;
   } catch (error: unknown) {
     const details = error instanceof Error ? error.message : String(error);
-    vscode.window.showErrorMessage(`Datei konnte nicht geÃ¶ffnet werden: ${relativePath}\n${details}`);
+    vscode.window.showErrorMessage(`File could not be opened: ${relativePath}\n${details}`);
     return undefined;
   }
 }

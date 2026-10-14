@@ -30,7 +30,7 @@ export type RenamePageContext = {
 
 export async function handleRenamePageCommand(context: RenamePageContext): Promise<void> {
   if (context.isRenamingPage) {
-    vscode.window.showWarningMessage('Bitte warten Sie, bis der laufende Page-Rename abgeschlossen ist.');
+    vscode.window.showWarningMessage('Please wait until the ongoing page rename is complete.');
     return;
   }
 
@@ -38,28 +38,28 @@ export async function handleRenamePageCommand(context: RenamePageContext): Promi
   const newPage = normalizePageName(context.message.page);
 
   if (!oldPage) {
-    vscode.window.showWarningMessage('Keine Page ausgewÃ¤hlt.');
+    vscode.window.showWarningMessage('No page selected.');
     return;
   }
 
   if (!newPage) {
-    vscode.window.showWarningMessage('Neuer Page-Name ist ungÃ¼ltig.');
+    vscode.window.showWarningMessage('New page name is invalid.');
     return;
   }
 
   if (oldPage === newPage) {
-    vscode.window.showInformationMessage('Page-Name unverÃ¤ndert.');
+    vscode.window.showInformationMessage('Page name unchanged.');
     return;
   }
 
   if (!context.bookRoot) {
-    vscode.window.showWarningMessage('Kein qBook-Projekt geÃ¶ffnet.');
+    vscode.window.showWarningMessage('No qBook project is open.');
     return;
   }
 
   const newDir = getPageDirectory(context.bookRoot, newPage);
   if (await pathExists(newDir)) {
-    vscode.window.showErrorMessage(`Page '${newPage}' existiert bereits.`);
+    vscode.window.showErrorMessage(`Page '${newPage}' already exists.`);
     return;
   }
 
@@ -90,7 +90,7 @@ export async function handleRenamePageCommand(context: RenamePageContext): Promi
     );
 
     await context.reloadTreeView();
-    vscode.window.showInformationMessage(`Page '${oldPage}' wurde in '${newPage}' umbenannt.`);
+    vscode.window.showInformationMessage(`Page '${oldPage}' was renamed to '${newPage}'.`);
   } catch (error: unknown) {
     reportMetadataError('Rename', error);
   } finally {
@@ -105,21 +105,21 @@ export async function handleDeletePageCommand(
 ): Promise<void> {
   const targetPage = normalizePageName(resolveNodePageIdentifier(message));
   if (!targetPage) {
-    vscode.window.showWarningMessage('Keine Page ausgewÃ¤hlt.');
+    vscode.window.showWarningMessage('No page selected.');
     return;
   }
 
   if (!bookRoot) {
-    vscode.window.showWarningMessage('Kein qBook-Projekt geladen.');
+    vscode.window.showWarningMessage('No qBook project is loaded.');
     return;
   }
 
   const confirmation = await vscode.window.showWarningMessage(
-    `MÃ¶chten Sie die Page '${targetPage}' inklusive aller Dateien lÃ¶schen?`,
+    `Do you want to delete the page '${targetPage}' including all files?`,
     { modal: true },
-    'LÃ¶schen'
+    'Delete'
   );
-  if (confirmation !== 'LÃ¶schen') {
+  if (confirmation !== 'Delete') {
     return;
   }
 
@@ -127,7 +127,7 @@ export async function handleDeletePageCommand(
     await deletePageFromProject(bookRoot, targetPage);
     await updateProgramClass(bookRoot);
     await reloadTreeView();
-    vscode.window.showInformationMessage(`Page '${targetPage}' wurde gelÃ¶scht.`);
+    vscode.window.showInformationMessage(`Page '${targetPage}' was deleted.`);
   } catch (error: unknown) {
     vscode.window.showErrorMessage(getDeletePageErrorMessage(targetPage, error));
   }
@@ -150,7 +150,7 @@ export async function handleReorderPagesCommand(context: ReorderPagesContext): P
   }
 
   if (!context.payload || !context.bookRoot) {
-    vscode.window.showWarningMessage('Kein qBook-Projekt geladen.');
+    vscode.window.showWarningMessage('No qBook project is loaded.');
     return;
   }
 
@@ -182,7 +182,7 @@ export async function handleCreatePageCommand(
   reloadTreeView: ReloadTreeView
 ): Promise<void> {
   if (!bookRoot) {
-    vscode.window.showWarningMessage('Kein qBook-Projekt geladen.');
+    vscode.window.showWarningMessage('No qBook project is loaded.');
     return;
   }
 
@@ -192,10 +192,10 @@ export async function handleCreatePageCommand(
     ignoreFocusOut: true,
     validateInput: (value: string) => {
       if (!value || !value.trim()) {
-        return 'Page-Name ist erforderlich.';
+        return 'Page name is required.';
       }
       if (/[\\/]/.test(value)) {
-        return 'Der Name darf keine / oder \\ beinhalten.';
+        return 'The name must not contain / or \\.';
       }
       return undefined;
     },
@@ -207,13 +207,13 @@ export async function handleCreatePageCommand(
 
   const pageName = normalizePageName(rawName);
   if (!pageName) {
-    vscode.window.showWarningMessage('Page-Name ist ungÃ¼ltig.');
+    vscode.window.showWarningMessage('Page name is invalid.');
     return;
   }
 
   const pageDir = getPageDirectory(bookRoot, pageName);
   if (await pathExists(pageDir)) {
-    vscode.window.showErrorMessage(`Page '${pageName}' existiert bereits.`);
+    vscode.window.showErrorMessage(`Page '${pageName}' already exists.`);
     return;
   }
 
@@ -222,7 +222,7 @@ export async function handleCreatePageCommand(
     await ensurePageOrderEntry(bookRoot, pageName);
     await updateProgramClass(bookRoot);
     await reloadTreeView();
-    vscode.window.showInformationMessage(`Page '${pageName}' wurde erstellt.`);
+    vscode.window.showInformationMessage(`Page '${pageName}' was created.`);
   } catch (error: unknown) {
     vscode.window.showErrorMessage(getCreatePageErrorMessage(error));
   }
@@ -233,7 +233,7 @@ export async function handleImportPageCommand(
   reloadTreeView: ReloadTreeView
 ): Promise<void> {
   if (!bookRoot) {
-    vscode.window.showWarningMessage('Kein qBook-Projekt geladen.');
+    vscode.window.showWarningMessage('No qBook project is loaded.');
     return;
   }
 
@@ -253,20 +253,20 @@ export async function handleImportPageCommand(
   const metaFile = selection[0];
   const fileName = path.basename(metaFile.fsPath);
   if (fileName.toLowerCase() !== 'opage.json') {
-    vscode.window.showErrorMessage('Bitte wÃ¤hlen Sie eine Datei namens oPage.json aus.');
+    vscode.window.showErrorMessage('Please select a file named oPage.json.');
     return;
   }
 
   const sourceDirPath = path.dirname(metaFile.fsPath);
   const pageName = normalizePageName(path.basename(sourceDirPath));
   if (!pageName) {
-    vscode.window.showErrorMessage('Der Zielordnername ist kein gÃ¼ltiger Page-Name.');
+    vscode.window.showErrorMessage('The target folder name is not a valid page name.');
     return;
   }
 
   const targetDir = getPageDirectory(bookRoot, pageName);
   if (await pathExists(targetDir)) {
-    vscode.window.showErrorMessage(`Page '${pageName}' existiert bereits im aktuellen Projekt.`);
+    vscode.window.showErrorMessage(`Page '${pageName}' already exists in the current project.`);
     return;
   }
 
@@ -277,7 +277,7 @@ export async function handleImportPageCommand(
     await ensurePageOrderEntry(bookRoot, pageName);
     await updateProgramClass(bookRoot);
     await reloadTreeView();
-    vscode.window.showInformationMessage(`Page '${pageName}' wurde importiert.`);
+    vscode.window.showInformationMessage(`Page '${pageName}' was imported.`);
   } catch (error: unknown) {
     vscode.window.showErrorMessage(getImportPageErrorMessage(error));
   }

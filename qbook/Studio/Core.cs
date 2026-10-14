@@ -81,7 +81,9 @@ namespace qbook
             PipeCommandManager.RegisterCommandHandler("PageFormat", async cmd => await PipeCommands.PageFormat(cmd));
             PipeCommandManager.RegisterCommandHandler("PageOrder", async cmd => await PipeCommands.PageOrder(cmd));
             PipeCommandManager.RegisterCommandHandler("HidePage", async cmd => await PipeCommands.HidePage(cmd));
+            PipeCommandManager.RegisterCommandHandler("Initialize", async cmd => await PipeCommands.Initialize());
             PipeCommandManager.RegisterCommandHandler("Run", async cmd => await PipeCommands.Run());
+            PipeCommandManager.RegisterCommandHandler("Stop", async cmd => await PipeCommands.Stop());
             PipeCommandManager.RegisterCommandHandler("Destroy", async cmd => await PipeCommands.Destroy());
 
 
@@ -180,6 +182,14 @@ namespace qbook
         }
 
         public static string StatusText { get; set; } = "Status:Init";
+
+        public static void PublishStopStatus(string status, string detail = null)
+        {
+            StatusText = status;
+            var timestamp = System.DateTime.Now.ToString();
+            if (string.IsNullOrEmpty(detail)) SendToEditor(status, timestamp);
+            else SendToEditor(status, timestamp, detail);
+        }
 
         public static System.Threading.Timer PipeHeartbeat = new System.Threading.Timer((e) =>
         {
@@ -777,48 +787,50 @@ using System.Text.Json;
             Debug.WriteLine("CleanupBeforeLoad");
             // Editor schließen, Script zerstören, BookRuntime freigeben wie bisher
           
-            BookRuntime.DestroyAll();
+            BookRuntime.LogStep("Cleanup runtime", BookRuntime.DestroyAll);
 
-            if (ActualMain != null)
-            {
-                ActualMain.Objects.Clear();
-                ActualMain = null;
-                QB.Root.ActiveQbook = null;
-            }
-        
- 
-
-            if (ThisBook != null)
-            {
-              
-
-                if (qbook.Core.ThisBook.Main == null)
-                    qbook.Core.ThisBook.Main = new oControl();
-            }
-
-            ThisBook = null;
+            // Retain host metadata until the replacement is available.
 
             // Roslyn nur Dokumente zurücksetzen, nicht den Host
             Debug.WriteLine("Reset Roslyn Documents");
             if (Roslyn != null)
             {
                 Debug.WriteLine("Roslyn ResetDocumentsOnly");
-                Roslyn.ResetDocumentsOnly();
+                BookRuntime.LogStep("Reset Roslyn documents", Roslyn.ResetDocumentsOnly);
             }
 
-            Debug.WriteLine("Clear Dicts");
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
+            // DestroyAll requests runtime unload; finalizers run independently.
         }
 
 
+        private static void PublishBook(Book book)
+        {
+            System.Action publish = () =>
+            {
+                ThisBook = book;
+                ActualMain = book.Main;
+                QB.Root.ActiveQbook = book;
+                QB.Book.ActiveBookResolver = () => ThisBook;
+            };
+            var form = MainForm.Instance;
+            if (form != null && form.IsHandleCreated && form.InvokeRequired)
+                form.Invoke(publish);
+            else
+                publish();
+        }
         public static string OpenedDirectory = @"T:\qSave";
-        public static async Task OpenQbookAsync(string fullPath = @"T:\qSave")
+        public static Exception LastLoadError { get; private set; }
+        public static string LastLoadStage { get; private set; }
+        public static async Task<bool> OpenQbookAsync(string fullPath = @"T:\qSave")
         {
             try
             {
+                LastLoadError = null;
+                LastLoadStage = "Cleanup";
                 CleanupBeforeLoad();
+                LastLoadStage = "Load";
+                var loadWatch = System.Diagnostics.Stopwatch.StartNew();
+                SendToEditor("LogInfo", "[HOST] Load book BEGIN");
 
                 string filename = fullPath.GetFileName();
                 string directory = fullPath.GetDirName();
@@ -830,7 +842,7 @@ using System.Text.Json;
                 Properties.Settings.Default.MruFileList = MruFilesManager.GetMruCsvString();
                 Properties.Settings.Default.Save();
 
-                QB.Root.ActiveQbook = null;
+
 
               
 
@@ -843,9 +855,10 @@ using System.Text.Json;
                 if (IsXml(fullPath))
                 {
                     Debug.WriteLine("XML detected");
-                    ThisBook = Book.Deserialize(fullPath);
-                    ThisBook.Directory = directory;
-                    ThisBook.Filename = filename;
+                    var loadedBook = Book.Deserialize(fullPath);
+                    loadedBook.Directory = directory;
+                    loadedBook.Filename = filename;
+                    PublishBook(loadedBook);
                     await BookBuilder.XmlToFolder(fullPath);
                     QB.Logger.Info($"Opening qbook: {fullPath} from XML-File");
                     File.Copy(fullPath, Path.Combine(backupDir, filename), true); 
@@ -854,12 +867,10 @@ using System.Text.Json;
                 {
                     Debug.WriteLine("Folder detected");
                     QB.Logger.Info($"Opening qbook: {fullPath} from Folder");
-                    ThisBook = await BookBuilder.FromFolder(codeDir, fullPath);
+                    var loadedBook = await BookBuilder.FromFolder(codeDir, fullPath);
+                    PublishBook(loadedBook);
 
                 }
-                Core.ThisBook.DataDirectory = null;
-                Core.ThisBook.SettingsDirectory = null;
-                Core.ThisBook.TempDirectory = null;
                 Core.ThisBook.Directory = directory;
                 Core.ThisBook.Filename = filename;
 
@@ -867,7 +878,7 @@ using System.Text.Json;
                 Core.Roslyn?.RefreshLibReferences();
 
                 QB.Root.ActiveQbook = ThisBook;
-                qbook.Core.ActualMain = qbook.Core.ThisBook.Main;
+
                 qbook.Core.ThisBook.Init();
 
 
@@ -882,12 +893,17 @@ using System.Text.Json;
                     qbook.Core.ThisBook.Main = new oControl();
 
                 MainForm.SetStatusText("initializing qbook...");
-                await BookRuntime.BuildAssembly();
+                SendToEditor("LogInfo", "[HOST] Load book END duration=" + loadWatch.ElapsedMilliseconds + "ms");
+                LastLoadStage = "Build";
+                var buildWatch = System.Diagnostics.Stopwatch.StartNew();
+                SendToEditor("LogInfo", "[HOST] Build book BEGIN");
+                await BookRuntime.BuildAssembly(cleanupBeforeBuild: false);
+                SendToEditor(BookRuntime.BuildSuccess ? "LogInfo" : "LogError", "[HOST] Build book END duration=" + buildWatch.ElapsedMilliseconds + "ms " + BookRuntime.BuildResult);
 
                 if ((qbook.Core.ActualMain?.Objects?.Count ?? 0) > 0)
                     qbook.Core.SelectedPage = qbook.Core.ActualMain.Objects[0] as oPage;
 
-                if (Roslyn.ErrorFiles.Count > 0)
+                if (!BookRuntime.BuildSuccess || !BookRuntime.IsRuntimeReady || Roslyn.ErrorFiles.Count > 0)
                 {
                     autoBuild = false;
                     MainForm.SetStatusText("#E Error qbook build failed!", 0);
@@ -901,12 +917,15 @@ using System.Text.Json;
                 {
                     autoBuild = false;
                 }
+                return BookRuntime.BuildSuccess && BookRuntime.IsRuntimeReady;
             }
             catch (Exception ex)
             {
+                LastLoadError = ex;
                 QB.Logger.Error("#EX opening qbook: " + ex.Message + (QB.Logger.ShowStackTrace ? ex.StackTrace : ""));
                 MessageBox.Show(ex.Message, "ERROR OPENING QBOOK", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 MainForm.SetStatusText("#ERR: loading qbook");
+                return false;
             }
 
         }
@@ -915,8 +934,7 @@ using System.Text.Json;
         {
             if(autoBuild)
             {
-                BookRuntime.InitializeAll();
-                BookRuntime.RunAll();
+                if (BookRuntime.InitializeAll()) BookRuntime.RunAll();
             }
 
         }

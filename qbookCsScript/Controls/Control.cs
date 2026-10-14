@@ -248,46 +248,90 @@ namespace QB.Controls
             catch (Exception error) { errors.Add(error); }
         }
 
-        private void CollectRemoval(List<Control> controls, List<Exception> errors)
+        private void CollectRemoval(List<Control> controls, List<Exception> errors, Dictionary<Control, Control[]> contents)
         {
             if (removed) return;
             removed = true;
             visible = false;
             Enabled = Clickable = Hover = false;
             controls.Add(this);
-            TryCleanup(errors, () => PrepareRemoval(errors));
-            Control[] contents = null;
-            TryCleanup(errors, () => contents = OwnedControls().Where(c => c != null).ToArray());
-            if (contents != null)
-                foreach (var child in contents) child.CollectRemoval(controls, errors);
+            var details = new List<Exception>();
+            TryCleanup(details, () => PrepareRemoval(details));
+            AddRemovalErrors(errors, this, details);
+            if (contents.TryGetValue(this, out var children))
+                foreach (var child in children) child.CollectRemoval(controls, errors, contents);
         }
 
         /// <summary>Removes this control and its owned UI contents on the UI thread.</summary>
         public void Remove()
         {
             if (removed) return;
+            var host = System.Windows.Forms.Application.OpenForms.Cast<System.Windows.Forms.Form>().FirstOrDefault();
+            if (host != null && host.IsHandleCreated && host.InvokeRequired)
+            {
+                host.Invoke(new System.Action(Remove));
+                return;
+            }
+            CaptureRemovalBatch(new[] { this }, out _)();
+        }
+
+        private static void AddRemovalErrors(List<Exception> errors, Control control, List<Exception> details)
+        {
+            if (details.Count != 0)
+                errors.Add(new AggregateException("Control cleanup failed: " + control.GetType().FullName + " name=" + control.Name + " id=" + control.Id, details));
+        }
+
+        // Keep owned controls alive before Program/Item callbacks remove registrations.
+        internal static System.Action CaptureRemovalBatch(out int count) => CaptureRemovalBatch(null, out count);
+
+        private static System.Action CaptureRemovalBatch(Control[] roots, out int count)
+        {
             var errors = new List<Exception>();
-            var controls = new List<Control>();
-            CollectRemoval(controls, errors);
             Control[] registered;
             lock (Root.ControlDict)
             {
                 registered = Root.ControlDict.Values.ToArray();
-                foreach (var key in Root.ControlDict.Where(pair => controls.Any(c => ReferenceEquals(c, pair.Value))).Select(pair => pair.Key).ToArray())
-                    Root.ControlDict.Remove(key);
             }
             // Include unregistered containers reachable from registered views.
-            var containers = new List<Control>();
-            var pending = new Queue<Control>(registered.Concat(controls).Concat(ItemDestroyHandler.Destroyers.ToArray().Select(callback => callback.Target as Control)));
+            var contents = new Dictionary<Control, Control[]>(ReferenceEqualityComparer.Instance);
+            System.Action[] destroyers;
+            lock (ItemDestroyHandler.Destroyers) destroyers = ItemDestroyHandler.Destroyers.ToArray();
+            var pending = new Queue<Control>(registered.Concat(roots ?? Array.Empty<Control>()).Concat(destroyers.Select(callback => callback.Target as Control)));
             while (pending.Count != 0)
             {
                 var container = pending.Dequeue();
-                if (container == null || containers.Any(c => ReferenceEquals(c, container))) continue;
-                containers.Add(container);
-                TryCleanup(errors, () => { foreach (var child in container.OwnedControls()) pending.Enqueue(child); });
+                if (container == null || contents.ContainsKey(container)) continue;
+                var details = new List<Exception>();
+                Control[] children = Array.Empty<Control>();
+                TryCleanup(details, () => children = container.OwnedControls().Where(child => child != null).ToArray());
+                contents.Add(container, children);
+                foreach (var child in children) pending.Enqueue(child);
+                AddRemovalErrors(errors, container, details);
             }
+            var targets = roots ?? contents.Keys.ToArray();
+            count = targets.Length;
+            return () =>
+            {
+                var host = System.Windows.Forms.Application.OpenForms.Cast<System.Windows.Forms.Form>().FirstOrDefault();
+                System.Action remove = () => RemoveBatch(targets, contents, errors);
+                if (host != null && host.IsHandleCreated && host.InvokeRequired) host.Invoke(remove);
+                else remove();
+            };
+        }
+
+        private static void RemoveBatch(Control[] targets, Dictionary<Control, Control[]> contents, List<Exception> snapshotErrors)
+        {
+            var batchErrors = new List<Exception>(snapshotErrors);
+            var controls = new List<Control>();
+            foreach (var target in targets) target.CollectRemoval(controls, batchErrors, contents);
+            var membership = new HashSet<Control>(controls, ReferenceEqualityComparer.Instance);
+            lock (Root.ControlDict)
+                foreach (var key in Root.ControlDict.Where(pair => membership.Contains(pair.Value)).Select(pair => pair.Key).ToArray())
+                    Root.ControlDict.Remove(key);
+            var containers = contents.Keys.ToArray();
             foreach (var control in controls)
             {
+                var errors = new List<Exception>();
                 if (control.Parent != null) TryCleanup(errors, () => control.Parent.DetachControl(control));
                 if (control.ParentPanel != null) TryCleanup(errors, () => control.ParentPanel.DetachControl(control));
                 foreach (var container in containers) TryCleanup(errors, () => container.DetachControl(control));
@@ -307,8 +351,9 @@ namespace QB.Controls
                 control._Text = null;
                 control.BackgroundImage = null;
                 control.LeftIcon = control.RightIcon = null;
+                AddRemovalErrors(batchErrors, control, errors);
             }
-            if (errors.Count != 0) throw new AggregateException("One or more controls could not be cleaned up.", errors);
+            if (batchErrors.Count != 0) throw new AggregateException("One or more controls could not be cleaned up.", batchErrors);
         }
 
         //public static string GetNameOfCallingClass()

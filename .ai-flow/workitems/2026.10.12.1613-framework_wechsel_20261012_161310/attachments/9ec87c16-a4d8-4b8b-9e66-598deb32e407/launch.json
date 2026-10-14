@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "qbook: Attach to host process",
+      "type": "clr",
+      "request": "attach",
+      "processId": 26228,
+      "justMyCode": false,
+      "requireExactSource": false,
+      "suppressJITOptimizations": true,
+      "sourceFileMap": {
+        "B:\\Audi\\CellTester_2026.08.26.code": "${workspaceFolder}",
+        "B:\\Audi\\CellTester_2026.08.26.code\\Pages": "${workspaceFolder}\\Pages"
+      },
+      "logging": {
+        "moduleLoad": true,
+        "exceptions": true,
+        "programOutput": true
+      },
+      "symbolOptions": {
+        "searchPaths": [
+          "B:\\Audi\\CellTester_2026.08.26.code"
+        ],
+        "searchMicrosoftSymbolServer": false
+      }
+    }
+  ]
+}

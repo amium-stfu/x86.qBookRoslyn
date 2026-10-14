@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 import { PipeBridge, PipeCommandPayload, PipeConnectionState } from './namedPipeClients';
 
-export type RuntimeButtonId = 'run' | 'stop' | 'rebuild';
-export type RuntimeSignalKind = 'status' | 'alert';
+export type RuntimeButtonId = 'initialize' | 'run' | 'stop' | 'rebuild';
+export type RuntimeSignalKind = 'status' | 'alert' | 'progress';
 export type RuntimeSignal = {
   button: RuntimeButtonId;
-  kind: RuntimeSignalKind;
+  kind: RuntimeSignalKind | 'progress';
 };
 
 type RuntimeLogLevel = 'debug' | 'info' | 'error' | 'fatal';
@@ -113,6 +113,9 @@ function parseRuntimeSignal(command: PipeCommandPayload): RuntimeSignal | undefi
   if (!rawCommand) {
     return undefined;
   }
+  if (rawCommand.toLowerCase() === 'progress:stop') {
+    return { kind: 'progress', button: 'stop' };
+  }
 
   let kind: RuntimeSignalKind | undefined;
   let button: RuntimeButtonId | undefined;
@@ -157,6 +160,7 @@ function extractRuntimeButtonFromArgs(args?: string[]): RuntimeButtonId | undefi
 
 function normalizeRuntimeSignalKind(value?: string): RuntimeSignalKind | undefined {
   const normalized = value?.trim().toLowerCase();
+  if (normalized === 'progress') return 'progress';
   if (normalized === 'status') {
     return 'status';
   }
@@ -172,6 +176,7 @@ function normalizeRuntimeButton(value?: string): RuntimeButtonId | undefined {
     return undefined;
   }
 
+  if (normalized === 'initialize') return 'initialize';
   if (normalized === 'run' || normalized === 'start') {
     return 'run';
   }
@@ -189,11 +194,11 @@ export async function sendRuntimeCommand(
   context: PipeCommandSenderContext,
   command: string,
   args?: string[]
-): Promise<void> {
+): Promise<boolean> {
   const bridge = context.getBridge();
   if (!bridge) {
     context.showErrorMessage('Pipe is not connected.');
-    return;
+    return false;
   }
 
   const payload: PipeCommandPayload = {
@@ -203,9 +208,11 @@ export async function sendRuntimeCommand(
 
   try {
     await bridge.send(payload);
+    return true;
   } catch (error: unknown) {
     const details = error instanceof Error ? error.message : String(error);
     context.showErrorMessage(`Pipe command '${command}' failed: ${details}`);
     context.broadcastStatus('disconnected');
+    return false;
   }
 }

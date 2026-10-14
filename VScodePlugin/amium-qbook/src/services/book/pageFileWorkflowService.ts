@@ -15,7 +15,7 @@ export async function renamePageFolder(
   const newDir = getPageDirectory(bookRoot, newPage);
   const exists = await pathExists(oldDir);
   if (!exists) {
-    throw new Error(`Page-Ordner '${oldPage}' wurde nicht gefunden.`);
+    throw new Error(`Page folder '${oldPage}' was not found.`);
   }
   await vscode.workspace.fs.rename(oldDir, newDir, { overwrite: false });
 }

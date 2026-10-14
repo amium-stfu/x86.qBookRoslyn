@@ -38,6 +38,14 @@ namespace qbook
         }
 
         private static Type? _programType;
+        private static Book? _runtimeBook;
+        private static volatile bool _resourcesInitialized;
+        private static volatile bool _resourcesReleased;
+        private static volatile bool _resourceCycleFailed;
+        public static bool InitializeSucceeded { get; private set; }
+        public static bool RunSucceeded { get; private set; }
+        public static bool CanRenderRuntime => _resourcesInitialized && !_resourcesReleased && !_resourceCycleFailed;
+        public static Exception? LastRuntimeError { get; private set; }
         public static bool IsRuntimeReady => _programType != null && qbook.Core.ActiveCsAssembly != null;
         public static void BindAllPagesToAssembly(Assembly asm)
         {
@@ -49,6 +57,15 @@ namespace qbook
             Core.SendToEditor("LogInfo", "[HOST] LoadedTimestamp        " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
 
     
+            InitializeSucceeded = false;
+            RunSucceeded = false;
+            _resourcesInitialized = false;
+            _resourcesReleased = false;
+            _resourceCycleFailed = false;
+            var qbAssembly = System.Runtime.Loader.AssemblyLoadContext.GetLoadContext(asm)?.LoadFromAssemblyName(typeof(QB.Book).Assembly.GetName());
+            if (!ReferenceEquals(qbAssembly, typeof(QB.Book).Assembly))
+                throw new InvalidOperationException("The compiled book uses a different QB runtime assembly.");
+            _runtimeBook = Core.ThisBook;
             _programType = asm.GetType("QB.Program");
             if (_programType == null)
             {
@@ -76,6 +93,7 @@ namespace qbook
         }
         public static void EnsureInit(oPage page)
         {
+            if (!CanRenderRuntime) return;
             if (page?.DynInstance == null || page.DynInitialized) return;
             var initMethod = ResolveInitMethod(page.DynInstance.GetType());
             if (_loggedInitPages.Add(page.Name))
@@ -92,6 +110,7 @@ namespace qbook
         }
         public static void ExecuteRender(oPage page)
         {
+            if (!CanRenderRuntime) return;
             if (page?.DynInstance == null) return;
             var renderMethod = ResolveRenderMethod(page.DynInstance.GetType());
             if (_loggedRenderPages.Add(page.Name))
@@ -105,114 +124,205 @@ namespace qbook
             }
             renderMethod.Invoke(page.DynInstance, null);
         }
-        public static void InitializeAll()
+        public static bool InitializeAll()
         {
-            Core.StatusText = "Status:Rebuild";
-            GlobalExceptions.InitRuntimeErrors();
-            var proj = Core.Roslyn.GetCurrentProject();
-            Debug.WriteLine("[Diag] Id  =" + proj?.Id);
-            Debug.WriteLine("[Diag] Docs=" + proj?.Documents.Count());
-            Debug.WriteLine("[Diag] Has Program.cs=" + (proj?.Documents.Any(d => d.Name == "Program.cs")));
-
-            if (!IsRuntimeReady)
-            {
-                QB.Logger.Error("[BookRuntime] InitializeAll aborted: assembly missing or Program type not bound. BuildResult=" + BuildResult);
-                Debug.WriteLine("[BookRuntime] InitializeAll aborted: assembly missing or Program type not bound. BuildResult=" + BuildResult);
-                return;
-            }
-          
-            // Option 1: Falls du die generierte Program.Initialize() trotzdem zuerst ausführen willst:
-            MethodInfo initGlobal = _programType.GetMethod("Initialize");
-            if (initGlobal != null)
-            {
-                try
-                {
-                    initGlobal.Invoke(null, null);
-                    RuntimeWatchdog.Start();
-                   
-                }
-                catch (TargetInvocationException tex)
-                {
-                    QB.GlobalExceptions.LogRichException("Program.Initialize (global)", tex.InnerException ?? tex);
-                  
-                    Core.StatusText = "Alert:Rebuild";
-                }
-                catch (Exception ex)
-                {
-                    QB.GlobalExceptions.LogRichException("Program.Initialize (global)", ex);
-                    Core.StatusText = "Alert:Rebuild";
-                }
-            }
-        }
-        public static void RunAll()
-        {
-            if (!IsRuntimeReady)
-            {
-                QB.Logger.Error("[PageRuntime] RunAll aborted: runtime not ready. BuildResult=" + BuildResult);
-                Debug.WriteLine("[PageRuntime] RunAll aborted: runtime not ready. BuildResult=" + BuildResult);
-                return;
-            }
-            QB.Root.ActiveQbook = qbook.Core.ThisBook;
-            MethodInfo runGlobal = _programType.GetMethod("Run");
-            if (runGlobal != null)
-            {
-
-                try
-                {
-                    Core.SendToEditor("LogInfo", "[HOST] Program.Run START");
-                    ExceptionBridge.Safe("Program.Run", () =>
-                    {
-                        runGlobal.Invoke(null, null);
-                    }, rethrow: true);
-                    Core.SendToEditor("LogInfo", "[HOST] Program.Run END");
-                
-                    Core.StatusText = "Status:Run";
-                }
-                catch (Exception ex)
-                {
-                    GlobalExceptions.Handle(ex, "Program.Run Reflection");
-                    Core.StatusText = "Alert:Run";
-                }
-
-            }
-
-        }
-        public static void DestroyAll()
-        {
-            Core.StatusText = "Status:Stop";
-            RuntimeWatchdog.Stop();
-            if (Core.ThisBook == null) return;
-
+            LastRuntimeError = null;
+            _resourcesInitialized = false;
+            _resourceCycleFailed = true;
             try
             {
-                var destroy = _programType?.GetMethod("Destroy", BindingFlags.Public | BindingFlags.Static);
-                if (destroy != null) destroy.Invoke(null, null);
-                else
-                {
-                    foreach (var page in Core.ThisBook.Main.Objects.OfType<oPage>())
-                        page.DynInstance?.GetType().GetMethod("Destroy", Type.EmptyTypes)?.Invoke(page.DynInstance, null);
-                }
-                ItemDestroyHandler.DestroyAll();
-                foreach (var control in QB.Root.ControlDict.Values.ToArray()) control.Remove();
+                GlobalExceptions.InitRuntimeErrors();
+                if (!BuildSuccess || !IsRuntimeReady)
+                    throw new InvalidOperationException("Runtime assembly missing or Program type not bound. BuildResult=" + BuildResult);
+
+                MethodInfo initGlobal = _programType.GetMethod("Initialize");
+                if (initGlobal == null)
+                    throw new MissingMethodException("QB.Program.Initialize was not found.");
+
+                _resourcesReleased = false;
+                BindRuntimeContext("Initialize");
+                initGlobal.Invoke(null, null);
+                RuntimeWatchdog.Start();
+                _resourcesReleased = false;
+                InitializeSucceeded = true;
+                _resourcesInitialized = true;
+                _resourceCycleFailed = false;
+                Core.PublishStopStatus("Status:Initialize");
+                return true;
+            }
+            catch (TargetInvocationException tex)
+            {
+                LastRuntimeError = tex.InnerException ?? tex;
+                QB.GlobalExceptions.LogRichException("Program.Initialize (global)", tex.InnerException ?? tex);
+                Core.StatusText = "Alert:Rebuild";
             }
             catch (Exception ex)
             {
-                Core.StatusText = "Alert:Stop";
-                QB.Logger.Error("Book stop failed; reload cancelled: " + ex.Message);
+                LastRuntimeError = ex;
+                QB.GlobalExceptions.LogRichException("Program.Initialize (global)", ex);
+                Core.StatusText = "Alert:Rebuild";
+            }
+            return false;
+        }
+        public static bool RunAll()
+        {
+            LastRuntimeError = null;
+            try
+            {
+                if (!BuildSuccess || !IsRuntimeReady || !_resourcesInitialized || _resourcesReleased || _resourceCycleFailed)
+                    throw new InvalidOperationException("Runtime is not successfully built and initialized. BuildResult=" + BuildResult);
+
+                MethodInfo runGlobal = _programType.GetMethod("Run");
+                if (runGlobal == null)
+                    throw new MissingMethodException("QB.Program.Run was not found.");
+
+                BindRuntimeContext("Run");
+                Core.SendToEditor("LogInfo", "[HOST] Program.Run START");
+                ExceptionBridge.Safe("Program.Run", () =>
+                {
+                    runGlobal.Invoke(null, null);
+                }, rethrow: true);
+                Core.SendToEditor("LogInfo", "[HOST] Program.Run END");
+                RunSucceeded = true;
+                Core.StatusText = "Status:Run";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LastRuntimeError = ex is TargetInvocationException invocation ? invocation.InnerException ?? ex : ex;
+                _resourceCycleFailed = true;
+                GlobalExceptions.Handle(ex, "Program.Run Reflection");
+                Core.StatusText = "Alert:Run";
+                return false;
+            }
+        }
+        public static void StopAll()
+        {
+            try
+            {
+                Core.PublishStopStatus("Progress:Stop");
+                DestroyAll();
+                Core.PublishStopStatus("Status:Stop");
+            }
+            catch (Exception ex)
+            {
+                _resourceCycleFailed = true;
+                QB.GlobalExceptions.LogRichException("BookRuntime.StopAll", ex);
+                Core.PublishStopStatus("Alert:Stop", "Runtime cleanup or UI finalization failed: " + ex.Message);
                 throw;
             }
+        }
 
-            foreach (var page in Core.ThisBook.Main.Objects.OfType<oPage>())
+        public static void DestroyProgram()
+        {
+            _resourcesInitialized = false;
+            InitializeSucceeded = false;
+            RunSucceeded = false;
+            if (!BuildSuccess || !IsRuntimeReady)
+                throw new InvalidOperationException("Runtime assembly missing or Program type not bound.");
+            ReleaseResources();
+            Core.PublishStopStatus("Status:Stop");
+        }
+
+        internal static void LogStep(string name, System.Action action)
+        {
+            var watch = Stopwatch.StartNew();
+            Core.SendToEditor("LogInfo", "[HOST] " + name + " BEGIN");
+            try
             {
-                page.DynInstance = null;
-                page.DynInitialized = false;
+                action();
+                Core.SendToEditor("LogInfo", "[HOST] " + name + " END duration=" + watch.ElapsedMilliseconds + "ms");
             }
-            _programType = null;
-            Core.ActiveCsAssembly = null;
+            catch (Exception ex)
+            {
+                var error = ex is TargetInvocationException invocation ? invocation.InnerException ?? ex : ex;
+                Core.SendToEditor("LogError", "[HOST] " + name + " FAILED duration=" + watch.ElapsedMilliseconds + "ms " + error);
+                throw;
+            }
+        }
+
+        private static void ReleaseResources()
+        {
+            if (_resourcesReleased) return;
+            _resourcesInitialized = false;
+            _resourceCycleFailed = true;
+            InitializeSucceeded = false;
+            RunSucceeded = false;
+            var errors = new List<Exception>();
+            void Cleanup(string name, System.Action action)
+            {
+                try { LogStep(name, action); }
+                catch (Exception ex) { errors.Add(ex); }
+            }
+            System.Action removeControls = null;
+            int controlCount = 0;
+            Cleanup("RuntimeWatchdog.Stop", RuntimeWatchdog.Stop);
+            Cleanup("Control snapshot", () => removeControls = QB.Controls.Control.CaptureRemovalBatch(out controlCount));
+            var destroy = _programType?.GetMethod("Destroy", BindingFlags.Public | BindingFlags.Static);
+            if (destroy != null) Cleanup("Program.Destroy", () =>
+            {
+                if (destroy.Invoke(null, null) is Task task) task.GetAwaiter().GetResult();
+            });
+            else if (_programType != null && _runtimeBook != null)
+            {
+                foreach (var page in _runtimeBook.Main.Objects.OfType<oPage>().ToArray())
+                    Cleanup("Page.Destroy " + page.Name, () =>
+                    {
+                        if (page.DynInstance?.GetType().GetMethod("Destroy", Type.EmptyTypes)?.Invoke(page.DynInstance, null) is Task task)
+                            task.GetAwaiter().GetResult();
+                    });
+            }
+            Cleanup("ItemDestroyHandler.DestroyAll", ItemDestroyHandler.DestroyAll);
+            if (removeControls != null) Cleanup("Control.RemoveBatch count=" + controlCount, removeControls);
+            Cleanup("Root.ResetAllDicts", QB.Root.ResetAllDicts);
+            if (_runtimeBook != null)
+            {
+                foreach (var page in _runtimeBook.Main.Objects.OfType<oPage>())
+                    page.DynInitialized = false;
+            }
             _loggedInitPages.Clear();
             _loggedRenderPages.Clear();
-            QB.Root.ResetAllDicts();
-            Core.Roslyn?.UnloadRuntimeAssembly();
+            _resourcesReleased = errors.Count == 0;
+            if (errors.Count > 0) throw new AggregateException("Runtime cleanup failed; reload cancelled.", errors);
+            _resourceCycleFailed = false;
+        }
+
+        public static void DestroyAll()
+        {
+            if (_resourcesReleased && _programType == null && _runtimeBook == null) return;
+            MainForm form = MainForm.Instance;
+            PageControl surface = null;
+            try
+            {
+                surface = form?.BeginBookTeardown();
+                try { ReleaseResources(); }
+                finally
+                {
+                    if (_runtimeBook != null)
+                    {
+                        foreach (var page in _runtimeBook.Main.Objects.OfType<oPage>())
+                        {
+                            page.DynInstance = null;
+                            page.DynInitialized = false;
+                        }
+                    }
+                    _programType = null;
+                    _runtimeBook = null;
+                    Core.ActiveCsAssembly = null;
+                    _resourcesInitialized = false;
+                    BuildSuccess = false;
+                    _loggedInitPages.Clear();
+                    _loggedRenderPages.Clear();
+                    LogStep("Assembly unload request (GC completion is not awaited)", () => Core.Roslyn?.UnloadRuntimeAssembly());
+                    Core.PublishStopStatus("Status:Stop");
+                }
+            }
+            finally
+            {
+                form?.EndBookTeardown(surface);
+            }
+            _resourceCycleFailed = false;
+            Core.StatusText = "Status:Stop";
         }
         public static List<string> ErrorFiles = new List<string>();
         static Stopwatch buildWatch = new Stopwatch();
@@ -220,15 +330,28 @@ namespace qbook
         public static string BuildResult = "";
         public static bool BuildSuccess = false;
 
-        public static async Task BuildAssembly()
+        private static void BindRuntimeContext(string stage)
         {
-            DestroyAll();
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
+            if (_runtimeBook == null || !ReferenceEquals(_runtimeBook, Core.ThisBook))
+                throw new InvalidOperationException("The runtime book does not match the active host book at " + stage + ".");
+            QB.Root.ActiveQbook = _runtimeBook;
+            QB.Book.ActiveBookResolver = () => Core.ThisBook;
+            Core.SendToEditor("LogInfo", "[HOST] Context " + stage +
+                " QB=" + typeof(QB.Book).Assembly.FullName +
+                " book=" + _runtimeBook.Filename +
+                " data=" + QB.Book.DataDirectory +
+                " settings=" + QB.Book.SettingsDirectory +
+                " temp=" + _runtimeBook.TempDirectory);
+        }
+
+        public static async Task BuildAssembly(bool cleanupBeforeBuild = true)
+        {
+            BuildSuccess = false;
+            BuildResult = "[Rebuild] Build failed.";
+            if (cleanupBeforeBuild) DestroyAll();
+            _resourcesReleased = false;
             GlobalExceptions.InitRuntimeErrors();
-            
-            BuildSuccess = true;
+
             BuildDuration = 0;
             buildWatch.Restart();
             ErrorFiles.Clear();
@@ -244,14 +367,21 @@ namespace qbook
             }
             QB.Root.ActiveQbook = qbook.Core.ThisBook;
             qbook.Core.ActiveCsAssembly = asm;
-            BindAllPagesToAssembly(asm);
+            LogStep("Bind assembly and pages", () => BindAllPagesToAssembly(asm));
+            if (!IsRuntimeReady)
+            {
+                DestroyAll();
+                return;
+            }
+            BuildSuccess = true;
             BuildDuration = (int)buildWatch.ElapsedMilliseconds;
             BuildResult = $"[Rebuild] Build success ({BuildDuration}ms)";
 
         }
         public static async Task BuildBookAssembly()
         {
-            BuildSuccess = true;
+            BuildSuccess = false;
+            BuildResult = "[Rebuild] Build failed.";
             BuildDuration = 0;
             buildWatch.Restart();
             ErrorFiles.Clear();
@@ -276,7 +406,13 @@ namespace qbook
             }
 
             qbook.Core.ActiveCsAssembly = asm;
-            BindAllPagesToAssembly(asm);
+            LogStep("Bind assembly and pages", () => BindAllPagesToAssembly(asm));
+            if (!IsRuntimeReady)
+            {
+                DestroyAll();
+                return;
+            }
+            BuildSuccess = true;
             BuildDuration = (int)buildWatch.ElapsedMilliseconds;
             BuildResult = $"[Rebuild] Build success ({BuildDuration}ms)";
         }
